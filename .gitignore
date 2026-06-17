@@ -1,0 +1,81 @@
+# Gradle and Build
+.gradle/
+build/
+bin/
+*/build/
+out/
+**/.kotlin/
+
+# Java and Kotlin
+*.class
+*.jar
+*.war
+*.ear
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+cmake-build-*/
+
+# Android
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aar
+*.ap_
+*.dex
+ndk-stack
+#google-services.json
+
+# iOS / Xcode
+*.xcodeproj/
+*.xcworkspace/
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+DerivedData/
+*.moved-aside
+*.xcuserstate
+*.xccheckout
+Pods/
+.bundle/
+vendor/bundle/
+.ruby-version
+.ruby-gemset
+Gemfile.lock
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+.env.*
+
+# macOS
+.DS_Store
+
+# JS / Compose HTML / Node
+node_modules/
+package-lock.json
+dist/
+.npm/
+
+# Logs
+*.log
+
+# Server / Spring Boot / Ktor
+.env
+.env.local
+.env.*.local
+/kotlin-js-store/
+
+# Distribution / Packaging
+/keystore.properties
+/app/android/upload.keystore
+/secrets/
+/.vscode/settings.json
+/gradle/gradle-daemon-jvm.properties
