@@ -48,8 +48,14 @@ mavenPublishing {
         signAllPublications()
     }
 
-    // 0.2.0 was published from maps-mobile; this repo continues from 0.3.0.
-    coordinates("com.coderwise.libs", "utils", "0.3.0")
+    // Version comes from the release tag (-PlibVersion=<version>, set by the
+    // publish workflow from a `utils-v<version>` tag); local builds default to
+    // 0.0.0-LOCAL. 0.2.0 was the last version published from maps-mobile.
+    coordinates(
+        "com.coderwise.libs",
+        "utils",
+        providers.gradleProperty("libVersion").getOrElse("0.0.0-LOCAL"),
+    )
 
     pom {
         name.set("Coderwise Utils")
