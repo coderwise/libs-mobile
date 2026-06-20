@@ -12,6 +12,7 @@ import androidx.compose.animation.core.animateDecay
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
@@ -92,8 +93,16 @@ class TiledMapState(
     private val zoomAnimatable = Animatable(zoom.toFloat())
     private var animationJob: Job? = null
 
-    val zoomInt: Int get() = zoom.toInt()
-    val zoomScale: Double get() = 2.0.pow(zoom - zoomInt)
+    // Backed by derivedStateOf so readers — in composition or in a layout/measure block — only
+    // invalidate when the integer zoom (resp. the scale) actually changes, rather than on every
+    // fractional-zoom step. This is why panning/zooming re-lays-out the tile grid instead of
+    // recomposing it; consumers get that for free just by reading these properties.
+    private val _zoomInt = derivedStateOf { zoom.toInt() }
+    val zoomInt: Int get() = _zoomInt.value
+
+    private val _zoomScale = derivedStateOf { 2.0.pow(zoom - zoomInt) }
+    val zoomScale: Double get() = _zoomScale.value
+
     val scaledTileSizePx: Int
         get() = (tileSizePx * zoomScale).toInt()
 

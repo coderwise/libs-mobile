@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import com.coderwise.libs.mapcore.TileId
 import com.coderwise.libs.mapcore.MapMath
 import kotlin.math.floor
-import kotlin.math.pow
 import kotlin.math.roundToInt
 
 @LayoutScopeMarker
@@ -115,12 +114,9 @@ fun TiledMap(
     val coroutineScope = rememberCoroutineScope()
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    val zoomInt by remember { derivedStateOf { state.zoom.toInt() } }
-    val zoomScale by remember { derivedStateOf { 2.0.pow(state.zoom - zoomInt) } }
-
     val centerFractional by remember {
         derivedStateOf {
-            MapMath.latLonToTileFractional(state.latitude, state.longitude, zoomInt.toDouble())
+            MapMath.latLonToTileFractional(state.latitude, state.longitude, state.zoomInt.toDouble())
         }
     }
 
@@ -146,16 +142,14 @@ fun TiledMap(
         content = {
             TileLayer(
                 state = state,
-                zoomInt = zoomInt,
-                zoomScale = zoomScale,
                 visibleTileRange = visibleTileRange,
                 tileContent = tileContent
             )
             TiledMapScope(
                 state = state,
                 containerSize = containerSize,
-                zoomInt = zoomInt,
-                zoomScale = zoomScale,
+                zoomInt = state.zoomInt,
+                zoomScale = state.zoomScale,
                 centerFractional = centerFractional
             ).content()
         }
@@ -191,11 +185,12 @@ fun TiledMap(
 @Composable
 private fun TileLayer(
     state: TiledMapState,
-    zoomInt: Int,
-    zoomScale: Double,
     visibleTileRange: TileRange?,
     tileContent: @Composable (tile: TileId, modifier: Modifier) -> Unit
 ) {
+    // state.zoomInt is a derived state read in composition, so the tile list rebuilds only when the
+    // integer zoom changes (a boundary) — not on every fractional-zoom frame.
+    val zoomInt = state.zoomInt
     // Build the visible tiles into a stable, remembered list, then emit them with `key()` directly:
     // the canonical reuse pattern. Emitting straight from `visibleTileRange?.forEach { if (..) key }`
     // (a nullable safe-call wrapping a custom inline iterator with a per-item conditional) does NOT
@@ -224,12 +219,13 @@ private fun TileLayer(
             }
         }
     ) { measurables, constraints ->
-        // Read the pan center here, in the layout phase: a snapshot read of latitude/longitude that
-        // invalidates layout (re-place) rather than composition on every pan frame.
+        // Read the pan center and scale here, in the layout phase: snapshot reads of
+        // latitude/longitude/zoomScale that invalidate layout (re-place) rather than composition as
+        // you pan or zoom.
         val (cfx, cfy) = MapMath.latLonToTileFractional(
             state.latitude, state.longitude, zoomInt.toDouble()
         )
-        val pixelsPerTile = state.tileSizePx * zoomScale
+        val pixelsPerTile = state.tileSizePx * state.zoomScale
         val centerX = constraints.maxWidth / 2
         val centerY = constraints.maxHeight / 2
 
