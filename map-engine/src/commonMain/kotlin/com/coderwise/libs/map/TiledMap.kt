@@ -148,7 +148,6 @@ fun TiledMap(
                 state = state,
                 zoomInt = zoomInt,
                 zoomScale = zoomScale,
-                centerFractional = centerFractional,
                 visibleTileRange = visibleTileRange,
                 tileContent = tileContent
             )
@@ -182,53 +181,68 @@ fun TiledMap(
  * avoiding the hairline seams that per-tile rotation would produce. Reading [TiledMapState.bearing]
  * inside the graphicsLayer block means bearing changes only update layer properties — no
  * recomposition or relayout.
+ *
+ * The pan center is read inside the measure block (not taken as a parameter), so panning the map
+ * triggers only a re-layout of the existing tile children — never a recomposition of this content.
+ * Passing the per-frame-changing center as a composition input would re-run this content every
+ * frame, which defeats `key()` reuse and churns (disposes + recreates) the whole tile grid as you
+ * drag. Tiles therefore compose once per visible range and are merely re-placed during a pan.
  */
 @Composable
 private fun TileLayer(
     state: TiledMapState,
     zoomInt: Int,
     zoomScale: Double,
-    centerFractional: Pair<Double, Double>,
     visibleTileRange: TileRange?,
     tileContent: @Composable (tile: TileId, modifier: Modifier) -> Unit
 ) {
+    // Build the visible tiles into a stable, remembered list, then emit them with `key()` directly:
+    // the canonical reuse pattern. Emitting straight from `visibleTileRange?.forEach { if (..) key }`
+    // (a nullable safe-call wrapping a custom inline iterator with a per-item conditional) does NOT
+    // let Compose match keyed children across recompositions — a one-column range shift then disposes
+    // and recreates the WHOLE grid instead of cycling just the edge column. Pre-building keeps the
+    // emission a plain `list.forEach { key {} }`, which reuses correctly.
+    val tiles = remember(visibleTileRange, zoomInt) {
+        val tileCount = 1 shl zoomInt
+        buildList {
+            visibleTileRange?.forEach { tx, ty ->
+                // Key on the unwrapped (tx, ty): when the viewport spans the world-wrap seam (low
+                // zoom / wide viewport) two columns share the same wrapped TileId, so keying on
+                // tile.key would collide and drop a tile. The wrapped TileId is what tileContent
+                // fetches.
+                if (ty in 0 until tileCount) add(VisibleTile(tx, ty, TileId(zoomInt, tx.mod(tileCount), ty)))
+            }
+        }
+    }
     Layout(
         modifier = Modifier.graphicsLayer { rotationZ = (-state.bearing).toFloat() },
         content = {
-            val tileCount = 1 shl zoomInt
-            visibleTileRange?.forEach { tx, ty ->
-                if (ty in 0 until tileCount) {
-                    val wrappedX = tx.mod(tileCount)
-                    val tile = TileId(zoomInt, wrappedX, ty)
-                    key(tile.key) {
-                        tileContent(tile, Modifier.fillMaxSize())
-                    }
+            tiles.forEach { visible ->
+                key(visible.tx, visible.ty) {
+                    tileContent(visible.tile, Modifier.fillMaxSize())
                 }
             }
         }
     ) { measurables, constraints ->
-        val (cfx, cfy) = centerFractional
+        // Read the pan center here, in the layout phase: a snapshot read of latitude/longitude that
+        // invalidates layout (re-place) rather than composition on every pan frame.
+        val (cfx, cfy) = MapMath.latLonToTileFractional(
+            state.latitude, state.longitude, zoomInt.toDouble()
+        )
         val pixelsPerTile = state.tileSizePx * zoomScale
         val centerX = constraints.maxWidth / 2
         val centerY = constraints.maxHeight / 2
-        val tileWorldSize = 1 shl zoomInt
 
-        // Safety: never exceed the number of measurables provided by composition
-        var measurableIndex = 0
-        val tilePlaceables = mutableListOf<Pair<PlaceableInfo, androidx.compose.ui.layout.Placeable>>()
-
-        visibleTileRange?.forEach { tx, ty ->
-            if (ty in 0 until tileWorldSize && measurableIndex < measurables.size) {
-                val measurable = measurables[measurableIndex++]
-
-                val left = floor((tx - cfx) * pixelsPerTile).toInt()
-                val right = floor((tx + 1 - cfx) * pixelsPerTile).toInt()
-                val top = floor((ty - cfy) * pixelsPerTile).toInt()
-                val bottom = floor((ty + 1 - cfy) * pixelsPerTile).toInt()
-
-                val placeable = measurable.measure(Constraints.fixed(right - left, bottom - top))
-                tilePlaceables.add(PlaceableInfo(centerX + left, centerY + top) to placeable)
-            }
+        // `measurables` align 1:1 with `tiles` (same order, same count).
+        val tilePlaceables = tiles.indices.mapNotNull { index ->
+            if (index >= measurables.size) return@mapNotNull null
+            val visible = tiles[index]
+            val left = floor((visible.tx - cfx) * pixelsPerTile).toInt()
+            val right = floor((visible.tx + 1 - cfx) * pixelsPerTile).toInt()
+            val top = floor((visible.ty - cfy) * pixelsPerTile).toInt()
+            val bottom = floor((visible.ty + 1 - cfy) * pixelsPerTile).toInt()
+            val placeable = measurables[index].measure(Constraints.fixed(right - left, bottom - top))
+            PlaceableInfo(centerX + left, centerY + top) to placeable
         }
 
         layout(constraints.maxWidth, constraints.maxHeight) {
@@ -239,6 +253,7 @@ private fun TileLayer(
     }
 }
 
+private data class VisibleTile(val tx: Int, val ty: Int, val tile: TileId)
 private data class PlaceableInfo(val x: Int, val y: Int)
 
 private fun calculateVisibleTileRange(
