@@ -6,9 +6,19 @@ credentials.
 
 ## Modules
 
-| Module | Coordinates | Targets |
-|---|---|---|
-| [`:utils`](utils) | `com.coderwise.libs:utils` | Android · iOS (arm64, sim-arm64) · JS · Desktop |
+All modules target **Android · iOS (arm64, sim-arm64) · JS · Desktop** and publish
+under `com.coderwise.libs`. "Latest" is the newest version on Maven Central; modules
+without one are consumed via `mavenLocal` until first released.
+
+| Module | Coordinates | Latest | Summary |
+|---|---|---|---|
+| [`:utils`](utils) | `com.coderwise.libs:utils` | `0.4.0` | Cross-platform utilities: file sharing, platform system-bar colors, generic `LruCache`. |
+| [`:permissions`](permissions) | `com.coderwise.libs:permissions` | `0.1.0` | Runtime permission state (location) for Compose Multiplatform. |
+| [`:database`](database) | `com.coderwise.libs:database` | — | SQLDelight driver factory + Koin DI. |
+| [`:location`](location) | `com.coderwise.libs:location` | — | GPS location provider (current location + updates `Flow`). |
+| [`:settings`](settings) | `com.coderwise.libs:settings` | — | Typed, serializable settings persistence (DataStore-backed). |
+| [`:map-core`](map-core) | `com.coderwise.libs:map-core` | — | Dependency-free map primitives: slippy-map tile math + `TileId`. |
+| [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | — | Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
 ## Publishing
 
@@ -21,9 +31,13 @@ release as `<module>-v<version>`; the [`publish`](.github/workflows/publish.yml)
 workflow parses it, passes `-PlibVersion`, and publishes **only that module**:
 
 ```bash
-git tag utils-v0.3.0       && git push origin utils-v0.3.0        # → com.coderwise.libs:utils:0.3.0
-git tag permissions-v1.0.0 && git push origin permissions-v1.0.0  # → com.coderwise.libs:permissions:1.0.0
+git tag utils-v0.4.0    && git push origin utils-v0.4.0     # → com.coderwise.libs:utils:0.4.0
+git tag map-core-v0.1.6 && git push origin map-core-v0.1.6  # → com.coderwise.libs:map-core:0.1.6
 ```
+
+> **Note:** the publish workflow runs on a **macOS** runner (required for the iOS
+> Kotlin/Native targets), which bills GitHub Actions minutes at **10×**. Validate
+> locally with `publishToMavenLocal` first; publish deliberately.
 
 The same workflow also accepts a manual `workflow_dispatch` (module + version inputs).
 It needs these repo secrets (same values as the other coderwise repos —
@@ -47,4 +61,6 @@ Release it with a `<name>-v<version>` tag — no workflow changes needed.
 
 `:utils` originated in `coderwise/maps-mobile` (published through `0.2.0`) and was
 extracted here; `com.coderwise.libs:utils` coordinates are unchanged, so consumers
-required no edits beyond the version bump.
+required no edits beyond the version bump. The `:database`, `:settings`,
+`:location`, `:permissions`, `:map-core`, and `:map-engine` modules were added here
+to share infrastructure across the `*.mobile` apps.
