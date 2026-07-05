@@ -7,7 +7,7 @@ minSdk = "26"
 agp = "9.2.1"
 kotlin = "2.4.0"
 compose-multiplatform = "1.11.1"
-mavenPublish = "0.36.0"
+mavenPublish = "0.37.0"
 
 # Libraries
 compose-material3 = "1.9.0"
@@ -48,6 +48,8 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

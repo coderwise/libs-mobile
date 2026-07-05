@@ -1,0 +1,38 @@
+name: MapSample
+options:
+  bundleIdPrefix: com.coderwise.libs.sample
+  deploymentTarget:
+    iOS: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/../common/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+    OTHER_LDFLAGS: $(inherited) -framework SampleCommon
+
+targets:
+  MapSample:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.coderwise.libs.sample
+        INFOPLIST_FILE: Sources/Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    preBuildScripts:
+      - name: Build KMP Shared Framework
+        script: |
+          if [ "YES" = "$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED" ]; then
+            echo "Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED=YES"
+            exit 0
+          fi
+          cd "$SRCROOT/../.."
+          ./gradlew :sample:common:embedAndSignAppleFrameworkForXcode \
+            -PXCODE_CONFIGURATION="$CONFIGURATION" \
+            -PSDK_NAME="$SDK_NAME" \
+            -Pkotlin.native.cocoapods.platform="$PLATFORM_NAME" \
+            -Pkotlin.native.cocoapods.archs="$ARCHS"
+        basedOnDependencyAnalysis: false

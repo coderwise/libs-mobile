@@ -25,3 +25,9 @@ dependencyResolutionManagement {
 rootDir.listFiles()?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }?.forEach {
     include(":${it.name}")
 }
+
+// Sample app modules live one level down (sample/<platform>); the sample dir
+// itself has no build file, so the top-level loop above skips it.
+file("sample").listFiles()?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }?.forEach {
+    include(":sample:${it.name}")
+}
