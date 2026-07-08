@@ -29,7 +29,11 @@ kotlin {
             implementation(libs.koin.android)
         }
         iosMain.dependencies { implementation(libs.sqldelight.native) }
-        val desktopMain by getting { dependencies { implementation(libs.sqldelight.sqlite) } }
+        val desktopMain = sourceSets.getByName("desktopMain") {
+            dependencies {
+                implementation(libs.sqldelight.sqlite)
+            }
+        }
     }
 }
 

@@ -29,7 +29,7 @@ kotlin {
             api(libs.koin.core)
         }
 
-        val nonJsMain by creating {
+        val nonJsMain = sourceSets.create("nonJsMain") {
             dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.androidx.datastore.core)
@@ -40,7 +40,7 @@ kotlin {
 
         androidMain.get().dependsOn(nonJsMain)
         iosMain.get().dependsOn(nonJsMain)
-        val desktopMain by getting {
+        val desktopMain = sourceSets.getByName("desktopMain") {
             dependsOn(nonJsMain)
         }
 
