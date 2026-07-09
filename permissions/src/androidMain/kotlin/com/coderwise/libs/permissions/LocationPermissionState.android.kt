@@ -67,7 +67,7 @@ private fun resolveStatus(context: Context, activity: Activity?): PermissionStat
     return PermissionStatus.Denied(shouldShowRationale)
 }
 
-private fun Context.findActivity(): Activity? {
+internal fun Context.findActivity(): Activity? {
     var ctx: Context? = this
     while (ctx is ContextWrapper) {
         if (ctx is Activity) return ctx
