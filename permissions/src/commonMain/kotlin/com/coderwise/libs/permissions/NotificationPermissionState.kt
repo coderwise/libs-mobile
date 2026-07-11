@@ -5,8 +5,11 @@ import androidx.compose.runtime.Stable
 
 /**
  * POST_NOTIFICATIONS — a runtime permission on API 33+ (Android 13); below
- * that, and on every other platform, notifications don't need a runtime grant
- * so [status] is always [PermissionStatus.Granted].
+ * that it doesn't need a runtime grant, so [status] is always
+ * [PermissionStatus.Granted]. On iOS this maps to UNUserNotificationCenter
+ * authorization ([status] is async there: it reads as Denied until the first
+ * settings fetch completes). On desktop/js notifications need no runtime
+ * grant today, so [status] is always [PermissionStatus.Granted].
  */
 @Stable
 interface NotificationPermissionState {
