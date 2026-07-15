@@ -25,6 +25,7 @@ actual fun rememberBluetoothConnectPermissionState(): BluetoothConnectPermission
             override fun launchPermissionRequest(onResult: (PermissionStatus) -> Unit) {
                 val current = currentBluetoothStatus()
                 if (current is PermissionStatus.Granted) {
+                    statusState.value = current
                     onResult(current)
                     return
                 }
