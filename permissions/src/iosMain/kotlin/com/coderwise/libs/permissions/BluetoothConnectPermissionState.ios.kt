@@ -29,6 +29,14 @@ actual fun rememberBluetoothConnectPermissionState(): BluetoothConnectPermission
                     onResult(current)
                     return
                 }
+                if (current is PermissionStatus.Denied && !current.shouldShowRationale) {
+                    // Already decided (denied/restricted) — re-requesting is a
+                    // silent no-op, so send the user to Settings instead.
+                    openIosAppSettings()
+                    statusState.value = current
+                    onResult(current)
+                    return
+                }
                 requester.request(onResult)
             }
         }
@@ -78,5 +86,8 @@ private class BluetoothAuthRequester(
 private fun currentBluetoothStatus(): PermissionStatus =
     when (CBManager.authorization) {
         CBManagerAuthorizationAllowedAlways -> PermissionStatus.Granted
+        // Not yet decided — a system prompt can still be shown.
+        CBManagerAuthorizationNotDetermined -> PermissionStatus.Denied(shouldShowRationale = true)
+        // Denied or restricted — iOS won't prompt again; Settings is the only path.
         else -> PermissionStatus.Denied(shouldShowRationale = false)
     }

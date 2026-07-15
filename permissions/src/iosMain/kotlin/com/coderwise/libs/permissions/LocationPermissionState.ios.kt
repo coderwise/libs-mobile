@@ -43,6 +43,13 @@ actual fun rememberLocationPermissionState(): LocationPermissionState {
                     onResult(current)
                     return
                 }
+                if (current is PermissionStatus.Denied && !current.shouldShowRationale) {
+                    // Already decided (denied/restricted) — requestWhenInUseAuthorization
+                    // would silently no-op, so send the user to Settings instead.
+                    openIosAppSettings()
+                    onResult(current)
+                    return
+                }
 
                 onResultCallback.value = onResult
                 manager.requestWhenInUseAuthorization()
@@ -64,6 +71,8 @@ private fun currentStatus(): PermissionStatus =
     when (CLLocationManager.authorizationStatus()) {
         kCLAuthorizationStatusAuthorizedAlways,
         kCLAuthorizationStatusAuthorizedWhenInUse -> PermissionStatus.Granted
-        kCLAuthorizationStatusNotDetermined -> PermissionStatus.Denied(shouldShowRationale = false)
+        // Not yet decided — a system prompt can still be shown.
+        kCLAuthorizationStatusNotDetermined -> PermissionStatus.Denied(shouldShowRationale = true)
+        // Denied or restricted — iOS won't prompt again; Settings is the only path.
         else -> PermissionStatus.Denied(shouldShowRationale = false)
     }
