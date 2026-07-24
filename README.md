@@ -18,6 +18,7 @@ without one are consumed via `mavenLocal` until first released.
 | [`:database`](database) | `com.coderwise.libs:database` | — | SQLDelight driver factory + Koin DI. |
 | [`:location`](location) | `com.coderwise.libs:location` | — | GPS location provider (current location + updates `Flow`). |
 | [`:settings`](settings) | `com.coderwise.libs:settings` | — | Typed, serializable settings persistence (DataStore-backed). |
+| [`:imagepicker`](imagepicker) | `com.coderwise.libs:imagepicker` | — | System image picker (`rememberImagePicker`) with automatic downscaling. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | — | Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | — | Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
@@ -68,4 +69,6 @@ Release it with a `<name>-v<version>` tag — no workflow changes needed.
 extracted here; `com.coderwise.libs:utils` coordinates are unchanged, so consumers
 required no edits beyond the version bump. The `:database`, `:settings`,
 `:location`, `:permissions`, `:map-core`, and `:map-engine` modules were added here
-to share infrastructure across the `*.mobile` apps.
+to share infrastructure across the `*.mobile` apps. `:imagepicker` was extracted from
+`coderwise/cards-mobile` (where it lived as `:libs:imagepicker`); its package moved from
+`com.coderwise.cards.libs.imagepicker` to `com.coderwise.libs.imagepicker`.
