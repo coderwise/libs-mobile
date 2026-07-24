@@ -4,8 +4,8 @@ compileSdk = "37"
 minSdk = "26"
 
 # Build / plugins
-agp = "9.2.1"
-kotlin = "2.4.0"
+agp = "9.3.1"
+kotlin = "2.4.10"
 compose-multiplatform = "1.11.1"
 mavenPublish = "0.37.0"
 
@@ -15,11 +15,11 @@ androidx-activity = "1.13.0"
 androidx-core-ktx = "1.19.0"
 koin = "4.2.2"
 coroutines = "1.11.0"
-lifecycle = "2.10.0"
+lifecycle = "2.11.0"
 sqldelight = "2.3.2"
 serialization = "1.11.0"
 datastore = "1.2.1"
-okio = "3.17.0"
+okio = "3.18.0"
 kotlinx-browser = "0.5.0"
 
 [libraries]
