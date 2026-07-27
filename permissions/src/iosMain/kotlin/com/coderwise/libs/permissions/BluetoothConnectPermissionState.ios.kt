@@ -30,9 +30,9 @@ actual fun rememberBluetoothConnectPermissionState(): BluetoothConnectPermission
                     return
                 }
                 if (current is PermissionStatus.Denied && !current.shouldShowRationale) {
-                    // Already decided (denied/restricted) — re-requesting is a
-                    // silent no-op, so send the user to Settings instead.
-                    openIosAppSettings()
+                    // Already decided (denied/restricted) — re-requesting is a silent no-op, so
+                    // report the refusal and let the caller decide what to offer.
+                    // [rememberAppSettingsLauncher] is the way back.
                     statusState.value = current
                     onResult(current)
                     return

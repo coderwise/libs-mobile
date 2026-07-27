@@ -44,9 +44,9 @@ actual fun rememberLocationPermissionState(): LocationPermissionState {
                     return
                 }
                 if (current is PermissionStatus.Denied && !current.shouldShowRationale) {
-                    // Already decided (denied/restricted) — requestWhenInUseAuthorization
-                    // would silently no-op, so send the user to Settings instead.
-                    openIosAppSettings()
+                    // Already decided (denied/restricted) — requestWhenInUseAuthorization would
+                    // silently no-op, so report the refusal and let the caller decide what to
+                    // offer. [rememberAppSettingsLauncher] is the way back.
                     onResult(current)
                     return
                 }
