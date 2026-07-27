@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!--
+        Deliberately empty.
+
+        A library manifest merges into every consumer, so declaring a permission here would
+        declare it for apps that merely register `locationModule` in their DI graph without
+        ever resolving a LocationProvider — they would answer for a location permission on
+        their store listing without ever asking the user for one.
+
+        The consuming app declares ACCESS_FINE_LOCATION and/or ACCESS_COARSE_LOCATION itself;
+        see the KDoc on LocationProvider.
+    -->
+
 </manifest>

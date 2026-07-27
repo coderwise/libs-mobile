@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!--
+        Deliberately empty.
+
+        A library manifest merges into every consumer, so declaring a permission here would
+        declare it for apps that never ask for it — an app using only the camera state would
+        still ship ACCESS_FINE_LOCATION, and answer for it on the store listing.
+
+        Each `remember*PermissionState` documents the permission it needs; the consuming app
+        declares the ones it actually uses.
+    -->
+
 </manifest>

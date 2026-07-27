@@ -10,6 +10,10 @@ import androidx.compose.runtime.Stable
  * authorization ([status] is async there: it reads as Denied until the first
  * settings fetch completes). On desktop/js notifications need no runtime
  * grant today, so [status] is always [PermissionStatus.Granted].
+ *
+ * The host app declares `android.permission.POST_NOTIFICATIONS` itself; this library
+ * declares nothing, so that apps using another state here don't ship a notification
+ * permission they never ask for.
  */
 @Stable
 interface NotificationPermissionState {

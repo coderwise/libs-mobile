@@ -11,6 +11,10 @@ import androidx.compose.runtime.Stable
  * NSBluetoothAlwaysUsageDescription in Info.plist). No equivalent concept on
  * desktop/js today — [status] is always [PermissionStatus.Denied] there
  * (no platform support, not a deniable prompt).
+ *
+ * The host app declares `android.permission.BLUETOOTH_CONNECT` itself; this library
+ * declares nothing, so that apps using another state here don't ship a Bluetooth
+ * permission they never ask for.
  */
 @Stable
 interface BluetoothConnectPermissionState {
