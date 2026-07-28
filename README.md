@@ -13,9 +13,9 @@ under `com.coderwise.libs`. "Latest" is the newest version on Maven Central.
 | Module | Coordinates | Latest | Summary |
 |---|---|---|---|
 | [`:utils`](utils) | `com.coderwise.libs:utils` | `0.4.0` | Cross-platform utilities: file sharing, platform system-bar colors, generic `LruCache`. |
-| [`:permissions`](permissions) | `com.coderwise.libs:permissions` | `0.4.0` | Runtime permission state (location, camera, Bluetooth, notifications) for Compose Multiplatform, plus `rememberAppSettingsLauncher` for refusals the OS no longer prompts for. |
+| [`:permissions`](permissions) | `com.coderwise.libs:permissions` | `0.6.0` | Runtime permission state (location, camera, Bluetooth, notifications) for Compose Multiplatform, plus `rememberAppSettingsLauncher` for refusals the OS no longer prompts for. |
 | [`:database`](database) | `com.coderwise.libs:database` | `0.1.0` | SQLDelight driver factory + Koin DI. |
-| [`:location`](location) | `com.coderwise.libs:location` | `0.2.0` | GPS location provider (current location + updates `Flow`). |
+| [`:location`](location) | `com.coderwise.libs:location` | `0.3.0` | GPS location provider (current location + updates `Flow`), with opt-in background delivery on iOS. |
 | [`:settings`](settings) | `com.coderwise.libs:settings` | `0.1.0` | Typed, serializable settings persistence (DataStore-backed). |
 | [`:imagepicker`](imagepicker) | `com.coderwise.libs:imagepicker` | `0.1.0` | System image picker (`rememberImagePicker`) with automatic downscaling. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | Dependency-free map primitives: slippy-map tile math + `TileId`. |
