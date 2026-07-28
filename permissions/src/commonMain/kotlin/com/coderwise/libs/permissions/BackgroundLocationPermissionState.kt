@@ -4,14 +4,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 
 /**
- * Android's "always" location access — distinct from [LocationPermissionState],
- * which covers while-in-use. Must be requested separately, after while-in-use
- * is already granted, and only matters when something needs to start location
- * work from a background context (e.g. a foreground service triggered by a
- * broadcast). Not a concern on any other platform today — [status] is always
- * [PermissionStatus.Granted] there.
+ * "Always" location access — distinct from [LocationPermissionState], which
+ * covers while-in-use. Must be requested separately, after while-in-use is
+ * already granted, and only matters when something needs to start location work
+ * from a background context: a foreground service triggered by a broadcast on
+ * Android, an app launched into the background by a CarPlay scene on iOS.
  *
- * The host app declares `android.permission.ACCESS_BACKGROUND_LOCATION` itself; this
+ * Both mobile platforms implement it for real. Elsewhere (desktop, JS) there is
+ * nothing to escalate and [status] is always [PermissionStatus.Granted].
+ *
+ * The host app declares what it needs: `android.permission.ACCESS_BACKGROUND_LOCATION`
+ * in its manifest, `NSLocationAlwaysAndWhenInUseUsageDescription` in Info.plist. This
  * library declares nothing, so that apps using another state here don't ship a location
  * permission they never ask for.
  */
