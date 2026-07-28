@@ -18,6 +18,7 @@ under `com.coderwise.libs`. "Latest" is the newest version on Maven Central.
 | [`:location`](location) | `com.coderwise.libs:location` | `0.3.0` | GPS location provider (current location + updates `Flow`), with opt-in background delivery on iOS. |
 | [`:settings`](settings) | `com.coderwise.libs:settings` | `0.1.0` | Typed, serializable settings persistence (DataStore-backed). |
 | [`:imagepicker`](imagepicker) | `com.coderwise.libs:imagepicker` | `0.1.0` | System image picker (`rememberImagePicker`) with automatic downscaling. |
+| [`:logger`](logger) | `com.coderwise.libs:logger` | — | Kermit-backed `AppLogger` facade, plus `enableDeviceVisibleLogging` for iOS debug runs that must be diagnosed off-device. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.6` | Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
@@ -89,4 +90,7 @@ required no edits beyond the version bump. The `:database`, `:settings`,
 `:location`, `:permissions`, `:map-core`, and `:map-engine` modules were added here
 to share infrastructure across the `*.mobile` apps. `:imagepicker` was extracted from
 `coderwise/cards-mobile` (where it lived as `:libs:imagepicker`); its package moved from
-`com.coderwise.cards.libs.imagepicker` to `com.coderwise.libs.imagepicker`.
+`com.coderwise.cards.libs.imagepicker` to `com.coderwise.libs.imagepicker`. `:logger` was
+extracted from `coderwise/miles.mobile` (`:libs:logger`) the same way, moving from
+`com.coderwise.mileson.libs.logger` to `com.coderwise.libs.logger`; its iOS log file name
+became a parameter of `enableDeviceVisibleLogging`, having been a hardcoded `mileson.log`.
