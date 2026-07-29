@@ -32,6 +32,21 @@ import kotlin.coroutines.resume
  * free: it requires `location` in the consumer's `UIBackgroundModes`, and
  * enabling it *without* that key makes CoreLocation throw. Defaulting it off
  * keeps that cost with the apps that ask for it.
+ *
+ * ### Delegate lifetime
+ *
+ * `CLLocationManager.delegate` is a **weak** reference, so the Kotlin delegate
+ * object needs a strong reference on this side for as long as callbacks are
+ * wanted. Both entry points get one by having their teardown lambda — the
+ * `awaitClose` block, the cancellation handler — read `delegate`; those lambdas
+ * live exactly as long as the subscription does.
+ *
+ * Do not "simplify" those reads to a bare `manager.delegate = null`. Dropping
+ * the last strong reference lets the Kotlin/Native GC collect the delegate
+ * within a second or two of subscribing; CoreLocation then nils its weak
+ * pointer and silently stops calling back. The failure looks like a stream that
+ * delivers exactly one fix and then hangs — the flow's channel stays open, so
+ * nothing errors, times out, or otherwise complains.
  */
 @OptIn(ExperimentalForeignApi::class)
 class IosLocationProvider(
@@ -89,7 +104,9 @@ class IosLocationProvider(
             manager.startUpdatingLocation()
             cont.invokeOnCancellation {
                 manager.stopUpdatingLocation()
-                manager.delegate = null
+                // Reading `delegate` here is load-bearing, not defensive: see the
+                // note on delegate lifetime in the class doc.
+                if (manager.delegate === delegate) manager.delegate = null
             }
         }
     }
@@ -121,7 +138,9 @@ class IosLocationProvider(
         manager.startUpdatingLocation()
         awaitClose {
             manager.stopUpdatingLocation()
-            manager.delegate = null
+            // Reading `delegate` here is load-bearing, not defensive: see the note
+            // on delegate lifetime in the class doc.
+            if (manager.delegate === delegate) manager.delegate = null
         }
         // CoreLocation delivers delegate callbacks on the run loop of the thread
         // that created the manager, and a coroutine worker thread has none — so
