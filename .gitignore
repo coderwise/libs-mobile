@@ -79,3 +79,4 @@ dist/
 /secrets/
 /.vscode/settings.json
 /gradle/gradle-daemon-jvm.properties
+/.artifacts/
