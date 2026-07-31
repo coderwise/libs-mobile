@@ -7,12 +7,19 @@ Cross-platform utilities for Compose Multiplatform, published to **Maven Central
 ## API
 
 - `shareFile(fileName, content, mimeType)` — share a generated file via the platform share sheet.
+- `@Composable rememberShareTextLauncher()` — share plain text from Compose code:
+  share sheet on Android/iOS, clipboard on desktop/web. Takes the Android
+  context from the composition and carries a chooser title. Prefer this.
+- `shareText(text)` — the same, for callers outside composition (view models,
+  services). On Android it resolves the context from Koin's `GlobalContext`.
+- `LruCache<K, V>` — generic size-bounded cache.
 - `@Composable PlatformColors(darkTheme)` — apply edge-to-edge / system-bar styling per platform.
+- `@Composable KeepScreenOn(enabled)` — hold a wake lock while the screen is shown.
 
 ## Coordinates
 
 ```kotlin
-implementation("com.coderwise.libs:utils:0.2.0")
+implementation("com.coderwise.libs:utils:0.5.0")
 ```
 
 It's on Maven Central, so consumers need **no extra repository or credentials** —
@@ -27,19 +34,18 @@ Publishing uses the [vanniktech maven-publish](https://vanniktech.github.io/grad
 plugin, which uploads to the Sonatype **Central Portal**, generates the
 sources/javadoc jars, and GPG-signs every publication.
 
-**Automated (preferred):** push a tag matching `libs-v*` (or run the
-"Publish libs:utils to Maven Central" workflow manually). See
-[`.github/workflows/publish-libs-utils.yml`](../../.github/workflows/publish-libs-utils.yml).
+**Automated (preferred):** push a tag matching `utils-v*` (or run the
+[`publish`](../.github/workflows/publish.yml) workflow manually). The tag is the
+version — nothing to bump in `build.gradle.kts`.
 
 ```bash
-# bump `version` in build.gradle.kts first, then:
-git tag libs-v0.2.0 && git push origin libs-v0.2.0
+git tag utils-v0.5.0 && git push origin utils-v0.5.0
 ```
 
 **Manual / local:**
 
 ```bash
-./gradlew -Psign=true :libs:utils:publishAndReleaseToMavenCentral --no-configuration-cache
+./gradlew -Psign=true -PlibVersion=0.5.0 :utils:publishAndReleaseToMavenCentral --no-configuration-cache
 ```
 
 `-Psign=true` enables GPG signing (required by Central); omit it for keyless
@@ -55,11 +61,10 @@ signingInMemoryKeyPassword=<GPG key passphrase>
 signingInMemoryKey=<ASCII-armored GPG private key>
 ```
 
-`./gradlew :libs:utils:publishToMavenLocal` still works for local testing
-(it skips the Central upload).
+`./gradlew :utils:publishToMavenLocal` still works for local testing (it skips
+the Central upload and publishes as `0.0.0-LOCAL` unless `-PlibVersion` is given).
 
 ## Bumping the version
 
-Edit `version` in [`build.gradle.kts`](build.gradle.kts) (the `coordinates(...)`
-call), then tag `libs-v<version>`. Central releases are immutable — every
-publish needs a new version.
+Tag `utils-v<version>` — the workflow passes it through as `-PlibVersion`.
+Central releases are immutable, so every publish needs a new version.

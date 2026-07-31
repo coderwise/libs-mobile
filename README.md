@@ -12,7 +12,7 @@ under `com.coderwise.libs`. "Latest" is the newest version on Maven Central.
 
 | Module | Coordinates | Latest | Summary |
 |---|---|---|---|
-| [`:utils`](utils) | `com.coderwise.libs:utils` | `0.4.1` | Cross-platform utilities: file sharing, platform system-bar colors, generic `LruCache`. |
+| [`:utils`](utils) | `com.coderwise.libs:utils` | `0.5.0` | Cross-platform utilities: file and text sharing, platform system-bar colors, generic `LruCache`. |
 | [`:permissions`](permissions) | `com.coderwise.libs:permissions` | `0.6.0` | Runtime permission state (location, camera, Bluetooth, notifications) for Compose Multiplatform, plus `rememberAppSettingsLauncher` for refusals the OS no longer prompts for. |
 | [`:database`](database) | `com.coderwise.libs:database` | `0.1.0` | SQLDelight driver factory + Koin DI. |
 | [`:location`](location) | `com.coderwise.libs:location` | `0.3.0` | GPS location provider (current location + updates `Flow`), with opt-in background delivery on iOS. |
@@ -94,3 +94,7 @@ to share infrastructure across the `*.mobile` apps. `:imagepicker` was extracted
 extracted from `coderwise/miles.mobile` (`:libs:logger`) the same way, moving from
 `com.coderwise.mileson.libs.logger` to `com.coderwise.libs.logger`; its iOS log file name
 became a parameter of `enableDeviceVisibleLogging`, having been a hardcoded `mileson.log`.
+`rememberShareTextLauncher` (utils `0.5.0`) came from the same repo's `:libs:share`, which
+had grown as a better-behaved copy of `shareText`; the module was deleted there in favour of
+this one. Both APIs now share the platform code, so `shareText` inherited the iPad popover
+anchor that its own iOS implementation was missing.
