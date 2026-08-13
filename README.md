@@ -19,6 +19,7 @@ under `com.coderwise.libs`. "Latest" is the newest version on Maven Central.
 | [`:settings`](settings) | `com.coderwise.libs:settings` | `0.1.0` | Typed, serializable settings persistence (DataStore-backed). |
 | [`:imagepicker`](imagepicker) | `com.coderwise.libs:imagepicker` | `0.1.0` | System image picker (`rememberImagePicker`) with automatic downscaling. |
 | [`:logger`](logger) | `com.coderwise.libs:logger` | `0.1.0` | Kermit-backed `AppLogger` facade, plus `enableDeviceVisibleLogging` for iOS debug runs that must be diagnosed off-device. |
+| [`:billing`](billing) | `com.coderwise.libs:billing` | `0.1.0` | One-time (non-consumable) purchases behind one API: Play Billing on Android, a Swift StoreKit 2 bridge on iOS, inert where there is no store. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.6` | Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
@@ -44,6 +45,19 @@ Migration: `:permissions` before `0.4.0` and `:location` before `0.2.0` declared
 add them to their own manifest when upgrading — without the declaration Android denies
 the request without prompting, and `LocationProvider` returns
 `Result.failure(SecurityException)`.
+
+### `:billing` needs a Swift half on iOS
+
+StoreKit 2 is Swift-only — `Product` and `Transaction` are Swift types built on Swift
+concurrency, which Kotlin/Native's Objective-C interop cannot see — so the module ships
+no iOS store logic. It exposes a `StoreKitBridge` protocol that the **consuming iOS app
+implements in Swift** and hands over with `installStoreKitBridge(bridge)` before anything
+resolves `Billing`.
+
+An app that never calls it still runs: `Billing.isAvailable` reports false and every call
+is inert, which is what keeps the simulator — where there is nothing to buy — working
+without one. Android needs no such step; `androidContext()` is the only thing Play
+Billing takes from the app.
 
 ## Publishing
 
@@ -94,6 +108,9 @@ to share infrastructure across the `*.mobile` apps. `:imagepicker` was extracted
 extracted from `coderwise/miles.mobile` (`:libs:logger`) the same way, moving from
 `com.coderwise.mileson.libs.logger` to `com.coderwise.libs.logger`; its iOS log file name
 became a parameter of `enableDeviceVisibleLogging`, having been a hardcoded `mileson.log`.
+`:billing` came out of `coderwise/miles.mobile` (`:libs:billing`) by the same route, moving
+from `com.coderwise.mileson.libs.billing` to `com.coderwise.libs.billing`; nothing about it
+was app-specific beyond the doc comments, which named the one product MilesOn sells.
 `rememberShareTextLauncher` (utils `0.5.0`) came from the same repo's `:libs:share`, which
 had grown as a better-behaved copy of `shareText`; the module was deleted there in favour of
 this one. Both APIs now share the platform code, so `shareText` inherited the iPad popover
