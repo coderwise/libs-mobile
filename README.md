@@ -95,23 +95,3 @@ Drop it in as a top-level folder with a `build.gradle.kts` (settings.gradle.kts
 auto-includes it). Mirror `:utils`: apply the vanniktech plugin, read the version
 from `libVersion` (default `0.0.0-LOCAL`), set `coordinates("com.coderwise.libs", "<name>", …)`.
 Release it with a `<name>-v<version>` tag — no workflow changes needed.
-
-## History
-
-`:utils` originated in `coderwise/maps-mobile` (published through `0.2.0`) and was
-extracted here; `com.coderwise.libs:utils` coordinates are unchanged, so consumers
-required no edits beyond the version bump. The `:database`, `:settings`,
-`:location`, `:permissions`, `:map-core`, and `:map-engine` modules were added here
-to share infrastructure across the `*.mobile` apps. `:imagepicker` was extracted from
-`coderwise/cards-mobile` (where it lived as `:libs:imagepicker`); its package moved from
-`com.coderwise.cards.libs.imagepicker` to `com.coderwise.libs.imagepicker`. `:logger` was
-extracted from `coderwise/miles.mobile` (`:libs:logger`) the same way, moving from
-`com.coderwise.mileson.libs.logger` to `com.coderwise.libs.logger`; its iOS log file name
-became a parameter of `enableDeviceVisibleLogging`, having been a hardcoded `mileson.log`.
-`:billing` came out of `coderwise/miles.mobile` (`:libs:billing`) by the same route, moving
-from `com.coderwise.mileson.libs.billing` to `com.coderwise.libs.billing`; nothing about it
-was app-specific beyond the doc comments, which named the one product MilesOn sells.
-`rememberShareTextLauncher` (utils `0.5.0`) came from the same repo's `:libs:share`, which
-had grown as a better-behaved copy of `shareText`; the module was deleted there in favour of
-this one. Both APIs now share the platform code, so `shareText` inherited the iPad popover
-anchor that its own iOS implementation was missing.
