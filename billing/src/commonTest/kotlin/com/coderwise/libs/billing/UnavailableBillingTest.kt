@@ -23,6 +23,15 @@ class UnavailableBillingTest {
     }
 
     @Test
+    fun `reports that nobody answered, not that nothing is owned`() = runTest {
+        // The distinction a caching caller depends on: an empty entitlement set
+        // from here means the question was never asked, so it must not be
+        // written down as a refund.
+        assertFalse(UnavailableBilling.refresh())
+        assertFalse(UnavailableBilling.restore())
+    }
+
+    @Test
     fun `sells nothing`() = runTest {
         assertEquals(emptyList(), UnavailableBilling.products(setOf("premium_lifetime")))
     }

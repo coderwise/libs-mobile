@@ -25,11 +25,19 @@ internal class StoreKitBilling : Billing {
 
     private var observing = false
 
-    override suspend fun refresh() {
-        val bridge = bridge() ?: return
+    /**
+     * "Answered" here means a bridge existed and called back: [StoreKitBridge]
+     * reports completion rather than success, and StoreKit's own
+     * `currentEntitlements` does not fail so much as come back empty. A build
+     * with no bridge installed is the case that must not be mistaken for an
+     * honest empty answer.
+     */
+    override suspend fun refresh(): Boolean {
+        val bridge = bridge() ?: return false
         suspendCancellableCoroutine { continuation ->
             bridge.refresh { if (continuation.isActive) continuation.resume(Unit) }
         }
+        return true
     }
 
     override suspend fun products(ids: Set<String>): List<BillingProduct> {
@@ -46,11 +54,12 @@ internal class StoreKitBilling : Billing {
         }
     }
 
-    override suspend fun restore() {
-        val bridge = bridge() ?: return
+    override suspend fun restore(): Boolean {
+        val bridge = bridge() ?: return false
         suspendCancellableCoroutine { continuation ->
             bridge.restore { if (continuation.isActive) continuation.resume(Unit) }
         }
+        return true
     }
 
     /**

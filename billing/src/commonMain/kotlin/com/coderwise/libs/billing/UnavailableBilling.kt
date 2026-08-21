@@ -14,12 +14,13 @@ object UnavailableBilling : Billing {
 
     override val isAvailable: Boolean = false
 
-    override suspend fun refresh() = Unit
+    /** Never answered rather than answered-empty: there is no store to ask. */
+    override suspend fun refresh(): Boolean = false
 
     override suspend fun products(ids: Set<String>): List<BillingProduct> = emptyList()
 
     override suspend fun purchase(productId: String): PurchaseResult =
         PurchaseResult.Failed("this build was not installed from a store")
 
-    override suspend fun restore() = Unit
+    override suspend fun restore(): Boolean = false
 }

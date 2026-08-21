@@ -61,19 +61,24 @@ internal class PlayBilling(application: Application) : Billing {
         .setListener(::onPurchasesUpdated)
         .build()
 
-    override suspend fun refresh() {
-        if (!connected()) return
+    override suspend fun refresh(): Boolean {
+        if (!connected()) return false
         val params = QueryPurchasesParams.newBuilder()
             .setProductType(BillingClient.ProductType.INAPP)
             .build()
-        val purchases = suspendCancellableCoroutine { continuation ->
-            client.queryPurchasesAsync(params) { _, list ->
-                if (continuation.isActive) continuation.resume(list)
+        val (result, purchases) = suspendCancellableCoroutine { continuation ->
+            client.queryPurchasesAsync(params) { result, list ->
+                if (continuation.isActive) continuation.resume(result to list)
             }
         }
+        // A failed query still hands back an empty list, which is
+        // indistinguishable from owning nothing. Writing that down would report
+        // a network blip as a refund, so it stops here instead.
+        if (result.responseCode != BillingClient.BillingResponseCode.OK) return false
         purchases.forEach(::acknowledge)
         // Assigned, not merged: a refund has to be able to take the unlock back.
         _entitlements.value = ownedProductIds(purchases)
+        return true
     }
 
     override suspend fun products(ids: Set<String>): List<BillingProduct> =
@@ -104,7 +109,7 @@ internal class PlayBilling(application: Application) : Billing {
     }
 
     /** Play keeps no separate restore path — ownership comes from the same query. */
-    override suspend fun restore() = refresh()
+    override suspend fun restore(): Boolean = refresh()
 
     private suspend fun connected(): Boolean = connecting.withLock {
         if (client.isReady) {

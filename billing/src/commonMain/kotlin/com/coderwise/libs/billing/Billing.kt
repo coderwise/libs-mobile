@@ -52,7 +52,7 @@ interface Billing {
     /**
      * Product ids this install currently owns. Starts empty — nothing has been
      * asked of the store yet — so treat "not in the set" as "unknown or not
-     * owned" until the first [refresh] completes, and never gate a destructive
+     * owned" until a [refresh] has returned true, and never gate a destructive
      * or irreversible decision on its emptiness.
      */
     val entitlements: StateFlow<Set<String>>
@@ -66,8 +66,15 @@ interface Billing {
     /**
      * Silently re-reads ownership from the store into [entitlements]. Safe at
      * startup: it never shows UI and never asks the buyer to authenticate.
+     *
+     * @return whether the store actually answered. This is the only way to tell
+     * an empty [entitlements] set that means "you own nothing" from one that
+     * means nobody has managed to ask yet, and a caller that caches entitlement
+     * for offline use needs that distinction: without it, it must either drop a
+     * paying buyer's unlock the first time a read fails, or go on honouring a
+     * refund forever. A false answer leaves [entitlements] untouched.
      */
-    suspend fun refresh()
+    suspend fun refresh(): Boolean
 
     /** Store-formatted details for [ids]; ids the store doesn't know are dropped. */
     suspend fun products(ids: Set<String>): List<BillingProduct>
@@ -79,6 +86,10 @@ interface Billing {
      * The "Restore purchases" button, and only that. Unlike [refresh] this may
      * prompt for the store account password, so it must stay user-initiated —
      * Apple requires the affordance to exist for non-consumables.
+     *
+     * @return whether the store answered, as for [refresh]. Telling a buyer
+     * "nothing to restore" is only honest if it reports the store's answer
+     * rather than our own failure to reach it.
      */
-    suspend fun restore()
+    suspend fun restore(): Boolean
 }
