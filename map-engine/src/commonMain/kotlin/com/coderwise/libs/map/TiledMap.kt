@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.coderwise.libs.mapcore.TileId
 import com.coderwise.libs.mapcore.MapMath
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -229,16 +230,30 @@ private fun TileLayer(
         val centerX = constraints.maxWidth / 2
         val centerY = constraints.maxHeight / 2
 
+        // One size for every tile, at every pan offset.
+        //
+        // Sizing a tile from the gap between its own two floored edges looks like the careful thing
+        // to do — the tiles then cover the plane exactly — but that gap flips by a pixel as the pan
+        // crosses a boundary whenever pixelsPerTile is not a whole number. It is a whole number only
+        // at an exactly integer zoom: zoomScale is 2^(zoom - zoomInt), and any pinch leaves the map
+        // between two levels and keeps it there (zoomIn/zoomOut add 1.0 to wherever it already is).
+        // So on nearly every pan, every tile changed size on nearly every frame — and a tile that
+        // changes size is re-measured, which invalidates its graphics layer, which means the grid
+        // re-recorded all of its drawing on the UI thread every frame instead of moving layers it
+        // had already drawn.
+        //
+        // Rounding up gives every tile one size for the whole gesture. Neighbours then overlap by
+        // under a pixel, which does not show: tiles are opaque and placed in order.
+        val tileSize = measuredTileSize(pixelsPerTile)
+        val tileConstraints = Constraints.fixed(tileSize, tileSize)
+
         // `measurables` align 1:1 with `tiles` (same order, same count).
         val tilePlaceables = tiles.indices.mapNotNull { index ->
             if (index >= measurables.size) return@mapNotNull null
             val visible = tiles[index]
             val left = floor((visible.tx - cfx) * pixelsPerTile).toInt()
-            val right = floor((visible.tx + 1 - cfx) * pixelsPerTile).toInt()
             val top = floor((visible.ty - cfy) * pixelsPerTile).toInt()
-            val bottom = floor((visible.ty + 1 - cfy) * pixelsPerTile).toInt()
-            val placeable = measurables[index].measure(Constraints.fixed(right - left, bottom - top))
-            PlaceableInfo(centerX + left, centerY + top) to placeable
+            PlaceableInfo(centerX + left, centerY + top) to measurables[index].measure(tileConstraints)
         }
 
         layout(constraints.maxWidth, constraints.maxHeight) {
@@ -248,6 +263,16 @@ private fun TileLayer(
         }
     }
 }
+
+/**
+ * The size every tile is measured at, for a grid spacing of [pixelsPerTile].
+ *
+ * Deliberately a function of the spacing alone and not of where the pan happens to sit — that is
+ * the whole point, and the reason it is worth naming (see the call site). Rounding up rather than
+ * down so the grid never leaves a gap between neighbours; the sub-pixel overlap it trades for is
+ * invisible, since tiles are opaque and placed in order.
+ */
+internal fun measuredTileSize(pixelsPerTile: Double): Int = ceil(pixelsPerTile).toInt()
 
 private data class VisibleTile(val tx: Int, val ty: Int, val tile: TileId)
 private data class PlaceableInfo(val x: Int, val y: Int)
