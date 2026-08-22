@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
 class TileSizingTest {
 
     @Test
-    fun `tile size does not follow the pan, as the floored gap between edges did`() {
+    fun `tile size holds steady across a pan where the floored edge gap did not`() {
         // A 420-dpi phone at zoom 14.68: 256.dp is 672 px, and zoomScale is 2^0.68, so the grid
         // spacing is not a whole number. It is a whole number only at an exactly integer zoom,
         // which a pinch never leaves the map at.
@@ -40,7 +40,7 @@ class TileSizingTest {
     }
 
     @Test
-    fun `a whole-number spacing is left exactly alone, so tiles still abut`() {
+    fun `a whole-number spacing is left exactly alone so tiles still abut`() {
         // At an integer zoom the spacing is already whole and rounding up is the identity — the
         // sub-pixel overlap only appears where it buys the stable size.
         assertEquals(672, measuredTileSize(672.0))
