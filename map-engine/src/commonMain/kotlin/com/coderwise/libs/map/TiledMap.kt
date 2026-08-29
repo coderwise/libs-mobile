@@ -102,6 +102,11 @@ class TiledMapScope internal constructor(
  *     Icon(Icons.Default.LocationOn, modifier = Modifier.anchoredAt(52.5200, 13.4050))
  * }
  * ```
+ *
+ * [interactive] settles two things: whether the gesture modifiers are attached, and whether a ring
+ * of off-screen tiles is kept ready around the viewport. The ring exists so a drag has somewhere to
+ * drag to; a map that cannot be dragged pays for it and never spends it — see
+ * [calculateVisibleTileRange].
  */
 @Composable
 fun TiledMap(
@@ -121,9 +126,14 @@ fun TiledMap(
         }
     }
 
-    val visibleTileRange by remember {
+    val visibleTileRange by remember(interactive) {
         derivedStateOf {
-            calculateVisibleTileRange(containerSize, centerFractional, state)
+            // A map the user cannot drag has nothing to spend a ring of prefetched tiles on; see
+            // [calculateVisibleTileRange] for what that ring costs a small one.
+            calculateVisibleTileRange(
+                containerSize, centerFractional, state,
+                margin = if (interactive) 1 else 0
+            )
         }
     }
 
@@ -277,10 +287,25 @@ internal fun measuredTileSize(pixelsPerTile: Double): Int = ceil(pixelsPerTile).
 private data class VisibleTile(val tx: Int, val ty: Int, val tile: TileId)
 private data class PlaceableInfo(val x: Int, val y: Int)
 
-private fun calculateVisibleTileRange(
+/**
+ * The cells to lay out for the current viewport, plus [margin] rings of them around the edge.
+ *
+ * The margin is panning headroom: a tile one ring out is composed, fetched and drawn before the
+ * drag that reveals it, so a pan slides existing tiles in rather than filling holes behind the
+ * finger. It is worth a ring on a map the user can drag.
+ *
+ * It is worth nothing on a map they cannot, and it is not a small overhead there. The ring is a
+ * fixed one tile on every side whatever the viewport is, so the smaller the viewport relative to a
+ * tile, the more of the grid is margin: a 360x160dp card preview covers two cells across and one
+ * or two down, and a ring around that is four columns by three or four rows — three to eight times
+ * the tiles, every one of them fetched, decoded and drawn. That is why [margin] is a parameter and
+ * not a constant.
+ */
+internal fun calculateVisibleTileRange(
     containerSize: IntSize,
     centerFractional: Pair<Double, Double>,
-    state: TiledMapState
+    state: TiledMapState,
+    margin: Int = 1
 ): TileRange? {
     if (containerSize.width <= 0 || containerSize.height <= 0) return null
 
@@ -293,10 +318,10 @@ private fun calculateVisibleTileRange(
     val halfHeightTiles = (effectiveHeight / 2.0) / state.scaledTileSizePx
 
     return TileRange(
-        minX = floor(cfx - halfWidthTiles).toInt() - 1,
-        maxX = floor(cfx + halfWidthTiles).toInt() + 1,
-        minY = floor(cfy - halfHeightTiles).toInt() - 1,
-        maxY = floor(cfy + halfHeightTiles).toInt() + 1
+        minX = floor(cfx - halfWidthTiles).toInt() - margin,
+        maxX = floor(cfx + halfWidthTiles).toInt() + margin,
+        minY = floor(cfy - halfHeightTiles).toInt() - margin,
+        maxY = floor(cfy + halfHeightTiles).toInt() + margin
     )
 }
 
