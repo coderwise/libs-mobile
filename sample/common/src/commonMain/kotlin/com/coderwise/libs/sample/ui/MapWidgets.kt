@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.coderwise.libs.map.TiledMapState
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @Composable
 internal fun CameraReadout(state: TiledMapState, modifier: Modifier = Modifier) {
@@ -25,7 +24,7 @@ internal fun CameraReadout(state: TiledMapState, modifier: Modifier = Modifier) 
         shadowElevation = 2.dp
     ) {
         Text(
-            text = "lat ${state.latitude.rounded()}  lon ${state.longitude.rounded()}  z ${state.zoom.rounded(2)}",
+            text = "lat ${state.latitude.formatted()}  lon ${state.longitude.formatted()}  z ${state.zoom.formatted(2)}",
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
         )
@@ -39,11 +38,4 @@ internal fun ZoomControls(state: TiledMapState, modifier: Modifier = Modifier) {
         FilledTonalButton(onClick = { scope.launch { state.zoomIn() } }) { Text("+") }
         FilledTonalButton(onClick = { scope.launch { state.zoomOut() } }) { Text("−") }
     }
-}
-
-/** Multiplatform-safe fixed-decimal formatting (String.format is JVM-only). */
-private fun Double.rounded(decimals: Int = 4): String {
-    var factor = 1.0
-    repeat(decimals) { factor *= 10 }
-    return ((this * factor).roundToInt() / factor).toString()
 }

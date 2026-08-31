@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Declared by the app, not by :permissions: a library manifest merges into every
+         consumer, so a permission declared there would ship with apps that never ask for it.
+         These two are what the permissions example requests. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
-        android:label="Map Sample"
+        android:label="Coderwise Libraries"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:supportsRtl="true">
 

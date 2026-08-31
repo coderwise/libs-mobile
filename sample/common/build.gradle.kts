@@ -27,13 +27,21 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":map-engine"))
+            implementation(project(":filepicker"))
+            implementation(project(":imagepicker"))
+            implementation(project(":logger"))
             implementation(project(":map-core"))
+            implementation(project(":map-engine"))
+            implementation(project(":permissions"))
+            implementation(project(":utils"))
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.preview)
+            // Only for the image-picker example: decodeToImageBitmap() is what turns the
+            // bytes :imagepicker hands back into something Image() can draw.
+            implementation(libs.compose.components.resources)
         }
     }
 }

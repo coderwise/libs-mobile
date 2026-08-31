@@ -26,9 +26,10 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.6` | Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
-The [`sample/`](sample) directory holds an unpublished demo app for the map
-libraries that runs on all five platforms (Android, iOS, Desktop, JS, Wasm/JS) —
-see its [README](sample/README.md) for run commands.
+The [`sample/`](sample) directory holds an unpublished demo app — a gallery with one
+screen per library, running the same list on all five platforms (Android, iOS, Desktop,
+JS, Wasm/JS); see its [README](sample/README.md) for what is in the gallery and how to
+run it.
 
 ### No module declares an Android permission
 

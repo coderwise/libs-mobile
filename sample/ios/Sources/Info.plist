@@ -9,13 +9,16 @@
     <key>CFBundleIdentifier</key>
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleName</key>
-    <string>Map Sample</string>
+    <string>Coderwise Libraries</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
+    <!-- Required before the camera prompt in the permissions example can be shown. -->
+    <key>NSCameraUsageDescription</key>
+    <string>The permissions example asks for camera access to show what a granted permission looks like. The sample never opens the camera.</string>
     <key>UILaunchScreen</key>
     <dict/>
 </dict>
