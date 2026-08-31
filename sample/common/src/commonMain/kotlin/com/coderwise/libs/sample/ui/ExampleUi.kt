@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /** The building blocks every demo screen shares, so each example file is only its library. */
@@ -61,7 +62,12 @@ internal fun OutputBox(
     }
 }
 
-/** One `label — value` line, for the results a demo computes. */
+/**
+ * One `label — value` line, for the short results a demo computes: a number, a coordinate
+ * pair, a packed key. Both halves are weighted, so a value longer than its half wraps inside
+ * it rather than squeezing the label down to one letter per line. Anything sentence-shaped is
+ * a paragraph, not a readout.
+ */
 @Composable
 internal fun ReadoutRow(label: String, value: String, modifier: Modifier = Modifier) {
     Row(
@@ -78,7 +84,9 @@ internal fun ReadoutRow(label: String, value: String, modifier: Modifier = Modif
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
         )
     }
 }

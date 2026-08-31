@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,7 +37,7 @@ internal fun TextFilePickerExample() {
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Button(onClick = pickFile) { Text("Pick a text file") }
-        ReadoutRow("Result", status)
+        Text(status, style = MaterialTheme.typography.bodyMedium)
         contents?.takeIf { it.isNotEmpty() }?.let { text ->
             DemoSection("Contents") {
                 OutputBox(text.take(PREVIEW_CHARS) + if (text.length > PREVIEW_CHARS) "\n…" else "")

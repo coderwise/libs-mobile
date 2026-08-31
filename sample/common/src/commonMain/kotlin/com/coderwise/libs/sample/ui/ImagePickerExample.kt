@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,7 +38,7 @@ internal fun ImagePickerExample() {
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Button(onClick = pickImage) { Text("Pick an image") }
-        ReadoutRow("Result", status)
+        Text(status, style = MaterialTheme.typography.bodyMedium)
         picked?.let { bitmap ->
             Image(
                 bitmap = bitmap,
