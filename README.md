@@ -6,9 +6,11 @@ credentials.
 
 ## Modules
 
-All modules target **Android · iOS (arm64, sim-arm64) · JS · Desktop** (the map
-modules additionally target **Wasm/JS**) and publish
-under `com.coderwise.libs`. "Latest" is the newest version on Maven Central.
+All modules target **Android · iOS (arm64, sim-arm64) · JS · Wasm/JS · Desktop** and
+publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Central.
+
+> The Wasm/JS variants are new: only `:map-core` and `:map-engine` publish them at the
+> versions below. For every other module they ship with its next release.
 
 | Module | Coordinates | Latest | Summary |
 |---|---|---|---|
@@ -46,6 +48,22 @@ Migration: `:permissions` before `0.4.0` and `:location` before `0.2.0` declared
 add them to their own manifest when upgrading — without the declaration Android denies
 the request without prompting, and `LocationProvider` returns
 `Result.failure(SecurityException)`.
+
+### The two web targets are not one target
+
+Every module builds for both `js` and `wasmJs`, but Kotlin/Wasm has no `dynamic`, and the
+DOM bindings it does have are typed differently (`JsAny`, `JsString`, `JsArray` where the
+JS target has `dynamic`). So each module's web half is split three ways:
+
+- `webMain` — everything that is not JS interop, written once: the Koin modules, the
+  Compose no-ops, `localStorage`, the states a browser has no separate concept of.
+- `jsMain` — the `dynamic` implementations.
+- `wasmJsMain` — the same behaviour reached through `js("…")` functions that take Kotlin
+  callbacks and pass primitives, so nothing needs a typed binding for a JS result object
+  (see `:permissions` `PermissionQuery.wasmJs.kt` and `:location` `WasmJsLocationProvider`).
+
+`webMain` comes from the default hierarchy template — it does not need declaring, only
+using.
 
 ### `:billing` needs a Swift half on iOS
 

@@ -15,7 +15,8 @@ import androidx.compose.runtime.Stable
  * A grant made over in the settings app arrives back the way any other one does — as a change to
  * the permission state, which re-reads on resume.
  *
- * On desktop and JS this does nothing: there is no per-app settings page to open.
+ * On desktop and on the web targets this does nothing: there is no per-app settings page
+ * to open — a browser's site permissions are reachable only from its own chrome.
  */
 @Stable
 fun interface AppSettingsLauncher {

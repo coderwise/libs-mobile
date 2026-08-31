@@ -1,3 +1,7 @@
+@file:OptIn(ExperimentalWasmDsl::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.multiplatform.library)
@@ -14,6 +18,7 @@ kotlin {
     }
     iosArm64(); iosSimulatorArm64()
     js { browser() }
+    wasmJs { browser() }
     jvm("desktop")
 
     sourceSets {
@@ -26,6 +31,11 @@ kotlin {
             implementation(libs.androidx.activity.compose)
         }
         jsMain.dependencies {
+            implementation(libs.kotlinx.browser)
+        }
+        // No webMain here: the whole implementation is the file input and its reader, and
+        // those bindings differ between the two web targets.
+        sourceSets.getByName("wasmJsMain").dependencies {
             implementation(libs.kotlinx.browser)
         }
     }

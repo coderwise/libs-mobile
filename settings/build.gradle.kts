@@ -1,3 +1,7 @@
+@file:OptIn(ExperimentalWasmDsl::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.multiplatform.library)
@@ -16,6 +20,7 @@ kotlin {
         browser()
         nodejs()
     }
+    wasmJs { browser() }
     jvm("desktop")
 
     sourceSets {
@@ -29,7 +34,7 @@ kotlin {
             api(libs.koin.core)
         }
 
-        val nonJsMain = sourceSets.create("nonJsMain") {
+        val nonWebMain = sourceSets.create("nonWebMain") {
             dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.androidx.datastore.core)
@@ -38,13 +43,14 @@ kotlin {
             }
         }
 
-        androidMain.get().dependsOn(nonJsMain)
-        iosMain.get().dependsOn(nonJsMain)
-        val desktopMain = sourceSets.getByName("desktopMain") {
-            dependsOn(nonJsMain)
-        }
+        androidMain.get().dependsOn(nonWebMain)
+        iosMain.get().dependsOn(nonWebMain)
+        sourceSets.getByName("desktopMain").dependsOn(nonWebMain)
 
-        jsMain.dependencies {
+        // localStorage is reached the same way from both web targets, so the browser-backed
+        // store is written once, in webMain.
+        webMain.dependencies {
+            implementation(libs.kotlinx.browser)
         }
     }
 }

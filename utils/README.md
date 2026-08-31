@@ -2,7 +2,7 @@
 
 Cross-platform utilities for Compose Multiplatform, published to **Maven Central**.
 
-**Targets:** Android · iOS (arm64, simulator-arm64) · JS (browser) · Desktop (JVM)
+**Targets:** Android · iOS (arm64, simulator-arm64) · JS (browser) · Wasm/JS (browser) · Desktop (JVM)
 
 ## API
 
