@@ -5,7 +5,10 @@ published API, running on **every supported platform** — Android, iOS, Desktop
 and Wasm/JS.
 
 These modules are **not published**; they exist to exercise the libraries and serve as
-copy-paste integration reference. The shell around the examples is deliberately plain —
+copy-paste integration reference. One example is not a module of this build at all: the map
+engine experiment is consumed as published artifacts under `com.coderwise.experiment`, from
+`mavenLocal()`, which is how its integration into a KMP project is being tried out. Publish it
+first (`./gradlew publishToMavenLocal` in the MapEngine spike) or that example will not resolve. The shell around the examples is deliberately plain —
 a list, a detail screen, one back affordance — with no navigation library, no DI
 container and no resources, so the only thing to understand when copying an example is
 the library it demonstrates.
@@ -14,6 +17,7 @@ the library it demonstrates.
 
 | Example | Module | What it shows |
 |---|---|---|
+| Tiled map (experiment) | `com.coderwise.experiment:mapengine` | The next map engine, resolved from `mavenLocal()` rather than built here: layered tile slots in one `MapView`, a `TileQueue` filling the state, and a magnified ancestor standing in until a tile lands. Tiles are drawn locally — no network or key. |
 | Tiled map | `:map-engine` | Pan/zoom/rotate, markers anchored to coordinates, and `animateLocationTo` driven from the app's own UI. Tiles are a locally generated checkerboard — no network, tile server or API key. |
 | Tile math | `:map-core` | `MapMath` conversions both ways, and the packed `TileId` that keys every cache. No Compose involved. |
 | Text file picker | `:filepicker` | `rememberTextFilePicker`, with the picked file's contents shown. |

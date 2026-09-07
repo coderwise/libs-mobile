@@ -32,10 +32,23 @@ internal fun CameraReadout(state: TiledMapState, modifier: Modifier = Modifier) 
 }
 
 @Composable
+internal fun ZoomControls(
+    modifier: Modifier = Modifier,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilledTonalButton(onClick = onZoomIn) { Text("+") }
+        FilledTonalButton(onClick = onZoomOut) { Text("−") }
+    }
+}
+
+@Composable
 internal fun ZoomControls(state: TiledMapState, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(onClick = { scope.launch { state.zoomIn() } }) { Text("+") }
-        FilledTonalButton(onClick = { scope.launch { state.zoomOut() } }) { Text("−") }
-    }
+    ZoomControls(
+        modifier = modifier,
+        onZoomIn = { scope.launch { state.zoomIn() } },
+        onZoomOut = { scope.launch { state.zoomOut() } }
+    )
 }
