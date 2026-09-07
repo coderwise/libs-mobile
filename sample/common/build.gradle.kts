@@ -47,7 +47,15 @@ kotlin {
             // Only for the image-picker example: decodeToImageBitmap() is what turns the
             // bytes :imagepicker hands back into something Image() can draw.
             implementation(libs.compose.components.resources)
+            // Only for the map engine example: the engine fetches nothing itself, so pointing it
+            // at a real tile server is the sample's job.
+            implementation(libs.ktor.client.core)
         }
+        androidMain.dependencies { implementation(libs.ktor.client.okhttp) }
+        iosMain.dependencies { implementation(libs.ktor.client.darwin) }
+        jsMain.dependencies { implementation(libs.ktor.client.js) }
+        wasmJsMain.dependencies { implementation(libs.ktor.client.js) }
+        getByName("desktopMain").dependencies { implementation(libs.ktor.client.okhttp) }
     }
 }
 

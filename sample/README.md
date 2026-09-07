@@ -17,7 +17,7 @@ the library it demonstrates.
 
 | Example | Module | What it shows |
 |---|---|---|
-| Tiled map (experiment) | `com.coderwise.experiment:mapengine` | The next map engine, resolved from `mavenLocal()` rather than built here: layered tile slots in one `MapView`, a `TileQueue` filling the state, and a magnified ancestor standing in until a tile lands. Tiles are drawn locally — no network or key. |
+| Tiled map (experiment) | `com.coderwise.experiment:mapengine` | The next map engine, resolved from `mavenLocal()` rather than built here: layered tile slots in one `MapView`, a `TileQueue` filling the state, and a magnified ancestor standing in until a tile lands. On live OpenStreetMap tiles, fetched by the example with Ktor — the engine fetches nothing itself, which is the half of the integration worth proving. |
 | Tiled map | `:map-engine` | Pan/zoom/rotate, markers anchored to coordinates, and `animateLocationTo` driven from the app's own UI. Tiles are a locally generated checkerboard — no network, tile server or API key. |
 | Tile math | `:map-core` | `MapMath` conversions both ways, and the packed `TileId` that keys every cache. No Compose involved. |
 | Text file picker | `:filepicker` | `rememberTextFilePicker`, with the picked file's contents shown. |
@@ -30,7 +30,12 @@ Every module builds for every target, so the list above is the list on all five 
 what differs between them is what each platform does with the call, which is what the note
 at the bottom of each example screen is for.
 
-The Android app declares `CAMERA` and `POST_NOTIFICATIONS`, and the iOS app declares
+The map engine example is the only thing here that talks to the network: it fetches
+OpenStreetMap tiles with Ktor (one engine per platform, in `:sample:common`) and renders the
+`© OpenStreetMap contributors` credit the tile policy requires. It is a demo panned by hand,
+which is well inside that policy; anything heavier wants your own tile server.
+
+The Android app declares `INTERNET` for it, and `CAMERA` and `POST_NOTIFICATIONS`, and the iOS app declares
 `NSCameraUsageDescription`, for the permissions example — the libraries declare no
 permission of their own (see the root [README](../README.md#no-module-declares-an-android-permission)).
 

@@ -45,8 +45,9 @@ internal fun mapExamples(): List<Example> = listOf(
         module = "com.coderwise.experiment:mapengine",
         summary = "The next map engine, tried out here as published artifacts rather than as " +
             "modules of this build: a MapView of layered tile slots, a queue that fills them, " +
-            "and a magnified ancestor standing in until a tile lands. Tiles are drawn locally, " +
-            "so this needs no network or key either.",
+            "and a magnified ancestor standing in until a tile lands. On real OpenStreetMap " +
+            "tiles, because the engine fetches nothing itself — supplying the tiles is the " +
+            "part of the integration worth proving.",
         fillsScreen = true
     ) { MapEngineSpikeExample() },
     Example(

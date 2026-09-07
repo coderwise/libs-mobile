@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- The map engine example fetches OpenStreetMap tiles; nothing else here uses the network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="Coderwise Libraries"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
