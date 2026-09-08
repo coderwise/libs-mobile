@@ -58,13 +58,19 @@ internal fun tileGrid(
 @LayoutScopeMarker
 interface MapScope {
     /**
-     * One composable for every visible tile. [content] is handed a key and draws whatever it likes
-     * for it — the tile, a magnified ancestor while that loads, a placeholder, nothing.
+     * One composable for every tile of [state] that is visible. [content] is handed a key and
+     * draws whatever it likes for it — the tile, a magnified ancestor while that loads, a
+     * placeholder, nothing.
      *
      * Every tile of a layer is placed before the first tile of the next one, which is what a layer
      * is for: labels over ground, a route over labels, a marker over everything.
+     *
+     * Each layer brings its own [state], so a map is as many pyramids as it has sources: a base
+     * map to zoom 19 under weather that stops at its own native level and is magnified from there.
+     * They are laid out together, each on the level its own source has, and each publishes its own
+     * window — so whatever fills it fetches for the layer alone, and stops when the layer goes.
      */
-    fun layer(content: @Composable (key: TileKey) -> Unit)
+    fun layer(state: MapState<*>, content: @Composable (key: TileKey) -> Unit)
 
     /**
      * One composable over the whole map, positioned by the map's projection rather than by a tile
@@ -82,13 +88,14 @@ interface MapScope {
  * a tile holds, which is why it is not generic. Nor does it clip a tile to its box: staying inside
  * one is the layer's business, and a label deliberately hangs past the tile that owns it.
  *
- * Nothing here loads anything either. The window it wants is published on [MapState.window] for
- * whoever fills the slots.
+ * Nothing here loads anything either. Each layer's window is published on its own
+ * [MapState.window] for whoever fills the slots.
  *
  * ```
- * MapView(camera, state, Modifier.fillMaxSize()) {
- *     layer { key -> state.shown(key)?.let { VectorSlot(it.content, it.src) } }
- *     layer { key -> state.shown(key)?.let { VectorLabels(it.content, it.src) } }
+ * MapView(camera, Modifier.fillMaxSize()) {
+ *     layer(ground) { key -> ground.shown(key)?.let { VectorSlot(it.content, it.src) } }
+ *     layer(ground) { key -> ground.shown(key)?.let { VectorLabels(it.content, it.src) } }
+ *     layer(rain) { key -> rain.shown(key)?.let { RasterSlot(it.content, it.src) } }
  *     overlay {
  *         Polyline(track, color = Color.Blue)
  *         Pin(Modifier.at(destination, Alignment.BottomCenter))
@@ -99,48 +106,56 @@ interface MapScope {
 @Composable
 fun MapView(
     camera: MapCameraState,
-    state: MapState<*>,
     modifier: Modifier = Modifier,
     content: MapScope.() -> Unit
 ) {
     val slots = Slots().apply(content).declared
     val overlay = remember(camera) { MapOverlayState(camera) }
 
-    DisposableEffect(state) {
-        onDispose { state.clearWindow() }
+    // A source is asked for tiles for exactly as long as a layer is drawing it.
+    slots.filterIsInstance<Slot.Tiled>().map { it.state }.distinct().forEach { state ->
+        key(state) {
+            DisposableEffect(state) {
+                onDispose { state.clearWindow() }
+            }
+        }
     }
 
     SubcomposeLayout(modifier.clipToBounds()) { constraints ->
         val width = constraints.maxWidth
         val height = constraints.maxHeight
         overlay.measured(width.toFloat(), height.toFloat(), density)
-        val grid = tileGrid(camera, width.toFloat(), height.toFloat(), density, state)
-        state.window = grid.window
-        val (z, columns, rows, side, originX, originY) = grid
-        val count = 1 shl z
-
-        val positions = rows.flatMap { row -> columns.map { column -> column to row } }
 
         val placeables = slots.flatMapIndexed { slot, declared ->
             when (declared) {
-                is Slot.Tiled -> subcompose(slot) {
-                    positions.forEach { (column, row) ->
-                        key(column, row) {
-                            Box(Modifier.fillMaxSize()) {
-                                declared.content(TileKey(z, ((column % count) + count) % count, row))
+                is Slot.Tiled -> {
+                    // Every layer is laid out on the level its own source has.
+                    val grid = tileGrid(camera, width.toFloat(), height.toFloat(), density, declared.state)
+                    declared.state.window = grid.window
+                    val (z, columns, rows, side, originX, originY) = grid
+                    val count = 1 shl z
+                    val positions = rows.flatMap { row -> columns.map { column -> column to row } }
+
+                    subcompose(slot) {
+                        positions.forEach { (column, row) ->
+                            key(column, row) {
+                                Box(Modifier.fillMaxSize()) {
+                                    declared.content(TileKey(z, ((column % count) + count) % count, row))
+                                }
                             }
                         }
+                    }.mapIndexed { index, measurable ->
+                        val (column, row) = positions[index]
+                        val left = floor(column * side - originX).toInt()
+                        val top = floor(row * side - originY).toInt()
+                        // Snap to whole pixels the same way on both edges, so neighbours leave no
+                        // seam.
+                        val tile = Constraints.fixed(
+                            width = ((column + 1) * side - originX).roundToInt() - left,
+                            height = ((row + 1) * side - originY).roundToInt() - top
+                        )
+                        Triple(measurable.measure(tile), left, top)
                     }
-                }.mapIndexed { index, measurable ->
-                    val (column, row) = positions[index]
-                    val left = floor(column * side - originX).toInt()
-                    val top = floor(row * side - originY).toInt()
-                    // Snap to whole pixels the same way on both edges, so neighbours leave no seam.
-                    val tile = Constraints.fixed(
-                        width = ((column + 1) * side - originX).roundToInt() - left,
-                        height = ((row + 1) * side - originY).roundToInt() - top
-                    )
-                    Triple(measurable.measure(tile), left, top)
                 }
 
                 is Slot.Over -> subcompose(slot) { declared.content(overlay) }
@@ -171,7 +186,7 @@ fun MapView(
 
 /** One thing the content block declared: a composable per tile, or one over all of them. */
 private sealed interface Slot {
-    class Tiled(val content: @Composable (TileKey) -> Unit) : Slot
+    class Tiled(val state: MapState<*>, val content: @Composable (TileKey) -> Unit) : Slot
     class Over(val content: @Composable MapOverlayScope.() -> Unit) : Slot
 }
 
@@ -179,8 +194,8 @@ private sealed interface Slot {
 private class Slots : MapScope {
     val declared = mutableListOf<Slot>()
 
-    override fun layer(content: @Composable (key: TileKey) -> Unit) {
-        declared += Slot.Tiled(content)
+    override fun layer(state: MapState<*>, content: @Composable (key: TileKey) -> Unit) {
+        declared += Slot.Tiled(state, content)
     }
 
     override fun overlay(content: @Composable MapOverlayScope.() -> Unit) {

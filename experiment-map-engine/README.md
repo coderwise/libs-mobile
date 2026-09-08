@@ -28,19 +28,27 @@ and is where the numbers below were measured.
 `MapView` positions one composable per visible tile. That is all it does.
 
 ```kotlin
-MapView(camera, state, Modifier.fillMaxSize()) {
-    layer { key -> /* draw whatever you like for this tile */ }
+MapView(camera, Modifier.fillMaxSize()) {
+    layer(ground) { key -> /* draw whatever you like for this tile */ }
     overlay { /* and whatever you like at a coordinate */ }
 }
 ```
 
-It is not generic over tile content — it never sees any. It takes a `MapState<*>`, publishes the
-window of tiles it wants, and calls each layer with a key.
+It is not generic over tile content — it never sees any. It takes a `MapState<*>` per layer,
+publishes the window of tiles that layer wants, and calls it with a key.
 
 A map is layers: `layer` can be declared as many times as you like, and every tile of one is placed
 before the first tile of the next — ground, then labels, then whatever you put over those. Nothing
 is clipped to its tile either: staying inside the box is the layer's business, and a name
 deliberately hangs past the edge of the tile that owns it.
+
+**A layer brings its own source**, because a map is usually several pyramids rather than one: a
+base map to zoom 19 under weather that stops at its own native level and is magnified from there,
+or a hillshade under a street layer. Each is laid out on the level its own source has, each
+publishes its own window, and each is asked for tiles for exactly as long as its layer is there —
+turn a layer off and its queue goes quiet. The alternative was a `MapView` per source, stacked in
+a `Box`, which is what the weather app was doing before this and what a rotating camera would have
+made impossible to keep aligned.
 
 ### Overlays are the other half
 
@@ -75,7 +83,7 @@ is stroked in dp and never simplified — clipping and tessellating it is the gr
 
 ```kotlin
 Box(Modifier.mapGestures(camera, onTap = { there -> select(null) })) {   // a tap on the map
-    MapView(camera, tiles) {
+    MapView(camera) {
         overlay {
             Polyline(trail, color = Blue, onClick = { select(trail) })   // a tap on a line
             Pin(Modifier.at(stop).clickable { select(stop) })            // a tap on a marker
@@ -151,8 +159,8 @@ The tile itself if it has arrived, else the nearest filled ancestor with the fra
 covers this slot, else null — where a placeholder or a spinner would go instead.
 
 ```kotlin
-MapView(camera, state, Modifier.fillMaxSize()) { key ->
-    state.shown(key)?.let { VectorSlot(it.key.z, it.content, it.src, cache) }
+MapView(camera, Modifier.fillMaxSize()) {
+    layer(state) { key -> state.shown(key)?.let { VectorSlot(it.content, it.src) } }
 }
 ```
 
@@ -169,8 +177,8 @@ apart; a switch in the corner swaps them under a live camera.
   LatLon, TileKey, TileWindow
   MapState (window, slot, put, filled, forget)
   MapCameraState (center, zoom, moveTo), rememberMapCameraState, ZOOM_LIMITS
-  MapView(camera, state, modifier) { layer { key -> … }; overlay { … } }
-  MapScope.layer { key -> … }, MapScope.overlay { … }
+  MapView(camera, modifier) { layer(state) { key -> … }; overlay { … } }
+  MapScope.layer(state) { key -> … }, MapScope.overlay { … }
   MapOverlayScope (project, unproject, Modifier.at(point, anchor))
   MapOverlayScope.Polyline(points, color, modifier, width, touchWidth, onClick)
   Modifier.mapGestures(camera, onTap)
@@ -347,9 +355,9 @@ already placed. What text can do — fonts, ellipsis, a modifier of its own — 
 It is a layer of its own, over the layer that draws the ground:
 
 ```kotlin
-MapView(camera, state, Modifier.fillMaxSize()) {
-    layer { key -> state.shown(key)?.let { VectorSlot(it.content, it.src) } }
-    layer { key -> state.shown(key)?.let { VectorLabels(it.content, it.src) } }
+MapView(camera, Modifier.fillMaxSize()) {
+    layer(state) { key -> state.shown(key)?.let { VectorSlot(it.content, it.src) } }
+    layer(state) { key -> state.shown(key)?.let { VectorLabels(it.content, it.src) } }
 }
 ```
 

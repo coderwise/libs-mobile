@@ -61,12 +61,12 @@ internal fun MapEngineSpikeExample() {
     remember { TileQueue(scope, tiles, capacity = 96) { key -> osmTile(http, key) } }
 
     Box(Modifier.fillMaxSize().mapGestures(camera)) {
-        MapView(camera, tiles, Modifier.fillMaxSize()) {
+        MapView(camera, Modifier.fillMaxSize()) {
             // One layer draws the tiles; the next goes over all of them, so a tile placed later
             // cannot paint over it. What a slot shows while its own tile is still coming — here
             // the nearest ancestor, magnified — is `shown`.
-            layer { key -> tiles.shown(key)?.let { RasterSlot(it.content, it.src) } }
-            layer { key -> TileName(key) }
+            layer(tiles) { key -> tiles.shown(key)?.let { RasterSlot(it.content, it.src) } }
+            layer(tiles) { key -> TileName(key) }
             // Neither of those came from a tile: a line and a label, put where they are.
             overlay {
                 Polyline(SPREE, color = Color(0xFF2D6CDF), width = 5.dp)
