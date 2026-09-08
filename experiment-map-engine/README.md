@@ -30,6 +30,7 @@ and is where the numbers below were measured.
 ```kotlin
 MapView(camera, state, Modifier.fillMaxSize()) {
     layer { key -> /* draw whatever you like for this tile */ }
+    overlay { /* and whatever you like at a coordinate */ }
 }
 ```
 
@@ -40,6 +41,35 @@ A map is layers: `layer` can be declared as many times as you like, and every ti
 before the first tile of the next — ground, then labels, then whatever you put over those. Nothing
 is clipped to its tile either: staying inside the box is the layer's business, and a name
 deliberately hangs past the edge of the tile that owns it.
+
+### Overlays are the other half
+
+A tile layer draws what a source shipped. An overlay draws what the app knows: a recorded track, a
+route, the pins on a set of search results, a circle round the user. The difference is only what
+positions it — a key, or a coordinate — so `overlay` takes its turn among the layers and gets the
+map's projection as its scope.
+
+```kotlin
+overlay {
+    Polyline(ride, color = Blue, width = 5.dp)          // a track, stroked in dp
+    Pin(Modifier.at(finish, Alignment.BottomCenter))    // any composable, at a coordinate
+    Marker(Modifier.at(result.point).clickable { open(result) })
+}
+```
+
+`Modifier.at(point, anchor)` is the whole of it: the child is measured as it likes, sized in dp so
+it is the same on screen at every zoom, and placed so that its [anchor] — the middle of a dot, the
+tip of a pin — lands on the coordinate. Everything else about it is ordinary Compose, which is why
+there is no marker type, no `onMarkerClick`, and no z-index: it is a composable in a layout.
+
+`project`/`unproject` are there for anything the two do not cover — turning a tap into a `LatLon`,
+drawing your own geometry. Anything in an `overlay` that is *not* hung off a coordinate is measured
+to the whole map, so a plain `Canvas` inside one draws through the projection over the lot.
+
+`Polyline` is the one convenience, because tracks are big and the naive version is slow: the half
+of projecting a point that is a logarithm and a tangent depends only on the point, so it is done
+once per track rather than once per frame, and only the affine is left in the draw pass. The line
+is stroked in dp and never simplified — clipping and tessellating it is the graphics layer's job.
 
 ### The state is the interface
 
@@ -109,8 +139,10 @@ apart; a switch in the corner swaps them under a live camera.
   LatLon, TileKey, TileWindow
   MapState (window, slot, put, filled, forget)
   MapCameraState (center, zoom, moveTo), rememberMapCameraState, ZOOM_LIMITS
-  MapView(camera, state, modifier) { layer { key -> … } }
-  MapScope.layer { key -> … }
+  MapView(camera, state, modifier) { layer { key -> … }; overlay { … } }
+  MapScope.layer { key -> … }, MapScope.overlay { … }
+  MapOverlayScope (project, unproject, Modifier.at(point, anchor))
+  MapOverlayScope.Polyline(points, color, modifier, width)
   Modifier.mapGestures(camera)
 
 :experiment-map-tiles
@@ -209,10 +241,12 @@ once and 150 ms twice — that only large effects are worth believing here:
   Priority handles the standing case (what is on screen goes first, and nothing is prefetched
   while the map moves), but a request already in flight is never cancelled, so the tiles of a
   place the flick has left still arrive and still cost their bytes.
-- **Nothing on top of the map** — no markers, no geo-anchored overlay. Both existed and were cut
-  unused: a `Layout` that places composables at projected coordinates is a page of code, and it is
-  better written against a real use than guessed at. The projection that placed them went with
-  them; what is left of the maths is `Mercator`, internal, which is all the tiles need.
+- **Overlays are placement and one line style, nothing more.** No polygons, no clustering of pins
+  that land on top of each other, no hit test against a `Polyline`, and nothing that culls: a
+  thousand markers are a thousand children, measured and placed every time the map moves. Each of
+  those wants a real use before it is written — the shapes of them differ too much to guess.
+- **A `Polyline` is rebuilt whenever its list changes**, which a track being recorded does on every
+  fix. Appending to a path instead of rebuilding it is easy; whether it matters is not measured.
 - **Labels collide only within a tile** — a name never covers another name off the same tile, and
   may cover one off the next tile along. Worse for roads than for places: a street crossing a seam
   is named once by each tile it runs through, and those two names are invisible to each other. Real

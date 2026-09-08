@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -63,6 +65,14 @@ interface MapScope {
      * is for: labels over ground, a route over labels, a marker over everything.
      */
     fun layer(content: @Composable (key: TileKey) -> Unit)
+
+    /**
+     * One composable over the whole map, positioned by the map's projection rather than by a tile
+     * — a track, a route, the pins on a set of search results. See [MapOverlayScope].
+     *
+     * It takes its turn among the layers: what is declared after it is drawn over it.
+     */
+    fun overlay(content: @Composable MapOverlayScope.() -> Unit)
 }
 
 /**
@@ -79,6 +89,10 @@ interface MapScope {
  * MapView(camera, state, Modifier.fillMaxSize()) {
  *     layer { key -> state.shown(key)?.let { VectorSlot(it.content, it.src) } }
  *     layer { key -> state.shown(key)?.let { VectorLabels(it.content, it.src) } }
+ *     overlay {
+ *         Polyline(track, color = Color.Blue)
+ *         Pin(Modifier.at(destination, Alignment.BottomCenter))
+ *     }
  * }
  * ```
  */
@@ -89,59 +103,85 @@ fun MapView(
     modifier: Modifier = Modifier,
     content: MapScope.() -> Unit
 ) {
-    val layers = Layers().apply(content).declared
+    val slots = Slots().apply(content).declared
+    val overlay = remember(camera) { MapOverlayState(camera) }
 
     DisposableEffect(state) {
         onDispose { state.clearWindow() }
     }
 
     SubcomposeLayout(modifier.clipToBounds()) { constraints ->
-        val grid = tileGrid(
-            camera,
-            constraints.maxWidth.toFloat(),
-            constraints.maxHeight.toFloat(),
-            density,
-            state
-        )
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        overlay.measured(width.toFloat(), height.toFloat(), density)
+        val grid = tileGrid(camera, width.toFloat(), height.toFloat(), density, state)
         state.window = grid.window
         val (z, columns, rows, side, originX, originY) = grid
         val count = 1 shl z
 
         val positions = rows.flatMap { row -> columns.map { column -> column to row } }
 
-        val placeables = layers.flatMapIndexed { layer, content ->
-            subcompose(layer) {
-                positions.forEach { (column, row) ->
-                    key(column, row) {
-                        Box(Modifier.fillMaxSize()) {
-                            content(TileKey(z, ((column % count) + count) % count, row))
+        val placeables = slots.flatMapIndexed { slot, declared ->
+            when (declared) {
+                is Slot.Tiled -> subcompose(slot) {
+                    positions.forEach { (column, row) ->
+                        key(column, row) {
+                            Box(Modifier.fillMaxSize()) {
+                                declared.content(TileKey(z, ((column % count) + count) % count, row))
+                            }
                         }
                     }
+                }.mapIndexed { index, measurable ->
+                    val (column, row) = positions[index]
+                    val left = floor(column * side - originX).toInt()
+                    val top = floor(row * side - originY).toInt()
+                    // Snap to whole pixels the same way on both edges, so neighbours leave no seam.
+                    val tile = Constraints.fixed(
+                        width = ((column + 1) * side - originX).roundToInt() - left,
+                        height = ((row + 1) * side - originY).roundToInt() - top
+                    )
+                    Triple(measurable.measure(tile), left, top)
                 }
-            }.mapIndexed { index, measurable ->
-                val (column, row) = positions[index]
-                val left = floor(column * side - originX).toInt()
-                val top = floor(row * side - originY).toInt()
-                // Snap to whole pixels the same way on both edges, so neighbours leave no seam.
-                val tile = Constraints.fixed(
-                    width = ((column + 1) * side - originX).roundToInt() - left,
-                    height = ((row + 1) * side - originY).roundToInt() - top
-                )
-                Triple(measurable.measure(tile), left, top)
+
+                is Slot.Over -> subcompose(slot) { declared.content(overlay) }
+                    .map { measurable ->
+                        val anchor = measurable.parentData as? Anchor
+                            // Anything not hung off a coordinate covers the map, and draws through
+                            // the projection itself.
+                            ?: return@map Triple(measurable.measure(constraints), 0, 0)
+                        val placeable = measurable.measure(Constraints())
+                        val at = overlay.project(anchor.point)
+                        val within = anchor.alignment.align(
+                            IntSize.Zero,
+                            IntSize(placeable.width, placeable.height),
+                            layoutDirection
+                        )
+                        Triple(placeable, (at.x - within.x).roundToInt(), (at.y - within.y).roundToInt())
+                    }
             }
         }
 
-        layout(constraints.maxWidth, constraints.maxHeight) {
+        layout(width, height) {
             placeables.forEach { (placeable, left, top) -> placeable.place(left, top) }
         }
     }
 }
 
+/** One thing the content block declared: a composable per tile, or one over all of them. */
+private sealed interface Slot {
+    class Tiled(val content: @Composable (TileKey) -> Unit) : Slot
+    class Over(val content: @Composable MapOverlayScope.() -> Unit) : Slot
+}
+
 /** Collects what the content block declares, in order. */
-private class Layers : MapScope {
-    val declared = mutableListOf<@Composable (TileKey) -> Unit>()
+private class Slots : MapScope {
+    val declared = mutableListOf<Slot>()
 
     override fun layer(content: @Composable (key: TileKey) -> Unit) {
-        declared += content
+        declared += Slot.Tiled(content)
+    }
+
+    override fun overlay(content: @Composable MapOverlayScope.() -> Unit) {
+        declared += Slot.Over(content)
     }
 }

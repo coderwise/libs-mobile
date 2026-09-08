@@ -14,12 +14,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.unit.dp
 import com.coderwise.libs.experiment.map.LatLon
 import com.coderwise.libs.experiment.map.MapState
 import com.coderwise.libs.experiment.map.MapView
+import com.coderwise.libs.experiment.map.Polyline
 import com.coderwise.libs.experiment.map.TileKey
 import com.coderwise.libs.experiment.map.ZOOM_LIMITS
 import com.coderwise.libs.experiment.map.mapGestures
@@ -65,6 +67,11 @@ internal fun MapEngineSpikeExample() {
             // the nearest ancestor, magnified — is `shown`.
             layer { key -> tiles.shown(key)?.let { RasterSlot(it.content, it.src) } }
             layer { key -> TileName(key) }
+            // Neither of those came from a tile: a line and a label, put where they are.
+            overlay {
+                Polyline(SPREE, color = Color(0xFF2D6CDF), width = 5.dp)
+                Plate("Brandenburger Tor", Modifier.at(GATE, Alignment.BottomCenter))
+            }
         }
         ZoomControls(
             modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp),
@@ -114,5 +121,18 @@ private suspend fun osmTile(http: HttpClient, key: TileKey): ImageBitmap? = runC
     val bytes = response.readRawBytes()
     withContext(Dispatchers.Default) { bytes.decodeToImageBitmap() }
 }.getOrNull()
+
+private val GATE = LatLon(52.5163, 13.3777)
+
+/** A walk east from the gate, down the Spree — something to draw that no tile knows about. */
+private val SPREE = listOf(
+    LatLon(52.5163, 13.3777),
+    LatLon(52.5170, 13.3830),
+    LatLon(52.5186, 13.3888),
+    LatLon(52.5196, 13.3960),
+    LatLon(52.5185, 13.4040),
+    LatLon(52.5165, 13.4090),
+    LatLon(52.5155, 13.4180)
+)
 
 private const val USER_AGENT = "coderwise-libs-sample/1.0 (map engine experiment)"
