@@ -71,6 +71,36 @@ of projecting a point that is a logarithm and a tangent depends only on the poin
 once per track rather than once per frame, and only the affine is left in the draw pass. The line
 is stroked in dp and never simplified — clipping and tessellating it is the graphics layer's job.
 
+### Being tapped is three different questions
+
+```kotlin
+Box(Modifier.mapGestures(camera, onTap = { there -> select(null) })) {   // a tap on the map
+    MapView(camera, tiles) {
+        overlay {
+            Polyline(trail, color = Blue, onClick = { select(trail) })   // a tap on a line
+            Pin(Modifier.at(stop).clickable { select(stop) })            // a tap on a marker
+        }
+    }
+}
+```
+
+A marker is a composable with a shape, so Compose hit-tests it the way it hit-tests anything, and
+`clickable` is all it needs. A line is not: it is drawn on a canvas the size of the whole map, and
+without care it would be the only tappable thing on it. So a tappable line shares its pointer input
+with its siblings and claims a tap only within `touchWidth` of the line itself — the geometry test
+is a point-to-segment distance over the same projected coordinates it draws.
+
+Where two lines are both within reach, **the nearest wins**, not the top one: every line hears the
+touch go down on the initial pass and offers its distance before any of them acts on the main pass.
+Declaration order is then only about drawing, which is one less thing to have to know.
+
+`onTap` sits on the gestures modifier, outside everything the map draws, so it hears only what
+nothing inside took: a tap on a marker or a line never reaches it. It waits out the double-tap
+window first, because until that closes the tap might still be a zoom.
+
+Only the lift is consumed, and only once the gesture is known to be a tap — a drag that starts on a
+line still pans the map.
+
 ### The state is the interface
 
 ```kotlin
@@ -142,8 +172,8 @@ apart; a switch in the corner swaps them under a live camera.
   MapView(camera, state, modifier) { layer { key -> … }; overlay { … } }
   MapScope.layer { key -> … }, MapScope.overlay { … }
   MapOverlayScope (project, unproject, Modifier.at(point, anchor))
-  MapOverlayScope.Polyline(points, color, modifier, width)
-  Modifier.mapGestures(camera)
+  MapOverlayScope.Polyline(points, color, modifier, width, touchWidth, onClick)
+  Modifier.mapGestures(camera, onTap)
 
 :experiment-map-tiles
   TileQueue(scope, state, workers, capacity) { key -> … }
@@ -241,10 +271,16 @@ once and 150 ms twice — that only large effects are worth believing here:
   Priority handles the standing case (what is on screen goes first, and nothing is prefetched
   while the map moves), but a request already in flight is never cancelled, so the tiles of a
   place the flick has left still arrive and still cost their bytes.
-- **Overlays are placement and one line style, nothing more.** No polygons, no clustering of pins
-  that land on top of each other, no hit test against a `Polyline`, and nothing that culls: a
-  thousand markers are a thousand children, measured and placed every time the map moves. Each of
-  those wants a real use before it is written — the shapes of them differ too much to guess.
+- **Overlays are placement, one line style and three taps, nothing more.** No polygons, no
+  clustering of pins that land on top of each other, and nothing that culls: a thousand markers
+  are a thousand children, measured and placed every time the map moves. Each of those wants a
+  real use before it is written — the shapes of them differ too much to guess.
+- **A tap on a line is O(points).** Every segment of every tappable line is measured against every
+  touch that goes down, which is fine for a few tracks and would not be for a thousand. A bounding
+  box per line would settle most of it in four comparisons; nothing here needs it yet.
+- **`onTap` is a double-tap timeout late** (~300 ms), because a tap is only a tap once no second
+  one arrives. Firing it at once and undoing it on the second tap would feel quicker and is what
+  a map that dropped pins would want.
 - **A `Polyline` is rebuilt whenever its list changes**, which a track being recorded does on every
   fix. Appending to a path instead of rebuilding it is easy; whether it matters is not measured.
 - **Labels collide only within a tile** — a name never covers another name off the same tile, and

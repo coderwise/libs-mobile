@@ -146,9 +146,11 @@ fun MapView(
                 is Slot.Over -> subcompose(slot) { declared.content(overlay) }
                     .map { measurable ->
                         val anchor = measurable.parentData as? Anchor
-                            // Anything not hung off a coordinate covers the map, and draws through
-                            // the projection itself.
-                            ?: return@map Triple(measurable.measure(constraints), 0, 0)
+                            // Anything not hung off a coordinate *is* the map: it is measured to
+                            // the whole of it, and draws or listens through the projection.
+                            ?: return@map Triple(
+                                measurable.measure(Constraints.fixed(width, height)), 0, 0
+                            )
                         val placeable = measurable.measure(Constraints())
                         val at = overlay.project(anchor.point)
                         val within = anchor.alignment.align(

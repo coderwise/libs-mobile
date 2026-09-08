@@ -1,6 +1,9 @@
 package com.coderwise.libs.experiment.map
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.LayoutScopeMarker
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -8,14 +11,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ParentDataModifier
+import androidx.compose.ui.node.DelegatingNode
+import androidx.compose.ui.node.PointerInputModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.floor
 import kotlin.math.round
@@ -58,7 +69,9 @@ fun MapOverlayScope.Polyline(
     points: List<LatLon>,
     color: Color,
     modifier: Modifier = Modifier,
-    width: Dp = 3.dp
+    width: Dp = 3.dp,
+    touchWidth: Dp = 24.dp,
+    onClick: (() -> Unit)? = null
 ) {
     // Projecting a point is a logarithm and a tangent plus an affine, and only the affine depends
     // on the camera. A track pays for the hard half once instead of on every frame it is drawn.
@@ -73,7 +86,7 @@ fun MapOverlayScope.Polyline(
     val path = remember { Path() }
     val overlay = this as MapOverlayState
 
-    Canvas(modifier.fillMaxSize()) {
+    Canvas(modifier.fillMaxSize().tappable(overlay, world, touchWidth, onClick)) {
         path.rewind()
         overlay.trace(path, world) // reads the camera, so the line redraws as the map moves
         drawPath(
@@ -82,6 +95,76 @@ fun MapOverlayScope.Polyline(
             style = Stroke(width.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
     }
+}
+
+/**
+ * A tap within [touchWidth] of the line, and nothing else.
+ *
+ * A line covers the whole map however thin it looks, and Compose stops hit testing at the first
+ * sibling it lands on — so a plain `pointerInput` here would make this the only tappable thing on
+ * the map, whatever it was drawn over. Sharing the input with its siblings is what lets the tap
+ * carry on down to the next line, and to the map underneath when it misses them all.
+ *
+ * Only the lift is consumed, and only once the gesture is known to be a tap: a drag that starts on
+ * the line still pans the map, because panning cancels this before the finger comes up.
+ */
+private fun Modifier.tappable(
+    overlay: MapOverlayState,
+    world: DoubleArray,
+    touchWidth: Dp,
+    onClick: (() -> Unit)?
+): Modifier = if (onClick == null) this else then(TapOnLine(overlay, world, touchWidth, onClick))
+
+private data class TapOnLine(
+    val overlay: MapOverlayState,
+    val world: DoubleArray,
+    val touchWidth: Dp,
+    val onClick: () -> Unit
+) : ModifierNodeElement<TapOnLineNode>() {
+    override fun create() = TapOnLineNode(this)
+    override fun update(node: TapOnLineNode) {
+        node.line = this
+    }
+}
+
+private class TapOnLineNode(line: TapOnLine) : DelegatingNode(), PointerInputModifierNode {
+    var line = line
+        set(value) {
+            field = value
+            pointer.resetPointerInputHandler()
+        }
+
+    private val pointer = delegate(
+        SuspendingPointerInputModifierNode {
+            awaitEachGesture {
+                // Every line hears the touch down before any of them acts on it, so the one that
+                // takes it can be the nearest rather than whichever happens to lie underneath.
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                val distance = line.overlay.distanceTo(line.world, down.position)
+                line.overlay.offer(down.id, distance, this@TapOnLineNode)
+                awaitPointerEvent(PointerEventPass.Main)
+
+                val reach = line.touchWidth.toPx() / 2
+                // Consumed already: something with a shape of its own, a marker say, has it.
+                if (down.isConsumed || distance > reach) return@awaitEachGesture
+                if (!line.overlay.nearest(this@TapOnLineNode)) return@awaitEachGesture
+                val up = waitForUpOrCancellation() ?: return@awaitEachGesture
+                up.consume()
+                line.onClick()
+            }
+        }
+    )
+
+    override fun onPointerEvent(
+        pointerEvent: PointerEvent,
+        pass: PointerEventPass,
+        bounds: IntSize
+    ) = pointer.onPointerEvent(pointerEvent, pass, bounds)
+
+    override fun onCancelPointerInput() = pointer.onCancelPointerInput()
+
+    /** Everything below a line is still there to be tapped, which is the whole map. */
+    override fun sharePointerInputWithSiblings() = true
 }
 
 /**
@@ -111,12 +194,8 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
         return Offset((dx * world + width / 2).toFloat(), (dy * world + height / 2).toFloat())
     }
 
-    override fun unproject(offset: Offset): LatLon {
-        val world = Mercator.worldPixels(camera.zoom, density)
-        val x = (camera.x + (offset.x - width / 2) / world).mod(1.0)
-        val y = camera.y + (offset.y - height / 2) / world
-        return LatLon(Mercator.lat(y), Mercator.lon(x))
-    }
+    override fun unproject(offset: Offset): LatLon =
+        camera.pointAt(offset.x, offset.y, width, height, density)
 
     override fun Modifier.at(point: LatLon, anchor: Alignment): Modifier = then(Anchor(point, anchor))
 
@@ -135,6 +214,43 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
         }
     }
 
+    private var claimant: Any? = null
+    private var claimedBy: PointerId? = null
+    private var claimedAt = Float.MAX_VALUE
+
+    /** A line saying how far the touch landed from it. The nearest one wins the tap. */
+    fun offer(pointer: PointerId, distance: Float, line: Any) {
+        if (pointer != claimedBy) {
+            claimedBy = pointer
+            claimedAt = Float.MAX_VALUE
+            claimant = null
+        }
+        if (distance < claimedAt) {
+            claimedAt = distance
+            claimant = line
+        }
+    }
+
+    fun nearest(line: Any) = claimant === line
+
+    /** How far [at] is, in pixels, from the nearest point of the line [world] draws. */
+    fun distanceTo(world: DoubleArray, at: Offset): Float {
+        if (world.size < 2) return Float.MAX_VALUE
+        val scale = Mercator.worldPixels(camera.zoom, density)
+        var x = (world[0] - camera.x).nearest
+        var from = Offset(screenX(x, scale), screenY(world[1], scale))
+        if (world.size < 4) return (at - from).getDistance()
+        var nearest = Float.MAX_VALUE
+        for (i in 2 until world.size step 2) {
+            val step = world[i] - world[i - 2]
+            x += step - round(step)
+            val to = Offset(screenX(x, scale), screenY(world[i + 1], scale))
+            nearest = minOf(nearest, distanceToSegment(at, from, to))
+            from = to
+        }
+        return nearest
+    }
+
     private fun screenX(dx: Double, scale: Double) = (dx * scale + width / 2).toFloat()
 
     private fun screenY(worldY: Double, scale: Double) =
@@ -142,6 +258,16 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
 
     /** The world repeats east and west; a point is drawn on the copy nearest the camera. */
     private val Double.nearest get() = this - floor(this + 0.5)
+}
+
+/** How far [point] is from the segment [from]-[to], which is what a tap on a line comes down to. */
+internal fun distanceToSegment(point: Offset, from: Offset, to: Offset): Float {
+    val line = to - from
+    val length = line.getDistanceSquared()
+    if (length == 0f) return (point - from).getDistance()
+    // Where the foot of the perpendicular falls along the segment, kept between its two ends.
+    val along = (((point - from).x * line.x + (point - from).y * line.y) / length).coerceIn(0f, 1f)
+    return (point - (from + line * along)).getDistance()
 }
 
 /** Which coordinate a child hangs off, read back by [MapView] when it places the child. */

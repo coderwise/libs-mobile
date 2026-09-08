@@ -37,9 +37,14 @@ import kotlin.math.hypot
  * then drag, to zoom with one finger, which is the gesture a phone in one hand can actually do.
  *
  * Put it on whatever holds the map and its layers, so they all move together.
+ *
+ * [onTap] is where a tap on the map lands: dropping a pin, clearing a selection, asking what is
+ * here. It sits outside everything the map draws, so it hears only the taps nothing inside took —
+ * a marker, a line — and it waits out the double-tap window first, since until that closes a tap
+ * might still turn into a zoom.
  */
 @Composable
-fun Modifier.mapGestures(camera: MapCameraState): Modifier {
+fun Modifier.mapGestures(camera: MapCameraState, onTap: ((LatLon) -> Unit)? = null): Modifier {
     val scope = rememberCoroutineScope()
     // Android's scroll-fling spline stops a map dead — a 2000 px/s flick coasted a third of a
     // screen. Maps want low friction: you throw the world and it drifts.
@@ -66,7 +71,7 @@ fun Modifier.mapGestures(camera: MapCameraState): Modifier {
                 }
             }
         )
-    }.pointerInput(camera) {
+    }.pointerInput(camera, onTap) {
         // Innermost, so it is offered the drag before panning is: what starts as a second tap
         // and then moves is a zoom, and consuming it is what tells the pan detector to let go.
         detectDoubleTap(
@@ -76,6 +81,11 @@ fun Modifier.mapGestures(camera: MapCameraState): Modifier {
                 camera.zoomTo(
                     camera.zoom + levels,
                     at.x, at.y, size.width.toFloat(), size.height.toFloat(), density
+                )
+            },
+            onTap = { at ->
+                onTap?.invoke(
+                    camera.pointAt(at.x, at.y, size.width.toFloat(), size.height.toFloat(), density)
                 )
             },
             onZoomIn = { at ->
@@ -164,18 +174,23 @@ internal class LiftOff {
  * The two things a second tap can turn into: [onZoomIn] when it is a plain double tap, and
  * [onZoom] for every step of a drag when the second tap is held instead of released. Both are
  * anchored on where the *first* tap landed, so the place being zoomed into stays put rather than
- * following the finger.
+ * following the finger. When no second tap arrives, the first was a plain [onTap].
  */
 private suspend fun PointerInputScope.detectDoubleTap(
     onZoom: (at: Offset, dy: Float) -> Unit,
+    onTap: (at: Offset) -> Unit,
     onZoomIn: (at: Offset) -> Unit
 ) = awaitEachGesture {
     val first = awaitFirstDown(requireUnconsumed = false)
-    // A tap that turns into a drag or a pinch is not the start of a double tap.
+    // A tap that turns into a drag or a pinch is not the start of a double tap — and one already
+    // taken by something on the map is not a tap on the map.
     waitForUpOrCancellation() ?: return@awaitEachGesture
     val second = withTimeoutOrNull(viewConfiguration.doubleTapTimeoutMillis) {
         awaitFirstDown(requireUnconsumed = false)
-    } ?: return@awaitEachGesture
+    } ?: run {
+        onTap(first.position)
+        return@awaitEachGesture
+    }
 
     var zooming = false
     var last = second.position

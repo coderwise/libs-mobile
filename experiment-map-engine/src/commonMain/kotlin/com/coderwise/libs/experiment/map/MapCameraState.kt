@@ -50,6 +50,13 @@ class MapCameraState(center: LatLon = LatLon(0.0, 0.0), zoom: Float = 3f) {
         y = (anchorY - (focusY - height / 2) / after).coerceIn(0.0, 1.0)
     }
 
+    /** The coordinate under a point on a map [width] x [height] pixels looking through this camera. */
+    internal fun pointAt(x: Float, y: Float, width: Float, height: Float, density: Float): LatLon {
+        val world = Mercator.worldPixels(zoom, density)
+        val lon = Mercator.lon((this.x + (x - width / 2) / world).mod(1.0))
+        return LatLon(Mercator.lat(this.y + (y - height / 2) / world), lon)
+    }
+
     internal fun zoomBy(factor: Float, focusX: Float, focusY: Float, width: Float, height: Float, density: Float) =
         zoomTo(zoom + (ln(factor.toDouble()) / ln(2.0)).toFloat(), focusX, focusY, width, height, density)
 }
