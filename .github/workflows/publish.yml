@@ -36,8 +36,10 @@ jobs:
             VERSION="${{ github.event.inputs.version }}"
           else
             TAG="${GITHUB_REF_NAME}"   # e.g. utils-v0.3.0
+            # Split on the LAST "-v": a module name can contain one of its own
+            # (map-view-v0.1.0 is :map-view at 0.1.0, not :map at "iew-v0.1.0").
             MODULE="${TAG%-v*}"        # -> utils
-            VERSION="${TAG#*-v}"       # -> 0.3.0
+            VERSION="${TAG##*-v}"      # -> 0.3.0
           fi
           if [ -z "$MODULE" ] || [ -z "$VERSION" ]; then
             echo "::error::Could not parse module/version (tag must be <module>-v<version>)"; exit 1

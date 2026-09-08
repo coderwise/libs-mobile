@@ -9,8 +9,9 @@ credentials.
 All modules target **Android · iOS (arm64, sim-arm64) · JS · Wasm/JS · Desktop** and
 publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Central.
 
-> The Wasm/JS variants are new: only `:map-core` and `:map-engine` publish them at the
-> versions below. For every other module they ship with its next release.
+> The Wasm/JS variants are new: only `:map-core`, `:map-engine` and the `:map-view*`
+> modules publish them at the versions below. For every other module they ship with its
+> next release.
 
 | Module | Coordinates | Latest | Summary |
 |---|---|---|---|
@@ -101,6 +102,16 @@ workflow parses it, passes `-PlibVersion`, and publishes **only that module**:
 ```bash
 git tag utils-v0.4.0    && git push origin utils-v0.4.0     # → com.coderwise.libs:utils:0.4.0
 git tag map-core-v0.1.6 && git push origin map-core-v0.1.6  # → com.coderwise.libs:map-core:0.1.6
+```
+
+**The four `:map-view*` modules are the exception: release them in lockstep**, at one
+version, `:map-view` first. `:map-view-tiles` records the version it was built against in
+its POM, so a mixed release would have it asking for a `:map-view` that does not exist:
+
+```bash
+for m in map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector; do
+  git tag $m-v0.1.0 && git push origin $m-v0.1.0
+done
 ```
 
 > **Note:** the publish workflow runs on a **macOS** runner (required for the iOS
