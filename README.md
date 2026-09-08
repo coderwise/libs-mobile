@@ -25,6 +25,10 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | [`:billing`](billing) | `com.coderwise.libs:billing` | `0.2.0` | One-time (non-consumable) purchases behind one API: Play Billing on Android, a Swift StoreKit 2 bridge on iOS, inert where there is no store. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.6` | Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
+| [`:experiment-map-engine`](experiment-map-engine) | `com.coderwise.libs:experiment-map-engine` | — | **Experiment.** The next map engine: a `MapView` of layered tile slots and the camera and gestures that move it. Not released; see its [README](experiment-map-engine/README.md). |
+| `:experiment-map-tiles` | `com.coderwise.libs:experiment-map-tiles` | — | **Experiment.** Loading for the above: a queue that fills a `MapState` nearest-the-centre first, and what a slot shows until its tile lands. |
+| `:experiment-map-tiles-raster` | `com.coderwise.libs:experiment-map-tiles-raster` | — | **Experiment.** Image tiles. |
+| `:experiment-map-tiles-vector` | `com.coderwise.libs:experiment-map-tiles-vector` | — | **Experiment.** MVT tiles: a hand-rolled decoder, a redefinable style, and labels as text composables. |
 
 The [`sample/`](sample) directory holds an unpublished demo app — a gallery with one
 screen per library, running the same list on all five platforms (Android, iOS, Desktop,

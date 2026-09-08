@@ -17,8 +17,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // The map engine spike is published locally while it is being tried out here.
-        mavenLocal()
     }
 }
 

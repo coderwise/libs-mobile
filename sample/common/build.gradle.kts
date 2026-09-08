@@ -32,11 +32,9 @@ kotlin {
             implementation(project(":logger"))
             implementation(project(":map-core"))
             implementation(project(":map-engine"))
-            // The map engine spike, consumed as published artifacts rather than as modules:
-            // this example is how it is tried out from a real KMP project.
-            implementation(libs.mapengine.spike)
-            implementation(libs.maptiles.spike)
-            implementation(libs.maptiles.spike.raster)
+            implementation(project(":experiment-map-engine"))
+            implementation(project(":experiment-map-tiles"))
+            implementation(project(":experiment-map-tiles-raster"))
             implementation(project(":permissions"))
             implementation(project(":utils"))
             implementation(libs.compose.runtime)
