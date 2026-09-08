@@ -42,7 +42,7 @@ private val CITIES = listOf(
 internal fun mapExamples(): List<Example> = listOf(
     Example(
         title = "Tiled map (experiment)",
-        module = "com.coderwise.experiment:mapengine",
+        module = ":experiment-map-engine",
         summary = "The next map engine, tried out here as published artifacts rather than as " +
             "modules of this build: a MapView of layered tile slots, a queue that fills them, " +
             "and a magnified ancestor standing in until a tile lands. On real OpenStreetMap " +
