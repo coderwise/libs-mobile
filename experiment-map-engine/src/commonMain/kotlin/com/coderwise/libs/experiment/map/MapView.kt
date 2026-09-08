@@ -12,7 +12,6 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.Constraints
 import kotlin.math.ceil
 import kotlin.math.floor
-import kotlin.math.log2
 import kotlin.math.roundToInt
 
 /** Which tiles cover the viewport, how big they are on screen and where they start. */
@@ -28,9 +27,9 @@ internal data class TileGrid(
 }
 
 /**
- * A tile is `tileSize` dp on screen, so a source with bigger tiles reads a level shallower; density
- * is already in the world size. Only the integer part of the zoom picks a level, the fraction
- * scales the tile, which is what keeps a pinch continuous.
+ * A tile is 256 dp on screen whatever the density, which is already in the world size. Only the
+ * integer part of the zoom picks a level, the fraction scales the tile, which is what keeps a
+ * pinch continuous.
  */
 internal fun tileGrid(
     camera: MapCameraState,
@@ -39,9 +38,7 @@ internal fun tileGrid(
     density: Float,
     state: MapState<*>
 ): TileGrid {
-    val detail = log2(state.tileSize / Mercator.WORLD_TILE.toFloat())
-    val z =
-        floor(camera.zoom - detail).toInt().coerceIn(state.zoomRange.first, state.zoomRange.last)
+    val z = floor(camera.zoom).toInt().coerceIn(state.zoomRange.first, state.zoomRange.last)
     val count = 1 shl z
     val world = Mercator.worldPixels(camera.zoom, density)
     val side = world / count

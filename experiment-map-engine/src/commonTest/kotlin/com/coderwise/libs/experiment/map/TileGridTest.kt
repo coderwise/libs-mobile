@@ -12,14 +12,13 @@ class TileGridTest {
         width: Float = 1080f,
         height: Float = 1920f,
         center: LatLon = LatLon(0.0, 0.0),
-        tileSize: Int = 256,
         density: Float = 1f
     ) = tileGrid(
         camera = MapCameraState(center, zoom),
         width = width,
         height = height,
         density = density,
-        state = MapState<Unit>(tileSize = tileSize, zoomRange = 0..19)
+        state = MapState<Unit>(zoomRange = 0..19)
     )
 
     @Test
@@ -32,12 +31,10 @@ class TileGridTest {
     }
 
     @Test
-    fun `a tile is tileSize dp wide whatever the screen`() {
+    fun `a tile is 256 dp wide whatever the screen`() {
         for (density in listOf(1f, 2f, 2.625f, 3f)) {
-            for (size in listOf(256, 512)) {
-                val grid = grid(zoom = 11f, density = density, tileSize = size)
-                assertEquals((size * density).toDouble(), grid.side, 1e-2, "density $density size $size")
-            }
+            val grid = grid(zoom = 11f, density = density)
+            assertEquals((256 * density).toDouble(), grid.side, 1e-2, "density $density")
         }
     }
 
@@ -49,9 +46,8 @@ class TileGridTest {
     }
 
     @Test
-    fun `bigger tiles come from a shallower level`() {
+    fun `the whole part of the zoom is the level read`() {
         assertEquals(11, grid(zoom = 11f).z)
-        assertEquals(10, grid(zoom = 11f, tileSize = 512).z)
     }
 
     @Test

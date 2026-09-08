@@ -44,7 +44,7 @@ deliberately hangs past the edge of the tile that owns it.
 ### The state is the interface
 
 ```kotlin
-class MapState<T>(tileSize: Int = 256, zoomRange: IntRange = 0..19) {
+class MapState<T>(zoomRange: IntRange = 0..19) {
     var window: TileWindow          // what the view wants; written by the view
     fun slot(key: TileKey): T?      // a tracked read: only this tile's slot recomposes
     fun put(key: TileKey, content: T?)
@@ -69,7 +69,7 @@ draw, the queue's capacity is the only cache there is, and a slot is a pure func
 it is given. Nothing in these libraries caches anything of its own.
 
 ```kotlin
-val state = remember { MapState<VectorTile>(tileSize = 512, zoomRange = 0..14) }
+val state = remember { MapState<VectorTile>(zoomRange = 0..14) }
 remember {
     TileQueue(scope, state, capacity = 96) { key ->
         download(key)?.let { withContext(Dispatchers.Default) { decodeVectorTile(key.z, it) } }
@@ -136,17 +136,13 @@ Tile maths, tile layout, the gesture detector and the fling curve are all `inter
 - Three numbers are the whole view: normalised Web Mercator x, y and a **fractional** zoom. Only
   the integer part picks a tile level; the fraction scales the tile, so pinch stays continuous
   while the network only sees whole levels.
-- **A tile is `tileSize` dp wide**, so it is `tileSize · density` physical pixels — the same real
-  size on every screen, and text stays as legible as the tile author intended. The world is
-  256·2^zoom dp across, and the level to read is
-
-      level = floor(zoom − log2(tileSize / 256))
-
-  Density is not in that: it is already in the world size.
-- `tileSize` is a display size, not an image resolution. An @2x source that ships 512 px images for
-  the ground of a 256 dp tile still says 256 — same layout, twice the pixels, sharp instead of soft
-  on a 2x screen. A source that genuinely tiles the world 512 dp at a time says 512, which is what
-  the vector source does.
+- **A tile is always 256 dp wide**, so it is `256 · density` physical pixels — the same real size
+  on every screen, and text stays as legible as the tile author intended. The world is 256·2^zoom
+  dp across and the level to read is `floor(zoom)`. Density is not in that: it is already in the
+  world size.
+- That is a display size, not an image resolution. An @2x source shipping 512 px images for the
+  ground of a 256 dp tile needs nothing said about it — same layout, twice the pixels, sharp
+  instead of soft on a 2x screen.
 - Nothing in the draw pass blocks on IO, because nothing in the draw pass loads anything. Tile
   rectangles are snapped to whole pixels on both edges, so neighbours never leave a seam.
 - **Persistent caching belongs to the fetcher.** The harness fetches with plain
@@ -186,8 +182,8 @@ once and 150 ms twice — that only large effects are worth believing here:
 
 - **512 dp tiles rather than 256.** A screen costs a quarter of the tiles, which cut decode from
   3.2 s of CPU over the benchmark to 0.9 s and quietened the collector. Frame time did not care.
-  Kept anyway: it is a quarter of the bytes over the wire for geometry a little coarser at a given
-  zoom. It does mean the level fetched is the camera's zoom minus one.
+  Not kept: paying for it in the API — every caller declaring a tile size, every reader working out
+  which level that fetches — bought nothing the frame time could see. A tile is 256 dp, always.
 - **Flat geometry.** Rings are `FloatArray` rather than `List<Offset>`, which boxed every point.
   MVT parsing dropped about 30%, path building 25%.
 - **Thinning the geometry.** Dropping a quarter of the points did nothing measurable, so it is not

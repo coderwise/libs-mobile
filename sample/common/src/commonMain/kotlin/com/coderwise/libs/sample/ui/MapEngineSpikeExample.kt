@@ -50,7 +50,7 @@ import kotlinx.coroutines.withContext
 internal fun MapEngineSpikeExample() {
     val camera = rememberMapCameraState(center = LatLon(52.5200, 13.4050), zoom = 11f)
     val scope = rememberCoroutineScope()
-    val tiles = remember { MapState<ImageBitmap>(tileSize = 256, zoomRange = 0..19) }
+    val tiles = remember { MapState<ImageBitmap>(zoomRange = 0..19) }
 
     val http = remember { HttpClient() }
     DisposableEffect(http) { onDispose { http.close() } }

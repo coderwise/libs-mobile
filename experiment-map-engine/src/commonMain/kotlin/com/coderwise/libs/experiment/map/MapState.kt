@@ -41,7 +41,6 @@ data class TileWindow(val z: Int, val x: IntRange, val y: IntRange) {
 @OptIn(ExperimentalAtomicApi::class)
 @Stable
 class MapState<T>(
-    val tileSize: Int = 256,
     val zoomRange: IntRange = 0..19
 ) {
     /** Written by the view as it lays out, read by whoever fills the slots. */
