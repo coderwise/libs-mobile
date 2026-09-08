@@ -23,12 +23,17 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | [`:filepicker`](filepicker) | `com.coderwise.libs:filepicker` | — | System document picker (`rememberTextFilePicker`) that reads the chosen file as text. Not yet released. |
 | [`:logger`](logger) | `com.coderwise.libs:logger` | `0.1.0` | Kermit-backed `AppLogger` facade, plus `enableDeviceVisibleLogging` for iOS debug runs that must be diagnosed off-device. |
 | [`:billing`](billing) | `com.coderwise.libs:billing` | `0.2.0` | One-time (non-consumable) purchases behind one API: Play Billing on Android, a Swift StoreKit 2 bridge on iOS, inert where there is no store. |
-| [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | Dependency-free map primitives: slippy-map tile math + `TileId`. |
-| [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.6` | Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
-| [`:experiment-map-engine`](experiment-map-engine) | `com.coderwise.libs:experiment-map-engine` | — | **Experiment.** The next map engine: a `MapView` of layered tile slots and the camera and gestures that move it. Not released; see its [README](experiment-map-engine/README.md). |
-| `:experiment-map-tiles` | `com.coderwise.libs:experiment-map-tiles` | — | **Experiment.** Loading for the above: a queue that fills a `MapState` nearest-the-centre first, and what a slot shows until its tile lands. |
-| `:experiment-map-tiles-raster` | `com.coderwise.libs:experiment-map-tiles-raster` | — | **Experiment.** Image tiles. |
-| `:experiment-map-tiles-vector` | `com.coderwise.libs:experiment-map-tiles-vector` | — | **Experiment.** MVT tiles: a hand-rolled decoder, a redefinable style, and labels as text composables. |
+| [`:map-view`](map-view) | `com.coderwise.libs:map-view` | — | The map: a `MapView` of layered tile slots, the camera and gestures that move it, and overlays placed by coordinate. Not yet released; see its [README](map-view/README.md). |
+| `:map-view-tiles` | `com.coderwise.libs:map-view-tiles` | — | Loading for the above: a queue that fills a `MapState` nearest-the-centre first, and what a slot shows until its tile lands. |
+| `:map-view-tiles-raster` | `com.coderwise.libs:map-view-tiles-raster` | — | Image tiles. |
+| `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | — | MVT tiles: a hand-rolled decoder, a redefinable style, and labels as text composables. |
+| [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | **Previous generation.** Dependency-free map primitives: slippy-map tile math + `TileId`. |
+| [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.6` | **Previous generation.** Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
+
+`:map-core` and `:map-engine` are the map these replace. They are kept as they are —
+maintained, no new features — so that an app can move to `:map-view` at its own pace, or
+carry both at once behind a flag: the coordinates and packages are different, so nothing
+stops them sharing a build.
 
 The [`sample/`](sample) directory holds an unpublished demo app — a gallery with one
 screen per library, running the same list on all five platforms (Android, iOS, Desktop,

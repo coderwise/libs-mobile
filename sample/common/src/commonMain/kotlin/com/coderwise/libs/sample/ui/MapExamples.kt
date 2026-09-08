@@ -38,16 +38,16 @@ private val CITIES = listOf(
     City("Tokyo", 35.6762, 139.6503)
 )
 
-/** The examples that run everywhere, Wasm included — the map modules, shipped and not. */
+/** The examples that run everywhere, Wasm included — the map modules, new and previous. */
 internal fun mapExamples(): List<Example> = listOf(
     Example(
-        title = "Tiled map (experiment)",
-        module = ":experiment-map-engine",
-        summary = "The next map engine, tried out here as published artifacts rather than as " +
-            "modules of this build: a MapView of layered tile slots, a queue that fills them, " +
-            "and a magnified ancestor standing in until a tile lands. On real OpenStreetMap " +
-            "tiles, because the engine fetches nothing itself — supplying the tiles is the " +
-            "part of the integration worth proving.",
+        title = "Map view",
+        module = ":map-view",
+        summary = "A MapView of layered tile slots, a queue that fills them, and a magnified " +
+            "ancestor standing in until a tile lands — with two routes, four search results " +
+            "and a pin dropped wherever the map is tapped over the top. On real OpenStreetMap " +
+            "tiles, because the engine fetches nothing itself: supplying the tiles is the " +
+            "part worth showing.",
         fillsScreen = true
     ) { MapEngineSpikeExample() },
     Example(
