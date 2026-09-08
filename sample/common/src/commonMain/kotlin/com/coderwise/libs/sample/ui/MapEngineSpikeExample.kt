@@ -17,8 +17,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.decodeToImageBitmap
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.coderwise.libs.experiment.map.LatLon
+import com.coderwise.libs.experiment.map.MapCameraState
 import com.coderwise.libs.experiment.map.MapState
 import com.coderwise.libs.experiment.map.MapView
 import com.coderwise.libs.experiment.map.Polyline
@@ -60,7 +62,23 @@ internal fun MapEngineSpikeExample() {
     // fetches what is nearest the middle of it first, and drops what leaves the screen unstarted.
     remember { TileQueue(scope, tiles, capacity = 96) { key -> osmTile(http, key) } }
 
-    Box(Modifier.fillMaxSize().mapGestures(camera)) {
+    MapEngineSpikeContent(
+        camera = camera,
+        tiles = tiles,
+        onZoomIn = { camera.moveTo(camera.center, (camera.zoom + 1f).coerceIn(ZOOM_LIMITS)) },
+        onZoomOut = { camera.moveTo(camera.center, (camera.zoom - 1f).coerceIn(ZOOM_LIMITS)) }
+    )
+}
+
+@Composable
+private fun MapEngineSpikeContent(
+    camera: MapCameraState,
+    tiles: MapState<ImageBitmap>,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier.fillMaxSize().mapGestures(camera)) {
         MapView(camera, Modifier.fillMaxSize()) {
             // One layer draws the tiles; the next goes over all of them, so a tile placed later
             // cannot paint over it. What a slot shows while its own tile is still coming — here
@@ -75,8 +93,8 @@ internal fun MapEngineSpikeExample() {
         }
         ZoomControls(
             modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp),
-            onZoomIn = { camera.moveTo(camera.center, (camera.zoom + 1f).coerceIn(ZOOM_LIMITS)) },
-            onZoomOut = { camera.moveTo(camera.center, (camera.zoom - 1f).coerceIn(ZOOM_LIMITS)) }
+            onZoomIn = onZoomIn,
+            onZoomOut = onZoomOut
         )
         // Not decoration: OpenStreetMap's tile policy requires the credit on screen.
         Plate("© OpenStreetMap contributors", Modifier.align(Alignment.BottomEnd).padding(8.dp))
@@ -136,3 +154,16 @@ private val SPREE = listOf(
 )
 
 private const val USER_AGENT = "coderwise-libs-sample/1.0 (map engine experiment)"
+
+@Preview
+@Composable
+private fun MapEngineSpikeExamplePreview() {
+    MaterialTheme {
+        MapEngineSpikeContent(
+            camera = rememberMapCameraState(center = LatLon(52.5200, 13.4050), zoom = 11f),
+            tiles = remember { MapState<ImageBitmap>(zoomRange = 0..19) },
+            onZoomIn = {},
+            onZoomOut = {}
+        )
+    }
+}
