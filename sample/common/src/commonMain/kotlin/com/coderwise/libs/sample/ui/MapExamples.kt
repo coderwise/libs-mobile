@@ -49,7 +49,7 @@ internal fun mapExamples(): List<Example> = listOf(
             "tiles, because the engine fetches nothing itself: supplying the tiles is the " +
             "part worth showing.",
         fillsScreen = true
-    ) { MapEngineSpikeExample() },
+    ) { MapViewExample() },
     Example(
         title = "Tiled map",
         module = ":map-engine",

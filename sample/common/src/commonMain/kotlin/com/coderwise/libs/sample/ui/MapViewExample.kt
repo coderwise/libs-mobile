@@ -62,7 +62,7 @@ import kotlin.math.roundToInt
  * only where it belongs.
  */
 @Composable
-internal fun MapEngineSpikeExample() {
+internal fun MapViewExample() {
     val camera = rememberMapCameraState(center = LatLon(52.5200, 13.4050), zoom = 11f)
     val scope = rememberCoroutineScope()
     val tiles = remember { MapState<ImageBitmap>(zoomRange = 0..19) }
@@ -73,7 +73,7 @@ internal fun MapEngineSpikeExample() {
     // fetches what is nearest the middle of it first, and drops what leaves the screen unstarted.
     remember { TileQueue(scope, tiles, capacity = 96) { key -> osmTile(http, key) } }
 
-    MapEngineSpikeContent(
+    MapViewExampleContent(
         camera = camera,
         tiles = tiles,
         onZoomIn = { camera.moveTo(camera.center, (camera.zoom + 1f).coerceIn(ZOOM_LIMITS)) },
@@ -82,7 +82,7 @@ internal fun MapEngineSpikeExample() {
 }
 
 @Composable
-private fun MapEngineSpikeContent(
+private fun MapViewExampleContent(
     camera: MapCameraState,
     tiles: MapState<ImageBitmap>,
     onZoomIn: () -> Unit,
@@ -261,9 +261,9 @@ private const val USER_AGENT = "coderwise-libs-sample/1.0 (map engine experiment
 
 @Preview
 @Composable
-private fun MapEngineSpikeExamplePreview() {
+private fun MapViewExamplePreview() {
     MaterialTheme {
-        MapEngineSpikeContent(
+        MapViewExampleContent(
             camera = rememberMapCameraState(center = LatLon(52.5200, 13.4050), zoom = 11f),
             tiles = remember { MapState<ImageBitmap>(zoomRange = 0..19) },
             onZoomIn = {},
