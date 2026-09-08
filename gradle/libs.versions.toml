@@ -55,9 +55,9 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
-mapengine-spike = { module = "com.coderwise.experiment:mapengine", version.ref = "mapengine-spike" }
-maptiles-spike = { module = "com.coderwise.experiment:maptiles", version.ref = "mapengine-spike" }
-maptiles-spike-raster = { module = "com.coderwise.experiment:maptiles-raster", version.ref = "mapengine-spike" }
+mapengine-spike = { module = "com.coderwise.libs:experiment-map-engine", version.ref = "mapengine-spike" }
+maptiles-spike = { module = "com.coderwise.libs:experiment-map-tiles", version.ref = "mapengine-spike" }
+maptiles-spike-raster = { module = "com.coderwise.libs:experiment-map-tiles-raster", version.ref = "mapengine-spike" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 play-billing = { module = "com.android.billingclient:billing", version.ref = "play-billing" }
 sqldelight-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
