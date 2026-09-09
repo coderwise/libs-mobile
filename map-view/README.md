@@ -192,7 +192,8 @@ apart; a switch in the corner swaps them under a live camera.
 :map-view
   LatLon, TileKey, TileWindow
   MapState (window, slot, put, filled, forget)
-  MapCameraState (center, zoom, bearing, moveTo, rotateTo), rememberMapCameraState, ZOOM_LIMITS
+  MapCameraState (center, zoom, bearing, isInteracting, moveTo, rotateTo), flyTo
+  rememberMapCameraState, ZOOM_LIMITS
   MapView(camera, modifier) { layer(state) { key -> … }; overlay { … } }
   MapScope.layer(state) { key -> … }, MapScope.overlay { … }
   MapOverlayScope (project, unproject, Modifier.at(point, anchor))

@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
@@ -38,6 +39,8 @@ import kotlin.math.hypot
  * then drag, to zoom with one finger, which is the gesture a phone in one hand can actually do.
  *
  * Put it on whatever holds the map and its layers, so they all move together.
+ *
+ * A mouse wheel zooms about the pointer, which is the only gesture a desktop or a browser has.
  *
  * Two fingers also turn the map, unless [rotatable] says not to. A turn has a slop of its own —
  * a pinch is not a twist until it is clearly one — because a map that tilts off north whenever
@@ -62,7 +65,10 @@ fun Modifier.mapGestures(
 
     return pointerInput(camera, rotatable) {
         detectMapGestures(
-            onStart = { fling?.cancel() }, // touching the map catches it
+            onStart = {
+                fling?.cancel() // touching the map catches it
+                camera.isInteracting = true
+            },
             onGesture = { centroid, pan, zoom, turn ->
                 camera.pan(pan.x, pan.y, density)
                 if (zoom != 1f) camera.zoomBy(zoom, centroid.x, centroid.y, size.width.toFloat(), size.height.toFloat(), density)
@@ -73,16 +79,46 @@ fun Modifier.mapGestures(
             onEnd = { velocity ->
                 // Thresholds in dp per second, so a flick means the same thing on any screen.
                 val throwing = flingVelocity(velocity.x, velocity.y, MIN_FLING_DP * density, MAX_FLING_DP * density)
-                    ?: return@detectMapGestures
+                if (throwing == null) {
+                    camera.isInteracting = false
+                    return@detectMapGestures
+                }
+                // The throw is still the user's: the map is theirs until it comes to rest.
                 fling = scope.launch {
-                    var last = Offset.Zero
-                    Animatable(Offset.Zero, Offset.VectorConverter).animateDecay(throwing, decay) {
-                        camera.pan(value.x - last.x, value.y - last.y, density)
-                        last = value
+                    try {
+                        var last = Offset.Zero
+                        Animatable(Offset.Zero, Offset.VectorConverter).animateDecay(throwing, decay) {
+                            camera.pan(value.x - last.x, value.y - last.y, density)
+                            last = value
+                        }
+                    } finally {
+                        camera.isInteracting = false
                     }
                 }
             }
         )
+    }.pointerInput(camera) {
+        // A wheel, where there is one. Zooming about the pointer rather than the middle is what
+        // makes a wheel usable for reaching somewhere: point at it and scroll.
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent()
+                if (event.type != PointerEventType.Scroll) continue
+                val change = event.changes.firstOrNull() ?: continue
+                val scroll = change.scrollDelta.y
+                if (scroll == 0f) continue
+                fling?.cancel()
+                camera.zoomTo(
+                    target = camera.zoom - scroll / SCROLL_PER_LEVEL,
+                    focusX = change.position.x,
+                    focusY = change.position.y,
+                    width = size.width.toFloat(),
+                    height = size.height.toFloat(),
+                    density = density
+                )
+                change.consume()
+            }
+        }
     }.pointerInput(camera, onTap) {
         // Innermost, so it is offered the drag before panning is: what starts as a second tap
         // and then moves is a zoom, and consuming it is what tells the pan detector to let go.
@@ -117,6 +153,13 @@ fun Modifier.mapGestures(
  * a pinch outwards does when the fingers part in that direction.
  */
 private const val ZOOM_PER_SCREEN = 4f
+
+/**
+ * How much scrolling makes a whole zoom level. Wheels report their own units — a notch on one
+ * machine is not a notch on another — so this is the figure the old engine was tuned with, kept so
+ * that a wheel feels as it did.
+ */
+private const val SCROLL_PER_LEVEL = 40f
 
 /** How far two fingers must turn between them before the map takes it as a turn. */
 private const val TURN_SLOP_DEGREES = 7f

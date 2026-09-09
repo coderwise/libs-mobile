@@ -3,8 +3,12 @@ package com.coderwise.libs.mapview
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -12,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.ln
+import kotlin.math.round
 import kotlin.math.sin
 
 /** How far the camera can be zoomed, for anyone offering a control over it. */
@@ -29,6 +34,16 @@ class MapCameraState(
 
     var zoom by mutableFloatStateOf(zoom.coerceIn(ZOOM_LIMITS))
         private set
+
+    /**
+     * Whether the user has hold of the map — a finger on it, or a fling still running.
+     *
+     * Anything that moves the camera on the app's behalf should wait for this: a map that jumps
+     * back to the current position under a finger that is dragging it away is a map fighting its
+     * user. Set by [mapGestures]; a camera with no gestures on it is never interacting.
+     */
+    var isInteracting by mutableStateOf(false)
+        internal set
 
     /**
      * What is at the top of the screen, in degrees clockwise from north: 0 is north-up, 90 puts
@@ -111,6 +126,34 @@ class MapCameraState(
 
     internal fun zoomBy(factor: Float, focusX: Float, focusY: Float, width: Float, height: Float, density: Float) =
         zoomTo(zoom + (ln(factor.toDouble()) / ln(2.0)).toFloat(), focusX, focusY, width, height, density)
+}
+
+/**
+ * Moves the camera there rather than putting it there: the whole way in one animation, so a jump
+ * across the world reads as a journey and a nudge reads as a nudge.
+ *
+ * Interpolated in world coordinates, which is what keeps the ground under the middle of the screen
+ * moving evenly while the zoom changes under it. Cancel the coroutine to stop it.
+ */
+suspend fun MapCameraState.flyTo(
+    target: LatLon,
+    zoom: Float = this.zoom,
+    animationSpec: AnimationSpec<Float> = spring()
+) {
+    val fromX = x
+    val fromY = y
+    val fromZoom = this.zoom
+    // The short way round the world, so a flight from Tokyo to Honolulu crosses the Pacific.
+    val eastward = (Mercator.x(target.lon) - fromX).let { it - round(it) }
+    val toY = Mercator.y(target.lat)
+    animate(0f, 1f, animationSpec = animationSpec) { fraction, _ ->
+        val cx = (fromX + eastward * fraction).mod(1.0)
+        val cy = fromY + (toY - fromY) * fraction
+        moveTo(
+            center = LatLon(Mercator.lat(cy), Mercator.lon(cx)),
+            zoom = fromZoom + (zoom - fromZoom) * fraction
+        )
+    }
 }
 
 /** A camera that survives configuration changes and process death. */
