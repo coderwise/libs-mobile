@@ -31,7 +31,19 @@ data class VectorStyle(
     /** Place-name sizes in sp, by class — how a style says a hamlet is smaller than a city. */
     val place: (kind: String) -> Float? = ::defaultPlace,
     /** Road-name size in sp; null leaves roads unnamed. */
-    val roadName: Float? = 10f
+    val roadName: Float? = 10f,
+    /**
+     * Buildings, and the outline that separates one from the one it abuts. Null for either leaves
+     * that half undrawn.
+     *
+     * The outline is worth having only where a building is big enough to have an edge: below
+     * [BUILDING_OUTLINE_MIN_ZOOM] a block of them is a block of specks, and tracing each one is by
+     * a wide margin the most expensive thing on the tile — measured at 16 ms of a London z14
+     * tile's 47 ms, more than every road on it put together, because a stroke costs what its
+     * geometry costs to trace and there is a great deal of building geometry.
+     */
+    val building: Color? = Color(0xFFDCD5CB),
+    val buildingOutline: Color? = Color(0xFFC3B9AC)
 ) {
     /**
      * [width] is in dp; [casing] is the outline drawn 1 dp wider underneath.
@@ -42,6 +54,9 @@ data class VectorStyle(
      */
     data class Road(val color: Color, val casing: Color, val width: Float)
 }
+
+/** Zoom from which buildings are outlined; see [VectorStyle.buildingOutline]. */
+const val BUILDING_OUTLINE_MIN_ZOOM = 15
 
 private fun defaultLandcover(kind: String): Color? = when (kind) {
     "wood", "forest" -> Color(0xFFC9E1BE)

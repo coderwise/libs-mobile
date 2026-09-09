@@ -27,7 +27,7 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | [`:map-view`](map-view) | `com.coderwise.libs:map-view` | — | The map: a `MapView` of layered tile slots, the camera and gestures that move it, and overlays placed by coordinate. Not yet released; see its [README](map-view/README.md). |
 | `:map-view-tiles` | `com.coderwise.libs:map-view-tiles` | — | Loading for the above: a queue that fills a `MapState` nearest-the-centre first, and what a slot shows until its tile lands. |
 | `:map-view-tiles-raster` | `com.coderwise.libs:map-view-tiles-raster` | — | Image tiles. |
-| `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | — | MVT tiles: a hand-rolled decoder, a redefinable style, and labels as text composables. |
+| `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | — | MVT tiles: a hand-rolled decoder, a redefinable style, and labels as text composables. Also what a tile knows besides its picture: `featuresAt` for "what did I just press on", and the water as a path for anything drawn over the sea. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | **Previous generation.** Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.6` | **Previous generation.** Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 

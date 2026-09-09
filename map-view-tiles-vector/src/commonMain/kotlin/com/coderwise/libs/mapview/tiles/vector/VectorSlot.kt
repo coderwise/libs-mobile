@@ -74,8 +74,10 @@ fun VectorSlot(tile: VectorTile, src: Rect, modifier: Modifier = Modifier) {
     }
 }
 
-private val DRAWN_LAYERS =
-    setOf("landcover", "landuse", "water", "waterway", "transportation", "place", "transportation_name")
+private val DRAWN_LAYERS = setOf(
+    "landcover", "landuse", "water", "waterway", "transportation", "place", "transportation_name",
+    "building"
+)
 
 /** Paths in tile coordinates: [widthDp] null fills, otherwise strokes that width on screen. */
 internal class Painted(val path: Path, val color: Color, val widthDp: Float? = null)
@@ -86,7 +88,20 @@ class VectorTile internal constructor(
     internal val painted: List<Painted>,
     internal val labels: List<Label>,
     internal val ink: Color,
-    internal val halo: Color
+    internal val halo: Color,
+    /**
+     * The tile's water as one path in `0..1` tile coordinates, or null where the tile is dry.
+     *
+     * Kept apart from [painted] because it answers a different question: not "what colour is this"
+     * but "where does the land stop". A caller drawing something of its own over the sea — a
+     * coverage overlay that should not cover it, say — needs the shape rather than the paint, and
+     * reading it off the tile is what makes it the real coastline instead of an approximation.
+     *
+     * Only `water`, and only its polygons: rivers also arrive as lines in `waterway`, and a line
+     * has no inside. Ring winding is left as the tile encodes it and the path keeps the default
+     * non-zero fill, so an island in a lake stays dry.
+     */
+    val water: Path?
 )
 
 private fun drawingOf(z: Int, layers: List<MvtLayer>, style: VectorStyle): VectorTile {
@@ -118,7 +133,45 @@ private fun drawingOf(z: Int, layers: List<MvtLayer>, style: VectorStyle): Vecto
     roads.forEach { (road, path) -> painted += Painted(path, road.casing, (road.width + 1f).narrowed(z)) }
     roads.forEach { (road, path) -> painted += Painted(path, road.color, road.width.narrowed(z)) }
 
-    return VectorTile(extent, painted, labelsOf(layers, style), style.ink, style.halo)
+    // Buildings last, over the streets they stand between. Filled always, outlined only where a
+    // building is big enough for its own edge to be what separates it from its neighbour.
+    layers.filter { it.name == "building" }.forEach { layer ->
+        val path = pathOf(layer.features)
+        style.building?.let { painted += Painted(path, it) }
+        if (z >= BUILDING_OUTLINE_MIN_ZOOM) {
+            // Thin: buildings arrive around z14 as specks, and an outline with any weight at that
+            // size is all you would see.
+            style.buildingOutline?.let { painted += Painted(path, it, BUILDING_OUTLINE_DP) }
+        }
+    }
+
+    return VectorTile(extent, painted, labelsOf(layers, style), style.ink, style.halo, waterOf(layers))
+}
+
+/** The water polygons of [layers], normalised to `0..1`, or null where there are none. */
+private fun waterOf(layers: List<MvtLayer>): Path? {
+    var any = false
+    val path = Path()
+    layers.filter { it.name == "water" }.forEach { layer ->
+        if (layer.extent <= 0) return@forEach
+        val inv = 1f / layer.extent
+        layer.features.forEach { feature ->
+            if (feature.type != POLYGON) return@forEach
+            feature.rings.forEach { ring ->
+                // Fewer than three vertices cannot enclose anything.
+                if (ring.size < 6) return@forEach
+                path.moveTo(ring[0] * inv, ring[1] * inv)
+                var i = 2
+                while (i < ring.size) {
+                    path.lineTo(ring[i] * inv, ring[i + 1] * inv)
+                    i += 2
+                }
+                path.close()
+                any = true
+            }
+        }
+    }
+    return path.takeIf { any }
 }
 
 /**
@@ -233,6 +286,9 @@ private fun pathOf(features: List<MvtFeature>) = Path().apply {
 }
 
 private const val POLYGON = 3
+
+/** How wide a building's outline is drawn, in dp. */
+private const val BUILDING_OUTLINE_DP = 0.5f
 
 /**
  * Lines thin out as the map zooms out: a 6 dp motorway is fine over a city and a smear over a
