@@ -123,7 +123,7 @@ class TileQueue<T>(
     }
 
     private fun worth(key: TileKey) =
-        state.slot(key) == null && key !in loading && key !in loadingSoon && !recentlyFailed(key)
+        state.peek(key) == null && key !in loading && key !in loadingSoon && !recentlyFailed(key)
 
     private suspend fun work() {
         while (true) {
