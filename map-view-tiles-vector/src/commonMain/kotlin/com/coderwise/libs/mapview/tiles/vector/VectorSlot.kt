@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import com.coderwise.libs.mapview.tiles.vector.mvt.GeometryType
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtFeature
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtLayer
@@ -60,10 +61,20 @@ fun decodeVectorTile(
  */
 @Composable
 fun VectorSlot(tile: VectorTile, src: Rect, modifier: Modifier = Modifier) {
-    Canvas(modifier.fillMaxSize()) {
+    // Each tile is drawn into a layer of its own, and that is what makes a pan cheap: the draw
+    // list below is captured into the layer once, so a pan reuses the layer's raster instead of the
+    // map plane's layer re-tracing every stroke from every tile on every frame. The list is
+    // re-recorded only when what it draws changes — a zoom, where the scale and the stroke widths
+    // really do have to be recomputed to keep a road the same width on screen at every zoom.
+    Canvas(
+        modifier
+            .fillMaxSize()
+            .graphicsLayer { }
+    ) {
         val side = size.width / src.width
         // A tile carries a little geometry past its own edge, so a road crossing a seam joins up
-        // with its other half. Trim it here: it is the geometry that has to stay inside the slot.
+        // with its other half. Trim it here, in the slot's own space: it is the geometry that has
+        // to stay inside the slot.
         clipRect {
             translate(-src.left * side, -src.top * side) {
                 scale(side / tile.extent, pivot = Offset.Zero) {
