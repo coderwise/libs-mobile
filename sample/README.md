@@ -14,6 +14,7 @@ the library it demonstrates.
 
 | Example | Module | What it shows |
 |---|---|---|
+| Vector map | `:map-view-tiles-vector` | The same `MapView` and queue with a slot that draws decoded geometry instead of a bitmap: tap the map and the tile says what is under your finger, and the water toggle shows the coastline a tile carries. On live OpenFreeMap vector tiles. |
 | Map view | `:map-view` | Layered tile slots in one `MapView`, a `TileQueue` filling the state, and a magnified ancestor standing in until a tile lands — plus routes, search-result pins and a tap that drops one. On live OpenStreetMap tiles, fetched by the example with Ktor: the engine fetches nothing itself. |
 | Tiled map (previous) | `:map-engine` | Pan/zoom/rotate, markers anchored to coordinates, and `animateLocationTo` driven from the app's own UI. Tiles are a locally generated checkerboard — no network, tile server or API key. |
 | Tile math | `:map-core` | `MapMath` conversions both ways, and the packed `TileId` that keys every cache. No Compose involved. |
@@ -27,10 +28,19 @@ Every module builds for every target, so the list above is the list on all five 
 what differs between them is what each platform does with the call, which is what the note
 at the bottom of each example screen is for.
 
-The map engine example is the only thing here that talks to the network: it fetches
-OpenStreetMap tiles with Ktor (one engine per platform, in `:sample:common`) and renders the
-`© OpenStreetMap contributors` credit the tile policy requires. It is a demo panned by hand,
-which is well inside that policy; anything heavier wants your own tile server.
+The two map-view examples are the only things here that talk to the network. The raster one
+fetches OpenStreetMap tiles with Ktor (one engine per platform, in `:sample:common`) and
+renders the `© OpenStreetMap contributors` credit the tile policy requires; the vector one
+fetches OpenFreeMap's planet build, which serves OpenStreetMap data and asks for both to be
+credited. Both are demos panned by hand, which is well inside those policies; anything
+heavier wants your own tile server.
+
+OpenFreeMap's planet path carries the date of the build it came from and the build is
+replaced periodically — a stale one answers `200` with an empty body, which reads as a map
+that never loads. Read a current path from <https://tiles.openfreemap.org/planet> when that
+happens. The planet build stops at zoom 14, which is why the vector example's `MapState`
+does too: past it the grid lays the deepest level out bigger rather than asking for tiles
+that do not exist.
 
 The Android app declares `INTERNET` for it, and `CAMERA` and `POST_NOTIFICATIONS`, and the iOS app declares
 `NSCameraUsageDescription`, for the permissions example — the libraries declare no

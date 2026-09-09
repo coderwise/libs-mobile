@@ -51,6 +51,15 @@ internal fun mapExamples(): List<Example> = listOf(
         fillsScreen = true
     ) { MapViewExample() },
     Example(
+        title = "Vector map",
+        module = ":map-view-tiles-vector",
+        summary = "The same MapView and the same queue, with a slot that draws decoded geometry " +
+            "instead of a bitmap — so the map knows what it is drawing. Tap it and the tile says " +
+            "what is under your finger, and the water toggle shows the coastline a tile carries " +
+            "for anything drawn over the sea.",
+        fillsScreen = true
+    ) { VectorMapExample() },
+    Example(
         title = "Tiled map",
         module = ":map-engine",
         summary = "A pannable, zoomable, rotatable map with markers anchored to coordinates. " +

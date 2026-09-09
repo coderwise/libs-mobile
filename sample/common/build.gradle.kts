@@ -35,6 +35,7 @@ kotlin {
             implementation(project(":map-view"))
             implementation(project(":map-view-tiles"))
             implementation(project(":map-view-tiles-raster"))
+            implementation(project(":map-view-tiles-vector"))
             implementation(project(":permissions"))
             implementation(project(":utils"))
             implementation(libs.compose.runtime)

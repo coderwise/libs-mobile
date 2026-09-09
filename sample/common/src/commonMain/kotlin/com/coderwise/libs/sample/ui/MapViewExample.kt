@@ -175,7 +175,7 @@ private fun TileName(key: TileKey) {
 }
 
 @Composable
-private fun Plate(text: String, modifier: Modifier = Modifier) {
+internal fun Plate(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
