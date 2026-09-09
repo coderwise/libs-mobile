@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.runtime.Composable
@@ -38,25 +39,36 @@ import kotlin.math.hypot
  *
  * Put it on whatever holds the map and its layers, so they all move together.
  *
+ * Two fingers also turn the map, unless [rotatable] says not to. A turn has a slop of its own —
+ * a pinch is not a twist until it is clearly one — because a map that tilts off north whenever
+ * two fingers are slightly uneven is worse than one that cannot turn at all.
+ *
  * [onTap] is where a tap on the map lands: dropping a pin, clearing a selection, asking what is
  * here. It sits outside everything the map draws, so it hears only the taps nothing inside took —
  * a marker, a line — and it waits out the double-tap window first, since until that closes a tap
  * might still turn into a zoom.
  */
 @Composable
-fun Modifier.mapGestures(camera: MapCameraState, onTap: ((LatLon) -> Unit)? = null): Modifier {
+fun Modifier.mapGestures(
+    camera: MapCameraState,
+    rotatable: Boolean = true,
+    onTap: ((LatLon) -> Unit)? = null
+): Modifier {
     val scope = rememberCoroutineScope()
     // Android's scroll-fling spline stops a map dead — a 2000 px/s flick coasted a third of a
     // screen. Maps want low friction: you throw the world and it drifts.
     val decay = remember { exponentialDecay<Offset>(frictionMultiplier = 0.45f, absVelocityThreshold = 60f) }
     var fling by remember { mutableStateOf<Job?>(null) }
 
-    return pointerInput(camera) {
+    return pointerInput(camera, rotatable) {
         detectMapGestures(
             onStart = { fling?.cancel() }, // touching the map catches it
-            onGesture = { centroid, pan, zoom ->
+            onGesture = { centroid, pan, zoom, turn ->
                 camera.pan(pan.x, pan.y, density)
                 if (zoom != 1f) camera.zoomBy(zoom, centroid.x, centroid.y, size.width.toFloat(), size.height.toFloat(), density)
+                if (turn != 0f && rotatable) {
+                    camera.rotateBy(-turn, centroid.x, centroid.y, size.width.toFloat(), size.height.toFloat(), density)
+                }
             },
             onEnd = { velocity ->
                 // Thresholds in dp per second, so a flick means the same thing on any screen.
@@ -105,6 +117,9 @@ fun Modifier.mapGestures(camera: MapCameraState, onTap: ((LatLon) -> Unit)? = nu
  * a pinch outwards does when the fingers part in that direction.
  */
 private const val ZOOM_PER_SCREEN = 4f
+
+/** How far two fingers must turn between them before the map takes it as a turn. */
+private const val TURN_SLOP_DEGREES = 7f
 
 internal const val MIN_FLING_DP = 20f
 internal const val MAX_FLING_DP = 3_000f
@@ -217,11 +232,13 @@ private suspend fun PointerInputScope.detectDoubleTap(
  */
 private suspend fun PointerInputScope.detectMapGestures(
     onStart: () -> Unit,
-    onGesture: (centroid: Offset, pan: Offset, zoom: Float) -> Unit,
+    onGesture: (centroid: Offset, pan: Offset, zoom: Float, turn: Float) -> Unit,
     onEnd: (Offset) -> Unit
 ) = awaitEachGesture {
     var zoom = 1f
     var pan = Offset.Zero
+    var turn = 0f
+    var turning = false
     var pastSlop = false
     var tracked: PointerId? = null
     var cancelled = false
@@ -236,14 +253,26 @@ private suspend fun PointerInputScope.detectMapGestures(
         if (!cancelled) {
             val zoomChange = event.calculateZoom()
             val panChange = event.calculatePan()
+            val turnChange = event.calculateRotation()
             if (!pastSlop) {
                 zoom *= zoomChange
                 pan += panChange
                 val motion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
                 pastSlop = motion > viewConfiguration.touchSlop || pan.getDistance() > viewConfiguration.touchSlop
             }
-            if (pastSlop) {
-                onGesture(event.calculateCentroid(useCurrent = false), panChange, zoomChange)
+            // A twist has to be meant: until the fingers have turned this far between them the
+            // map stays where it is, and after that every degree counts.
+            if (!turning) {
+                turn += turnChange
+                turning = abs(turn) > TURN_SLOP_DEGREES
+            }
+            if (pastSlop || turning) {
+                onGesture(
+                    event.calculateCentroid(useCurrent = false),
+                    panChange,
+                    zoomChange,
+                    if (turning) turnChange else 0f
+                )
                 event.changes.fastForEach { if (it.positionChanged()) it.consume() }
             }
             val down = event.changes.filter { it.pressed }

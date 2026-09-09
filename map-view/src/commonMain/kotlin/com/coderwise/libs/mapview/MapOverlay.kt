@@ -191,7 +191,11 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
         val world = Mercator.worldPixels(camera.zoom, density)
         val dx = (Mercator.x(point.lon) - camera.x).nearest
         val dy = Mercator.y(point.lat) - camera.y
-        return Offset((dx * world + width / 2).toFloat(), (dy * world + height / 2).toFloat())
+        // An overlay is laid out on the upright viewport, so the bearing is applied here rather
+        // than by turning the layer: what follows the map does so through this, and what should
+        // stay upright — a pin, a label — simply does.
+        val on = camera.toScreen(dx * world, dy * world)
+        return Offset(on.x + width / 2, on.y + height / 2)
     }
 
     override fun unproject(offset: Offset): LatLon =
@@ -204,13 +208,15 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
         if (world.size < 4) return
         val scale = Mercator.worldPixels(camera.zoom, density)
         var x = (world[0] - camera.x).nearest
-        path.moveTo(screenX(x, scale), screenY(world[1], scale))
+        val start = screen(x, world[1], scale)
+        path.moveTo(start.x, start.y)
         for (i in 2 until world.size step 2) {
             // Along the line each step is taken the short way round, so a track that crosses the
             // antimeridian carries on rather than shooting back across the whole world.
             val step = world[i] - world[i - 2]
             x += step - round(step)
-            path.lineTo(screenX(x, scale), screenY(world[i + 1], scale))
+            val to = screen(x, world[i + 1], scale)
+            path.lineTo(to.x, to.y)
         }
     }
 
@@ -238,23 +244,24 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
         if (world.size < 2) return Float.MAX_VALUE
         val scale = Mercator.worldPixels(camera.zoom, density)
         var x = (world[0] - camera.x).nearest
-        var from = Offset(screenX(x, scale), screenY(world[1], scale))
+        var from = screen(x, world[1], scale)
         if (world.size < 4) return (at - from).getDistance()
         var nearest = Float.MAX_VALUE
         for (i in 2 until world.size step 2) {
             val step = world[i] - world[i - 2]
             x += step - round(step)
-            val to = Offset(screenX(x, scale), screenY(world[i + 1], scale))
+            val to = screen(x, world[i + 1], scale)
             nearest = minOf(nearest, distanceToSegment(at, from, to))
             from = to
         }
         return nearest
     }
 
-    private fun screenX(dx: Double, scale: Double) = (dx * scale + width / 2).toFloat()
-
-    private fun screenY(worldY: Double, scale: Double) =
-        ((worldY - camera.y) * scale + height / 2).toFloat()
+    /** A point of a line, from its offset east of the camera and its absolute world y. */
+    private fun screen(dx: Double, worldY: Double, scale: Double): Offset {
+        val on = camera.toScreen(dx * scale, (worldY - camera.y) * scale)
+        return Offset(on.x + width / 2, on.y + height / 2)
+    }
 
     /** The world repeats east and west; a point is drawn on the copy nearest the camera. */
     private val Double.nearest get() = this - floor(this + 0.5)

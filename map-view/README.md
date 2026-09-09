@@ -82,6 +82,19 @@ of projecting a point that is a logarithm and a tangent depends only on the poin
 once per track rather than once per frame, and only the affine is left in the draw pass. The line
 is stroked in dp and never simplified — clipping and tessellating it is the graphics layer's job.
 
+### Which way is up
+
+`camera.bearing` is what is at the top of the screen, in degrees clockwise from north: 0 is
+north-up, 90 puts east up. `rotateTo` sets it — a compass button, a heading-up mode — and two
+fingers twist it, with a slop of 7 degrees so that a pinch is not a twist until it is clearly one.
+`mapGestures(camera, rotatable = false)` takes the gesture away without taking the bearing away.
+
+Tiles turn; overlays do not. A tile layer is laid out on an unturned plane — big enough that the
+turned viewport is full of it — and that whole plane is rotated in one layer, so neighbours keep
+their seams. Overlays stay in the viewport's own axes and the bearing goes into `project` instead,
+which is what keeps a pin upright while the line beside it follows the map. Nothing needs to
+counter-rotate its markers.
+
 ### Being tapped is three different questions
 
 ```kotlin
@@ -179,12 +192,12 @@ apart; a switch in the corner swaps them under a live camera.
 :map-view
   LatLon, TileKey, TileWindow
   MapState (window, slot, put, filled, forget)
-  MapCameraState (center, zoom, moveTo), rememberMapCameraState, ZOOM_LIMITS
+  MapCameraState (center, zoom, bearing, moveTo, rotateTo), rememberMapCameraState, ZOOM_LIMITS
   MapView(camera, modifier) { layer(state) { key -> … }; overlay { … } }
   MapScope.layer(state) { key -> … }, MapScope.overlay { … }
   MapOverlayScope (project, unproject, Modifier.at(point, anchor))
   MapOverlayScope.Polyline(points, color, modifier, width, touchWidth, onClick)
-  Modifier.mapGestures(camera, onTap)
+  Modifier.mapGestures(camera, rotatable, onTap)
 
 :map-view-tiles
   TileQueue(scope, state, workers, capacity) { key -> … }
@@ -276,8 +289,15 @@ once and 150 ms twice — that only large effects are worth believing here:
   emulator translates GL to Metal and may be flattering the raster path.
 
 
-- **Rotation and tilt** — not implemented; the camera has no bearing. Adding one turns the
-  axis-aligned tile walk into a rotated-rect query.
+- **Tilt** — not implemented. Bearing is (see above); a pitched camera is a different projection
+  and a different tile walk, and nothing here needs one.
+- **A turned map costs tiles.** The plane laid out is the bounding box of the turned viewport, so
+  at 45 degrees it is about twice the area and twice the tiles. That is inherent — those tiles are
+  on screen — but it means a map left at 45 degrees is a heavier map.
+- **Labels turn with their tiles.** A tile layer is one turned plane, so anything drawn inside it
+  turns: `VectorLabels` place names read sideways at 90 degrees and upside down past 135. Keeping
+  them upright means handing the layer the bearing to take back out, which the vector module has
+  no way to know today.
 - **Fling tile churn** — a hard flick still asks for every screenful of ground it races over.
   Priority handles the standing case (what is on screen goes first, and nothing is prefetched
   while the map moves), but a request already in flight is never cancelled, so the tiles of a
@@ -403,7 +423,7 @@ disk cache.
   MapState.kt        TileKey, TileWindow, the slots and the window the view wants
   MapCameraState.kt  the camera and its saver
   MapView.kt         the component: which tiles, and where they go
-  MapGestures.kt     Modifier.mapGestures: pan, pinch, double-tap, one-finger zoom, fling
+  MapGestures.kt     Modifier.mapGestures: pan, pinch, twist, double-tap, one-finger zoom, fling
 
 :map-view-tiles             commonMain only
   TileQueue.kt       the want-list, the level either side, its workers and its eviction

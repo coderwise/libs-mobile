@@ -9,12 +9,18 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
+import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /** Which tiles cover the viewport, how big they are on screen and where they start. */
 internal data class TileGrid(
@@ -29,9 +35,27 @@ internal data class TileGrid(
 }
 
 /**
+ * How much unturned map has to be laid out for a turned viewport to be full of it: the bounding
+ * box, in map axes, of a [width] x [height] rectangle rotated by [bearing]. At 45 degrees that is
+ * about twice the area, and twice the tiles — the price of turning a map.
+ */
+internal fun planeSize(width: Int, height: Int, bearing: Float): IntSize {
+    if (bearing == 0f) return IntSize(width, height)
+    val radians = bearing * PI / 180.0
+    val c = abs(cos(radians))
+    val s = abs(sin(radians))
+    return IntSize(
+        (width * c + height * s).toInt() + 1,
+        (width * s + height * c).toInt() + 1
+    )
+}
+
+/**
  * A tile is 256 dp on screen whatever the density, which is already in the world size. Only the
  * integer part of the zoom picks a level, the fraction scales the tile, which is what keeps a
  * pinch continuous.
+ *
+ * [width] and [height] are the map plane's, not the viewport's: with a bearing they differ.
  */
 internal fun tileGrid(
     camera: MapCameraState,
@@ -126,36 +150,26 @@ fun MapView(
         val height = constraints.maxHeight
         overlay.measured(width.toFloat(), height.toFloat(), density)
 
+        val plane = planeSize(width, height, camera.bearing)
+
         val placeables = slots.flatMapIndexed { slot, declared ->
             when (declared) {
                 is Slot.Tiled -> {
-                    // Every layer is laid out on the level its own source has.
-                    val grid = tileGrid(camera, width.toFloat(), height.toFloat(), density, declared.state)
+                    // Every layer is laid out on the level its own source has, over a plane big
+                    // enough to fill the viewport once it is turned.
+                    val grid = tileGrid(
+                        camera, plane.width.toFloat(), plane.height.toFloat(), density, declared.state
+                    )
                     declared.state.window = grid.window
-                    val (z, columns, rows, side, originX, originY) = grid
-                    val count = 1 shl z
-                    val positions = rows.flatMap { row -> columns.map { column -> column to row } }
-
-                    subcompose(slot) {
-                        positions.forEach { (column, row) ->
-                            key(column, row) {
-                                Box(Modifier.fillMaxSize()) {
-                                    declared.content(TileKey(z, ((column % count) + count) % count, row))
-                                }
-                            }
+                    subcompose(slot) { TilePlane(grid, declared.content) }
+                        .map { measurable ->
+                            Placed(
+                                placeable = measurable.measure(Constraints.fixed(plane.width, plane.height)),
+                                left = (width - plane.width) / 2,
+                                top = (height - plane.height) / 2,
+                                turned = true
+                            )
                         }
-                    }.mapIndexed { index, measurable ->
-                        val (column, row) = positions[index]
-                        val left = floor(column * side - originX).toInt()
-                        val top = floor(row * side - originY).toInt()
-                        // Snap to whole pixels the same way on both edges, so neighbours leave no
-                        // seam.
-                        val tile = Constraints.fixed(
-                            width = ((column + 1) * side - originX).roundToInt() - left,
-                            height = ((row + 1) * side - originY).roundToInt() - top
-                        )
-                        Triple(measurable.measure(tile), left, top)
-                    }
                 }
 
                 is Slot.Over -> subcompose(slot) { declared.content(overlay) }
@@ -163,7 +177,7 @@ fun MapView(
                         val anchor = measurable.parentData as? Anchor
                             // Anything not hung off a coordinate *is* the map: it is measured to
                             // the whole of it, and draws or listens through the projection.
-                            ?: return@map Triple(
+                            ?: return@map Placed(
                                 measurable.measure(Constraints.fixed(width, height)), 0, 0
                             )
                         val placeable = measurable.measure(Constraints())
@@ -173,16 +187,68 @@ fun MapView(
                             IntSize(placeable.width, placeable.height),
                             layoutDirection
                         )
-                        Triple(placeable, (at.x - within.x).roundToInt(), (at.y - within.y).roundToInt())
+                        Placed(placeable, (at.x - within.x).roundToInt(), (at.y - within.y).roundToInt())
                     }
             }
         }
 
         layout(width, height) {
-            placeables.forEach { (placeable, left, top) -> placeable.place(left, top) }
+            placeables.forEach { (placeable, left, top, turned) ->
+                // The plane is centred on the viewport, so turning it about its own middle turns
+                // it about the point the camera is looking at. Overlays are not turned: a pin
+                // stays upright, and what should follow the map asks the projection where to go.
+                if (turned) {
+                    placeable.placeWithLayer(left, top) { rotationZ = -camera.bearing }
+                } else {
+                    placeable.place(left, top)
+                }
+            }
         }
     }
 }
+
+/** One tile layer: the tiles of one source, laid out on the unturned map plane. */
+@Composable
+private fun TilePlane(grid: TileGrid, content: @Composable (TileKey) -> Unit) {
+    val (z, columns, rows, side, originX, originY) = grid
+    val count = 1 shl z
+    val positions = rows.flatMap { row -> columns.map { column -> column to row } }
+
+    Layout(
+        content = {
+            positions.forEach { (column, row) ->
+                key(column, row) {
+                    Box(Modifier.fillMaxSize()) {
+                        content(TileKey(z, ((column % count) + count) % count, row))
+                    }
+                }
+            }
+        }
+    ) { measurables, constraints ->
+        val placed = measurables.mapIndexed { index, measurable ->
+            val (column, row) = positions[index]
+            val left = floor(column * side - originX).toInt()
+            val top = floor(row * side - originY).toInt()
+            // Snap to whole pixels the same way on both edges, so neighbours leave no seam.
+            val tile = Constraints.fixed(
+                width = ((column + 1) * side - originX).roundToInt() - left,
+                height = ((row + 1) * side - originY).roundToInt() - top
+            )
+            Triple(measurable.measure(tile), left, top)
+        }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placed.forEach { (placeable, left, top) -> placeable.place(left, top) }
+        }
+    }
+}
+
+/** Where one child ends up, and whether it turns with the map. */
+private data class Placed(
+    val placeable: Placeable,
+    val left: Int,
+    val top: Int,
+    val turned: Boolean = false
+)
 
 /** One thing the content block declared: a composable per tile, or one over all of them. */
 private sealed interface Slot {
