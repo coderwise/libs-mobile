@@ -164,6 +164,7 @@ private fun roadLabels(layers: List<MvtLayer>, size: Float): List<Label> = layer
                     text = name,
                     size = size,
                     turn = run.turn,
+                    upright = false,
                     room = run.length / layer.extent
                 )
             }

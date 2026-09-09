@@ -211,7 +211,7 @@ apart; a switch in the corner swaps them under a live camera.
   VectorStyle(land, water, ink, halo, landcover, waterway, road, place, roadName)
   VectorStyle.Road(color, casing, width)
   VectorSlot(tile: VectorTile, src, modifier)
-  VectorLabels(tile: VectorTile, src, modifier)
+  VectorLabels(tile: VectorTile, src, modifier, bearing)
   decodeMvt(data, keep) -> List<MvtLayer>
 ```
 
@@ -294,10 +294,9 @@ once and 150 ms twice — that only large effects are worth believing here:
 - **A turned map costs tiles.** The plane laid out is the bounding box of the turned viewport, so
   at 45 degrees it is about twice the area and twice the tiles. That is inherent — those tiles are
   on screen — but it means a map left at 45 degrees is a heavier map.
-- **Labels turn with their tiles.** A tile layer is one turned plane, so anything drawn inside it
-  turns: `VectorLabels` place names read sideways at 90 degrees and upside down past 135. Keeping
-  them upright means handing the layer the bearing to take back out, which the vector module has
-  no way to know today.
+- **Anything else drawn inside a tile layer turns with it.** `VectorLabels` takes a `bearing` and
+  undoes it, but a layer of your own that draws text has to do the same — the layer is one turned
+  plane, and it is not told which way it faces.
 - **Fling tile churn** — a hard flick still asks for every screenful of ground it races over.
   Priority handles the standing case (what is on screen goes first, and nothing is prefetched
   while the map moves), but a request already in flight is never cancelled, so the tiles of a
@@ -380,12 +379,19 @@ It is a layer of its own, over the layer that draws the ground:
 ```kotlin
 MapView(camera, Modifier.fillMaxSize()) {
     layer(state) { key -> state.shown(key)?.let { VectorSlot(it.content, it.src) } }
-    layer(state) { key -> state.shown(key)?.let { VectorLabels(it.content, it.src) } }
+    layer(state) { key ->
+        state.shown(key)?.let { VectorLabels(it.content, it.src, bearing = camera.bearing) }
+    }
 }
 ```
 
 Above every tile, because a name sits where its town is, which is as often as not across a seam: a
 label laid out inside its own slot is cut off at the edge, or covered by the next tile's ground.
+
+A tile layer turns as one plane, so a label inside it would turn with the ground. Hand it the
+`bearing` and a place name takes that back out and stays level, however the map is turned. A road
+name does not: it belongs to its road and turns with it, and only swaps end for end — never
+mirrored — when that is what keeps it reading left to right.
 Each name is placed by the one tile whose box holds its point, so nothing is placed twice, and it
 is free to hang past that box. Text is in sp, so a name is the size it is however far its tile is
 magnified.

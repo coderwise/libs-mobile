@@ -34,9 +34,19 @@ import kotlin.math.sin
  * is free to hang past that box's edges — which is the whole reason it is not part of the slot.
  * Two names of the same tile never overlap, the bigger place winning; two names of *different*
  * tiles still can, which is the honest limit of laying them out a tile at a time.
+ *
+ * Pass the camera's [bearing] when the map can be turned. A tile layer turns as one plane, so
+ * without it the names turn with the ground and are upside down past a certain angle. A place name
+ * takes the bearing back out and stays level; a road name keeps following its road, and only turns
+ * end for end when that is what makes it read left to right.
  */
 @Composable
-fun VectorLabels(tile: VectorTile, src: Rect, modifier: Modifier = Modifier) {
+fun VectorLabels(
+    tile: VectorTile,
+    src: Rect,
+    modifier: Modifier = Modifier,
+    bearing: Float = 0f
+) {
     // Only the names this tile owns: its neighbours place their own.
     val mine = tile.labels.filter {
         it.x >= src.left && it.x < src.right && it.y >= src.top && it.y < src.bottom
@@ -45,7 +55,11 @@ fun VectorLabels(tile: VectorTile, src: Rect, modifier: Modifier = Modifier) {
 
     Layout(
         modifier = modifier,
-        content = { mine.forEach { label -> key(label.text) { Name(label, tile.ink, tile.halo) } } }
+        content = {
+            mine.forEach { label ->
+                key(label.text) { Name(label, label.angle(bearing), tile.ink, tile.halo) }
+            }
+        }
     ) { measurables, constraints ->
         val side = constraints.maxWidth / src.width // the whole tile, in pixels
         val names = measurables.map { it.measure(Constraints()) } // as wide as the words need
@@ -60,7 +74,7 @@ fun VectorLabels(tile: VectorTile, src: Rect, modifier: Modifier = Modifier) {
                 val left = (label.x - src.left) * side - name.width / 2f
                 val top = (label.y - src.top) * side - name.height / 2f
                 // What it covers once turned: the text turns about its middle, the box does not.
-                val box = turned(label.turn, name.width.toFloat(), name.height.toFloat())
+                val box = turned(label.angle(bearing), name.width.toFloat(), name.height.toFloat())
                     .translate(left + name.width / 2f, top + name.height / 2f)
                 // Biggest place first, so the name that gives way is the lesser one.
                 if (taken.any { it.overlaps(box) }) return@forEachIndexed
@@ -79,23 +93,36 @@ private fun turned(degrees: Float, width: Float, height: Float): Rect {
     return Rect(-across / 2f, -down / 2f, across / 2f, down / 2f)
 }
 
+/**
+ * How far to turn a label *inside* a tile layer that is itself turned by -[bearing].
+ *
+ * A place stays level on screen, so it turns by the bearing to undo it. A road follows its road,
+ * which turns with the ground, so it keeps the angle it was given — end for end when the map has
+ * been turned far enough that the words would otherwise be read upside down.
+ */
+internal fun Label.angle(bearing: Float): Float {
+    if (upright) return bearing
+    val read = (turn - bearing + 180f).mod(360f) - 180f // how it lies on screen, in (-180, 180]
+    return if (read > 90f || read <= -90f) turn + 180f else turn
+}
+
 /** The name over a white halo, which is what keeps it readable over a road or a wood. */
 @Composable
-private fun Name(label: Label, ink: Color, halo: Color) {
+private fun Name(label: Label, angle: Float, ink: Color, halo: Color) {
     val outline = with(LocalDensity.current) { 2.dp.toPx() }
     val style = TextStyle(fontSize = label.size.sp, fontWeight = FontWeight.Medium)
-    // A road name is turned to lie along its road; graphicsLayer turns it about its own middle,
-    // which is the point it was placed on.
-    Box(Modifier.graphicsLayer { rotationZ = label.turn }) {
+    // graphicsLayer turns the text about its own middle, which is the point it was placed on.
+    Box(Modifier.graphicsLayer { rotationZ = angle }) {
         BasicText(label.text, style = style.copy(color = halo, drawStyle = Stroke(outline)), softWrap = false)
         BasicText(label.text, style = style.copy(color = ink), softWrap = false)
     }
 }
 
 /**
- * Where a label goes, as a fraction of its tile, and what it says. [turn] is the angle it is read
- * at, degrees clockwise; [room] is how much straight road it has to sit on, as a fraction of the
- * tile, which a place has as much of as it likes.
+ * Where a label goes, as a fraction of its tile, and what it says. [turn] is the angle it lies at
+ * on the ground, degrees clockwise; [room] is how much straight road it has to sit on, as a
+ * fraction of the tile, which a place has as much of as it likes. [upright] is the difference
+ * between the two kinds: a place name is level however the map is turned, a road name is not.
  */
 internal class Label(
     val x: Float,
@@ -103,5 +130,6 @@ internal class Label(
     val text: String,
     val size: Float,
     val turn: Float = 0f,
-    val room: Float = Float.POSITIVE_INFINITY
+    val room: Float = Float.POSITIVE_INFINITY,
+    val upright: Boolean = true
 )
