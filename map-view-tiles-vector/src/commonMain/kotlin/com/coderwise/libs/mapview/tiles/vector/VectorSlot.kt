@@ -14,8 +14,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import com.coderwise.libs.mapview.tiles.vector.mvt.GeometryType
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtFeature
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtLayer
+import com.coderwise.libs.mapview.tiles.vector.mvt.TileGeometry
 import com.coderwise.libs.mapview.tiles.vector.mvt.decodeMvt
 import kotlin.math.PI
 import kotlin.math.abs
@@ -35,7 +37,18 @@ fun decodeVectorTile(
     zoom: Int,
     bytes: ByteArray,
     style: VectorStyle = VectorStyle()
-): VectorTile? = runCatching { drawingOf(zoom, decodeMvt(bytes, DRAWN_LAYERS), style) }.getOrNull()
+): VectorTile? = runCatching {
+    drawingOf(
+        zoom,
+        decodeMvt(
+            bytes,
+            keep = DRAWN_LAYERS,
+            classLayers = CLASS_LAYERS,
+            nameLayers = LABELLED_LAYERS
+        ),
+        style
+    )
+}.getOrNull()
 
 /**
  * One slot's worth of vector tile: draws the [src] fraction of an already-decoded [tile]. Land
@@ -79,6 +92,17 @@ private val DRAWN_LAYERS = setOf(
     "building"
 )
 
+/** The layers whose paint depends on what kind of thing a feature is. */
+private val STYLED_LAYERS = setOf("landcover", "landuse", "waterway", "transportation", "place")
+
+/** The layers whose features carry a name worth drawing. */
+private val LABELLED_LAYERS = setOf("place", "transportation_name")
+
+/** The tag that says what kind of thing a feature is. */
+private const val CLASS_TAG = "class"
+
+private val CLASS_LAYERS = STYLED_LAYERS.associateWith { CLASS_TAG }
+
 /** Paths in tile coordinates: [widthDp] null fills, otherwise strokes that width on screen. */
 internal class Painted(val path: Path, val color: Color, val widthDp: Float? = null)
 
@@ -111,7 +135,7 @@ private fun drawingOf(z: Int, layers: List<MvtLayer>, style: VectorStyle): Vecto
     // Ground first, then water over it, then roads over that.
     painted += Painted(Path().apply { addRect(Rect(0f, 0f, extent, extent)) }, style.land)
     layers.filter { it.name == "landcover" || it.name == "landuse" }.forEach { layer ->
-        layer.features.groupBy { style.landcover(it.kind) }.forEach { (color, features) ->
+        layer.features.groupBy { style.landcover(it.featureClass.orEmpty()) }.forEach { (color, features) ->
             if (color != null) painted += Painted(pathOf(features), color)
         }
     }
@@ -119,7 +143,7 @@ private fun drawingOf(z: Int, layers: List<MvtLayer>, style: VectorStyle): Vecto
         painted += Painted(pathOf(layer.features), style.water)
     }
     layers.filter { it.name == "waterway" }.forEach { layer ->
-        layer.features.groupBy { style.waterway(it.kind) }.forEach { (width, features) ->
+        layer.features.groupBy { style.waterway(it.featureClass.orEmpty()) }.forEach { (width, features) ->
             if (width != null) painted += Painted(pathOf(features), style.water, width.narrowed(z))
         }
     }
@@ -127,7 +151,7 @@ private fun drawingOf(z: Int, layers: List<MvtLayer>, style: VectorStyle): Vecto
     // Roads twice over: every casing first, then every surface, so a junction reads as a junction
     // instead of one road's outline cutting across another's surface.
     val roads = layers.filter { it.name == "transportation" }
-        .flatMap { layer -> layer.features.groupBy { style.road(it.kind) }.toList() }
+        .flatMap { layer -> layer.features.groupBy { style.road(it.featureClass.orEmpty()) }.toList() }
         .mapNotNull { (road, features) -> road?.let { it to pathOf(features) } }
         .sortedBy { it.first.width }
     roads.forEach { (road, path) -> painted += Painted(path, road.casing, (road.width + 1f).narrowed(z)) }
@@ -156,15 +180,17 @@ private fun waterOf(layers: List<MvtLayer>): Path? {
         if (layer.extent <= 0) return@forEach
         val inv = 1f / layer.extent
         layer.features.forEach { feature ->
-            if (feature.type != POLYGON) return@forEach
-            feature.rings.forEach { ring ->
+            if (feature.type != GeometryType.POLYGON) return@forEach
+            val geometry = feature.geometry
+            for (part in 0 until geometry.partCount) {
+                val start = geometry.partStarts[part]
+                val end = geometry.partEnd(part)
                 // Fewer than three vertices cannot enclose anything.
-                if (ring.size < 6) return@forEach
-                path.moveTo(ring[0] * inv, ring[1] * inv)
-                var i = 2
-                while (i < ring.size) {
-                    path.lineTo(ring[i] * inv, ring[i + 1] * inv)
-                    i += 2
+                if (end - start < 3) continue
+                for (v in start until end) {
+                    val x = geometry.coords[2 * v] * inv
+                    val y = geometry.coords[2 * v + 1] * inv
+                    if (v == start) path.moveTo(x, y) else path.lineTo(x, y)
                 }
                 path.close()
                 any = true
@@ -186,11 +212,16 @@ private fun placeLabels(layers: List<MvtLayer>, style: VectorStyle): List<Label>
     .filter { it.name == "place" }
     .flatMap { layer ->
         layer.features.mapNotNull { feature ->
-            val point = feature.rings.firstOrNull() ?: return@mapNotNull null
-            val size = style.place(feature.kind) ?: return@mapNotNull null
-            if (feature.name.isEmpty()) return@mapNotNull null
+            if (feature.geometry.vertexCount == 0) return@mapNotNull null
+            val size = style.place(feature.featureClass.orEmpty()) ?: return@mapNotNull null
+            val text = feature.name?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
             // As a fraction of the tile, so drawing them needs nothing but the tile's own box.
-            Label(point[0] / layer.extent, point[1] / layer.extent, feature.name, size)
+            Label(
+                feature.geometry.coords[0].toFloat() / layer.extent,
+                feature.geometry.coords[1].toFloat() / layer.extent,
+                text,
+                size
+            )
         }
     }
 
@@ -206,10 +237,10 @@ private fun roadLabels(layers: List<MvtLayer>, size: Float): List<Label> = layer
     .filter { it.name == "transportation_name" }
     .flatMap { layer ->
         layer.features
-            .filter { it.name.isNotEmpty() }
-            .groupBy { it.name }
+            .mapNotNull { feature -> feature.name?.takeIf { it.isNotEmpty() }?.let { it to feature } }
+            .groupBy({ it.first }, { it.second })
             .mapNotNull { (name, pieces) ->
-                val run = pieces.flatMap { it.rings }.mapNotNull(::straightRun)
+                val run = pieces.flatMap { it.geometry.parts() }.mapNotNull(::straightRun)
                     .maxByOrNull { it.length } ?: return@mapNotNull null
                 Label(
                     x = run.midX / layer.extent,
@@ -273,19 +304,30 @@ private fun longer(a: Run?, b: Run?) = if (a == null || (b != null && b.length >
 
 private fun pathOf(features: List<MvtFeature>) = Path().apply {
     features.forEach { feature ->
-        feature.rings.forEach { ring ->
-            moveTo(ring[0], ring[1])
-            var i = 2
-            while (i < ring.size) {
-                lineTo(ring[i], ring[i + 1])
-                i += 2
+        val geometry = feature.geometry
+        for (part in 0 until geometry.partCount) {
+            val start = geometry.partStarts[part]
+            val end = geometry.partEnd(part)
+            if (end <= start) continue
+            moveTo(geometry.coords[2 * start].toFloat(), geometry.coords[2 * start + 1].toFloat())
+            for (v in start + 1 until end) {
+                lineTo(geometry.coords[2 * v].toFloat(), geometry.coords[2 * v + 1].toFloat())
             }
-            if (feature.type == POLYGON) close()
+            if (feature.type == GeometryType.POLYGON) close()
         }
     }
 }
 
-private const val POLYGON = 3
+/**
+ * This geometry's parts as flat `x, y` runs — what the label maths works on, which reads a line's
+ * shape rather than drawing it. Allocates, so it is for the once-per-tile label pass and not for
+ * anything that runs per frame.
+ */
+private fun TileGeometry.parts(): List<FloatArray> = (0 until partCount).map { part ->
+    val start = partStarts[part]
+    val end = partEnd(part)
+    FloatArray((end - start) * 2) { coords[2 * start + it].toFloat() }
+}
 
 /** How wide a building's outline is drawn, in dp. */
 private const val BUILDING_OUTLINE_DP = 0.5f

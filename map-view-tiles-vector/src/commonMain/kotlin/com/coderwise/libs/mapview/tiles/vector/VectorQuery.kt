@@ -1,6 +1,8 @@
 package com.coderwise.libs.mapview.tiles.vector
 
+import com.coderwise.libs.mapview.tiles.vector.mvt.GeometryType
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtFeature
+import com.coderwise.libs.mapview.tiles.vector.mvt.TileGeometry
 import com.coderwise.libs.mapview.tiles.vector.mvt.decodeMvt
 import kotlin.math.sqrt
 
@@ -47,7 +49,16 @@ data class MapFeature(
  * a frame, so call it off the main thread.
  */
 fun featuresAt(bytes: ByteArray, x: Float, y: Float, radius: Float): List<MapFeature> {
-    val layers = runCatching { decodeMvt(bytes, QUERIED_LAYERS) }.getOrNull() ?: return emptyList()
+    // Both cheap tags: what a thing is, and what it is called. Nothing here wants a whole
+    // attribute map, which is the point of asking for them separately.
+    val layers = runCatching {
+        decodeMvt(
+            bytes,
+            keep = QUERIED_LAYERS,
+            classLayers = CLASS_LAYERS,
+            nameLayers = QUERIED_LAYERS
+        )
+    }.getOrNull() ?: return emptyList()
 
     val best = HashMap<MapFeatureKind, MapFeature>()
     layers.forEach { layer ->
@@ -63,8 +74,8 @@ fun featuresAt(bytes: ByteArray, x: Float, y: Float, radius: Float): List<MapFea
             val distance = feature.distanceTo(px, py, reach) ?: return@forEach
             val found = MapFeature(
                 kind = kind,
-                name = feature.name.takeIf { it.isNotEmpty() },
-                featureClass = feature.kind.takeIf { it.isNotEmpty() },
+                name = feature.name?.takeIf { it.isNotEmpty() },
+                featureClass = feature.featureClass?.takeIf { it.isNotEmpty() },
                 distance = distance / layer.extent
             )
             val standing = best[kind]
@@ -87,49 +98,59 @@ private fun MapFeature.beats(other: MapFeature): Boolean {
  * edge happens to be.
  */
 private fun MvtFeature.distanceTo(px: Float, py: Float, reach: Float): Float? = when (type) {
-    POLYGON -> if (rings.any { it.contains(px, py) }) 0f else null
-    LINE -> rings.minOfOrNull { it.distanceToLine(px, py) }?.takeIf { it <= reach }
-    else -> rings.minOfOrNull { it.distanceToPoints(px, py) }?.takeIf { it <= reach }
+    GeometryType.POLYGON -> if (geometry.encloses(px, py)) 0f else null
+    GeometryType.LINE -> geometry.nearest(px, py, asLine = true).takeIf { it <= reach }
+    else -> geometry.nearest(px, py, asLine = false).takeIf { it <= reach }
 }
 
 /**
- * Whether ([px], [py]) is inside this ring, by crossing count: a ray cast to the right crosses an
- * exterior boundary an odd number of times from inside it. Holes come as rings of their own and are
- * counted the same way, so a point in the courtyard of a building is outside the building.
+ * Whether ([px], [py]) is inside this geometry, by crossing count over every part: a ray cast to
+ * the right crosses an exterior boundary an odd number of times from inside it. A hole comes as a
+ * part of its own and is counted the same way, so a point in the courtyard of a building is
+ * outside the building.
  */
-private fun FloatArray.contains(px: Float, py: Float): Boolean {
+private fun TileGeometry.encloses(px: Float, py: Float): Boolean {
     var inside = false
-    val points = size / 2
-    var j = points - 1
-    for (i in 0 until points) {
-        val xi = this[2 * i]
-        val yi = this[2 * i + 1]
-        val xj = this[2 * j]
-        val yj = this[2 * j + 1]
-        if ((yi > py) != (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside
-        j = i
+    for (part in 0 until partCount) {
+        val start = partStarts[part]
+        val end = partEnd(part)
+        var j = end - 1
+        for (i in start until end) {
+            val xi = coords[2 * i].toFloat()
+            val yi = coords[2 * i + 1].toFloat()
+            val xj = coords[2 * j].toFloat()
+            val yj = coords[2 * j + 1].toFloat()
+            if ((yi > py) != (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside
+            j = i
+        }
     }
     return inside
 }
 
-/** The nearest point of this polyline to ([px], [py]). */
-private fun FloatArray.distanceToLine(px: Float, py: Float): Float {
+/**
+ * How far ([px], [py]) is from the nearest point of this geometry — of its segments when
+ * [asLine], of its vertices otherwise. Infinite when there is nothing to measure against.
+ */
+private fun TileGeometry.nearest(px: Float, py: Float, asLine: Boolean): Float {
     var best = Float.MAX_VALUE
-    var i = 0
-    while (i + 3 < size) {
-        best = minOf(best, segmentDistance(px, py, this[i], this[i + 1], this[i + 2], this[i + 3]))
-        i += 2
-    }
-    // A one-point "line" has no segment to measure against, so fall back to the point itself.
-    return if (best == Float.MAX_VALUE) distanceToPoints(px, py) else best
-}
-
-private fun FloatArray.distanceToPoints(px: Float, py: Float): Float {
-    var best = Float.MAX_VALUE
-    var i = 0
-    while (i + 1 < size) {
-        best = minOf(best, hypot(px - this[i], py - this[i + 1]))
-        i += 2
+    for (part in 0 until partCount) {
+        val start = partStarts[part]
+        val end = partEnd(part)
+        for (i in start until end) {
+            val x = coords[2 * i].toFloat()
+            val y = coords[2 * i + 1].toFloat()
+            best = minOf(best, hypot(px - x, py - y))
+            // A one-vertex part has no segment, and its vertex above already stands for it.
+            if (asLine && i + 1 < end) {
+                best = minOf(
+                    best,
+                    segmentDistance(
+                        px, py, x, y,
+                        coords[2 * (i + 1)].toFloat(), coords[2 * (i + 1) + 1].toFloat()
+                    )
+                )
+            }
+        }
     }
     return best
 }
@@ -162,5 +183,7 @@ private val KINDS = mapOf(
 
 private val QUERIED_LAYERS = KINDS.keys
 
-private const val POLYGON = 3
-private const val LINE = 2
+/** The tag that says what kind of thing a feature is, for every layer queried here. */
+private const val CLASS_TAG = "class"
+
+private val CLASS_LAYERS = QUERIED_LAYERS.associateWith { CLASS_TAG }
