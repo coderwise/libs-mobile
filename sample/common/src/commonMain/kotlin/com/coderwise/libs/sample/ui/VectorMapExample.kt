@@ -135,6 +135,7 @@ private fun VectorMapContent(
 
         ZoomControls(
             modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp),
+            zoom = camera.zoom,
             onZoomIn = { camera.moveTo(camera.center, (camera.zoom + 1f).coerceIn(ZOOM_LIMITS)) },
             onZoomOut = { camera.moveTo(camera.center, (camera.zoom - 1f).coerceIn(ZOOM_LIMITS)) }
         )

@@ -138,6 +138,7 @@ private fun MapViewExampleContent(
         }
         ZoomControls(
             modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp),
+            zoom = camera.zoom,
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut
         )
