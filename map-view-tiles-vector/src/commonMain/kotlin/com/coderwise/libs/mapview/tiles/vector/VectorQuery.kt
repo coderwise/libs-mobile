@@ -2,6 +2,7 @@ package com.coderwise.libs.mapview.tiles.vector
 
 import com.coderwise.libs.mapview.tiles.vector.mvt.GeometryType
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtFeature
+import com.coderwise.libs.mapview.tiles.vector.mvt.MvtLayer
 import com.coderwise.libs.mapview.tiles.vector.mvt.TileGeometry
 import com.coderwise.libs.mapview.tiles.vector.mvt.decodeMvt
 import kotlin.math.sqrt
@@ -59,7 +60,16 @@ fun featuresAt(bytes: ByteArray, x: Float, y: Float, radius: Float): List<MapFea
             nameLayers = QUERIED_LAYERS
         )
     }.getOrNull() ?: return emptyList()
+    return featuresIn(layers, x, y, radius)
+}
 
+/** As [featuresAt], for a tile that has already been decoded. */
+internal fun featuresIn(
+    layers: List<MvtLayer>,
+    x: Float,
+    y: Float,
+    radius: Float
+): List<MapFeature> {
     val best = HashMap<MapFeatureKind, MapFeature>()
     layers.forEach { layer ->
         if (layer.extent <= 0) return@forEach
@@ -82,7 +92,11 @@ fun featuresAt(bytes: ByteArray, x: Float, y: Float, radius: Float): List<MapFea
             if (standing == null || found.beats(standing)) best[kind] = found
         }
     }
-    return best.values.sortedBy { it.kind.ordinal }
+    // A feature with neither a name nor a class says nothing a caller could show — an untagged
+    // building outline is a shape, not an answer.
+    return best.values
+        .filter { it.name != null || it.featureClass != null }
+        .sortedBy { it.kind.ordinal }
 }
 
 /** A named answer beats an unnamed one — a lake's name is the answer, "water" is not — then near beats far. */
@@ -167,18 +181,31 @@ private fun segmentDistance(px: Float, py: Float, ax: Float, ay: Float, bx: Floa
 
 private fun hypot(dx: Float, dy: Float) = sqrt(dx * dx + dy * dy)
 
-/** Which layer answers as which kind. A layer not named here is not an answer to "what is here". */
+/**
+ * Which layer answers as which kind. A layer not named here is not an answer to "what is here".
+ *
+ * Both halves of the split schema are here on purpose: `transportation_name` carries a road's name
+ * and `transportation` carries every road, named or not, so a press on an unnamed track still gets
+ * "track" rather than nothing. Same for `water` against `water_name`. The best-of-kind pass then
+ * collapses each pair back into one answer.
+ *
+ * `place` is deliberately absent. A settlement arrives as a single point with no extent, so "which
+ * town is this" would be a guess from an anchor that may sit a valley away — and the map already
+ * draws that name where the source put it.
+ */
 private val KINDS = mapOf(
     "poi" to MapFeatureKind.POI,
     "mountain_peak" to MapFeatureKind.PEAK,
     "building" to MapFeatureKind.BUILDING,
     "water" to MapFeatureKind.WATER,
+    "water_name" to MapFeatureKind.WATER,
     "waterway" to MapFeatureKind.WATER,
     "transportation" to MapFeatureKind.ROAD,
     "transportation_name" to MapFeatureKind.ROAD,
     "landcover" to MapFeatureKind.LAND,
     "landuse" to MapFeatureKind.LAND,
-    "park" to MapFeatureKind.LAND
+    "park" to MapFeatureKind.LAND,
+    "aeroway" to MapFeatureKind.LAND
 )
 
 private val QUERIED_LAYERS = KINDS.keys

@@ -91,12 +91,14 @@ private fun parseLayer(
     // The same trick for what a label says. A name is wanted for exactly the layers that carry
     // labels, and reading it out of a whole attribute map is the cost `featureClass` exists to
     // avoid -- so it gets a fast path of its own rather than forcing attribute resolution.
-    val nameKey = if (nameLayers?.contains(name) == true) keys.indexOf(NAME_TAG) else -1
+    val nameKeys =
+        if (nameLayers?.contains(name) == true) IntArray(NAME_TAGS.size) { keys.indexOf(NAME_TAGS[it]) }
+        else NO_NAME_KEYS
     val features = ArrayList<MvtFeature>(featureStarts.size)
     for (k in 0 until featureStarts.size) {
         reader.pos = featureStarts[k]
         features.add(
-            parseFeature(reader, featureEnds[k], keys, values, resolveAttrs, classKey, nameKey)
+            parseFeature(reader, featureEnds[k], keys, values, resolveAttrs, classKey, nameKeys)
         )
     }
     return MvtLayer(name, extent, features)
@@ -109,7 +111,7 @@ private fun parseFeature(
     values: List<Any?>,
     resolveAttrs: Boolean,
     classKey: Int,
-    nameKey: Int,
+    nameKeys: IntArray,
 ): MvtFeature {
     var type = GeometryType.UNKNOWN
     var tags: IntBag? = null
@@ -118,7 +120,7 @@ private fun parseFeature(
     while (reader.pos < end) {
         val tag = reader.readTag()
         when (tag.field) {
-            2 -> if (resolveAttrs || classKey >= 0 || nameKey >= 0) {                    // tags (packed)
+            2 -> if (resolveAttrs || classKey >= 0 || nameKeys.isNotEmpty()) {           // tags (packed)
                 val bag = tags ?: IntBag(8).also { tags = it }
                 reader.readPackedOrSingle(bag, tag.wire)
             } else {
@@ -140,7 +142,7 @@ private fun parseFeature(
         geometry = if (geom != null) decodeGeometry(type, geom.data, geom.size) else TileGeometry.EMPTY,
         attributes = if (resolveAttrs && tags != null) resolveAttributes(tags, keys, values) else emptyMap(),
         featureClass = if (classKey >= 0 && tags != null) classOf(tags, classKey, values) else null,
-        name = if (nameKey >= 0 && tags != null) classOf(tags, nameKey, values) else null,
+        name = if (tags != null) nameOf(tags, nameKeys, values) else null,
     )
 }
 
@@ -180,6 +182,32 @@ private fun classOf(tags: IntBag, classKey: Int, values: List<Any?>): String? {
         i += 2
     }
     return null
+}
+
+/**
+ * What a feature is called, from the first of [NAME_TAGS] the tile actually carries.
+ *
+ * Sources disagree on which name keys they ship: most carry a plain `name`, some emit only the
+ * latinised `name:latin`. One pass over the tags picks the best-ranked key present rather than one
+ * pass per candidate, since the preferred key is usually the first thing found anyway.
+ */
+private fun nameOf(tags: IntBag, nameKeys: IntArray, values: List<Any?>): String? {
+    if (nameKeys.isEmpty()) return null
+    var bestRank = nameKeys.size
+    var best: String? = null
+    var i = 0
+    while (i + 1 < tags.size) {
+        for (rank in 0 until bestRank) {
+            if (nameKeys[rank] >= 0 && tags[i] == nameKeys[rank]) {
+                best = tagValueOf(values.getOrNull(tags[i + 1]))
+                bestRank = rank
+                break
+            }
+        }
+        if (bestRank == 0) return best
+        i += 2
+    }
+    return best
 }
 
 /**
@@ -308,4 +336,7 @@ private const val WIRE_LEN = 2
 private const val WIRE_32BIT = 5
 
 /** The tag a label reads its text from. */
-private const val NAME_TAG = "name"
+/** The name keys worth trying, best first. */
+private val NAME_TAGS = arrayOf("name", "name:latin", "name:en")
+
+private val NO_NAME_KEYS = IntArray(0)
