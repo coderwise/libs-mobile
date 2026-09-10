@@ -38,7 +38,7 @@ import com.coderwise.libs.mapview.TileKey
 import com.coderwise.libs.mapview.ZOOM_LIMITS
 import com.coderwise.libs.mapview.mapGestures
 import com.coderwise.libs.mapview.rememberMapCameraState
-import com.coderwise.libs.mapview.tiles.TileQueue
+import com.coderwise.libs.mapview.tiles.rememberTileState
 import com.coderwise.libs.mapview.tiles.shown
 import com.coderwise.libs.mapview.tiles.vector.MapFeature
 import com.coderwise.libs.mapview.tiles.vector.VectorLabels
@@ -77,16 +77,19 @@ import kotlin.math.floor
 internal fun VectorMapExample() {
     val camera = rememberMapCameraState(center = LatLon(51.5074, -0.1278), zoom = 14f)
     val scope = rememberCoroutineScope()
-    // Only to 14: OpenFreeMap's planet tiles stop there, and past it the grid lays the deepest
-    // level out bigger rather than asking for tiles that do not exist.
-    val tiles = remember { MapState<VectorTile>(zoomRange = 0..14) }
     // One style for the whole map, held still: it is baked into a decoded tile's paths, so a style
     // rebuilt per composition would re-decode every tile on screen every frame.
     val style = remember { VectorStyle() }
 
     val http = remember { HttpClient() }
     DisposableEffect(http) { onDispose { http.close() } }
-    remember { TileQueue(scope, tiles, capacity = 64) { key -> vectorTile(http, key, style) } }
+    // Slots and the queue that fills them in one call — the raster example wires the same two up
+    // by hand, which is worth reading once. Only to 14: OpenFreeMap's planet tiles stop there, and
+    // past it the grid lays the deepest level out bigger rather than asking for tiles that do not
+    // exist.
+    val tiles = rememberTileState(zoomRange = 0..14, capacity = 64) { key ->
+        vectorTile(http, key, style)
+    }
 
     VectorMapContent(camera, tiles, scope) { at ->
         // What the tile says is under the finger. The bytes are fetched again rather than kept:
