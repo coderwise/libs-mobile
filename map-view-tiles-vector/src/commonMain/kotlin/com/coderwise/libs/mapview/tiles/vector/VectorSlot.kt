@@ -1,12 +1,14 @@
 package com.coderwise.libs.mapview.tiles.vector
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtLayer
 import com.coderwise.libs.mapview.tiles.vector.mvt.decodeMvt
@@ -60,19 +62,58 @@ fun decodeVectorTile(
  * view is asking for rather than the width its own level wanted.
  */
 @Composable
-fun VectorSlot(tile: VectorTile, src: Rect, zoom: Int = tile.zoom, modifier: Modifier = Modifier) {
-    // Each tile is drawn into a layer of its own, and that is what makes a pan cheap: the draw
-    // list below is captured into the layer once, so a pan reuses the layer's raster instead of the
-    // map plane's layer re-tracing every stroke from every tile on every frame. The list is
-    // re-recorded only when what it draws changes — a zoom, where the scale and the stroke widths
-    // really do have to be recomputed to keep a road the same width on screen at every zoom.
-    Canvas(
+fun VectorSlot(
+    tile: VectorTile,
+    src: Rect,
+    zoom: Int = tile.zoom,
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f,
+    cache: () -> Boolean = { false }
+) = VectorSlot(tile.render, tile.background, src, zoom, modifier, alpha, cache)
+
+/**
+ * The same, for a caller holding its own decoded tile: everything here needs is the paths and the
+ * colour behind them.
+ *
+ * Each tile draws into a graphics layer of its own, and that is what makes a pan cheap: the draw
+ * list is captured once, so moving the grid moves a layer instead of re-tracing every stroke of
+ * every tile on every frame.
+ *
+ * [cache] goes one step further and asks for a *compositing* layer — the geometry is rasterised
+ * into a texture once and the texture reused until the drawing changes, so a pan blends textures
+ * rather than replaying a display list. It costs a texture per visible tile in graphics memory, and
+ * it is **not** an unqualified win: measured on a dense city centre it cuts janky frames on a slow
+ * drag (37.7% against 96.6% without) and makes them far worse on a fling (35.3% against 4.4%, and
+ * a third of the frames delivered), because a fling changes what is on screen faster than a texture
+ * can be reused. Hence a lambda rather than a flag: it is read in the draw phase, so a caller can
+ * answer it per frame from what the gesture is doing without recomposing the grid.
+ *
+ * [alpha] is applied as a layer property, not per draw op, so fading a tile in does not invalidate
+ * its drawing. Without [cache] the alpha is what the layer is for, and it modulates instead.
+ */
+@Composable
+fun VectorSlot(
+    render: RenderTile,
+    background: Color,
+    src: Rect,
+    zoom: Int,
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f,
+    cache: () -> Boolean = { false }
+) {
+    Spacer(
         modifier
             .fillMaxSize()
-            .graphicsLayer { }
-    ) {
-        drawRenderTile(tile.render, tile.background, zoom, src)
-    }
+            .graphicsLayer {
+                this.alpha = alpha
+                // Read here rather than in composition: this block runs in the draw phase, so a
+                // caller that turns the cache off mid-gesture updates a layer property instead of
+                // recomposing every tile on screen.
+                compositingStrategy =
+                    if (cache()) CompositingStrategy.Offscreen else CompositingStrategy.ModulateAlpha
+            }
+            .drawBehind { drawRenderTile(render, background, zoom, src) }
+    )
 }
 
 /** Everything the style paints or labels; the rest of the tile is never parsed into features. */
