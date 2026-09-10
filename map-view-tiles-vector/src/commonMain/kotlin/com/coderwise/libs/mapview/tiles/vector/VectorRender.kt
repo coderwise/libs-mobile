@@ -1,5 +1,6 @@
 package com.coderwise.libs.mapview.tiles.vector
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
@@ -14,7 +15,13 @@ import com.coderwise.libs.mapview.tiles.vector.mvt.GeometryType
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtFeature
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtLayer
 
-/** A tile's geometry pre-flattened into a few merged paths, ready to draw with a scale transform. */
+/**
+ * A tile's geometry pre-flattened into a few merged paths, ready to draw with a scale transform.
+ *
+ * Immutable once built, and says so: a slot holding one is then a composable that can be skipped,
+ * so a recomposition that reaches it neither rebuilds its draw lambda nor invalidates its drawing.
+ */
+@Immutable
 class RenderTile internal constructor(internal val ops: List<TileDrawOp>)
 
 sealed interface TileDrawOp

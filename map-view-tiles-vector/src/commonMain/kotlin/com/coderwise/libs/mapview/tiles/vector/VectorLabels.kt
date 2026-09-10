@@ -3,6 +3,7 @@ package com.coderwise.libs.mapview.tiles.vector
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -124,6 +125,7 @@ private fun Name(label: Label, angle: Float, ink: Color, halo: Color) {
  * fraction of the tile, which a place has as much of as it likes. [upright] is the difference
  * between the two kinds: a place name is level however the map is turned, a road name is not.
  */
+@Immutable
 internal class Label(
     val x: Float,
     val y: Float,

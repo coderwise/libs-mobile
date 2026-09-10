@@ -135,6 +135,8 @@ fun MapView(
 ) {
     val slots = Slots().apply(content).declared
     val overlay = remember(camera) { MapOverlayState(camera) }
+    // What each declared slot subcomposes, kept from frame to frame — see [Held].
+    val held = remember(camera) { mutableMapOf<Int, Held>() }
 
     // A source is asked for tiles for exactly as long as a layer is drawing it.
     slots.filterIsInstance<Slot.Tiled>().map { it.state }.distinct().forEach { state ->
@@ -151,17 +153,22 @@ fun MapView(
         overlay.measured(width.toFloat(), height.toFloat(), density)
 
         val plane = planeSize(width, height, camera.bearing)
+        // A slot the content block no longer declares takes its holder with it.
+        if (held.size > slots.size) held.keys.retainAll { it < slots.size }
 
         val placeables = slots.flatMapIndexed { slot, declared ->
             when (declared) {
                 is Slot.Tiled -> {
                     // Every layer is laid out on the level its own source has, over a plane big
-                    // enough to fill the viewport once it is turned.
-                    val grid = tileGrid(
+                    // enough to fill the viewport once it is turned. Only *which* tiles is settled
+                    // here; where they go the plane works out for itself, in its own measure block,
+                    // which is what keeps a pan out of composition entirely.
+                    val window = tileGrid(
                         camera, plane.width.toFloat(), plane.height.toFloat(), density, declared.state
-                    )
-                    declared.state.window = grid.window
-                    subcompose(slot) { TilePlane(grid, declared.content) }
+                    ).window
+                    declared.state.window = window
+                    val body = held.plane(slot, declared.state, camera).body(window, declared.content)
+                    subcompose(slot, body)
                         .map { measurable ->
                             Placed(
                                 placeable = measurable.measure(Constraints.fixed(plane.width, plane.height)),
@@ -172,7 +179,7 @@ fun MapView(
                         }
                 }
 
-                is Slot.Over -> subcompose(slot) { declared.content(overlay) }
+                is Slot.Over -> subcompose(slot, held.over(slot, overlay).body(declared.content))
                     .map { measurable ->
                         val anchor = measurable.parentData as? Anchor
                             // Anything not hung off a coordinate *is* the map: it is measured to
@@ -207,40 +214,134 @@ fun MapView(
     }
 }
 
-/** One tile layer: the tiles of one source, laid out on the unturned map plane. */
+/**
+ * One tile layer: the tiles of one source, laid out on the unturned map plane.
+ *
+ * [window] says which tiles, and is the only thing here that composition depends on — so the layer
+ * re-composes when the set of tiles changes and at no other time. Where the tiles go is read from
+ * the camera in the measure block below, so a pan re-places children that are already composed and
+ * already drawn.
+ */
 @Composable
-private fun TilePlane(grid: TileGrid, content: @Composable (TileKey) -> Unit) {
-    val (z, columns, rows, side, originX, originY) = grid
-    val count = 1 shl z
-    val positions = rows.flatMap { row -> columns.map { column -> column to row } }
+private fun TilePlane(
+    state: MapState<*>,
+    camera: MapCameraState,
+    window: TileWindow,
+    content: @Composable (TileKey) -> Unit
+) {
+    val count = 1 shl window.z
+    val positions = remember(window) {
+        window.y.flatMap { row -> window.x.map { column -> column to row } }
+    }
 
     Layout(
         content = {
             positions.forEach { (column, row) ->
                 key(column, row) {
                     Box(Modifier.fillMaxSize()) {
-                        content(TileKey(z, ((column % count) + count) % count, row))
+                        content(TileKey(window.z, ((column % count) + count) % count, row))
                     }
                 }
             }
         }
     ) { measurables, constraints ->
+        // The camera is read here, in the layout phase: panning invalidates this measure and
+        // nothing above it, so the frame costs a re-placement rather than a recomposition.
+        val grid = tileGrid(
+            camera, constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat(), density, state
+        )
+        // One size for every tile, at every pan offset.
+        //
+        // Sizing a tile from the gap between its own two snapped edges looks like the careful thing
+        // to do — the tiles then cover the plane exactly — but that gap flips by a pixel as the pan
+        // crosses a boundary whenever the spacing is not a whole number of pixels, which it is only
+        // at an exactly integer zoom on an integer density. So on nearly every pan, every tile
+        // changed size on nearly every frame — and a tile that changes size is re-measured, which
+        // invalidates its drawing, which means the grid re-traced every stroke of every tile on the
+        // UI thread every frame instead of moving layers it had already drawn.
+        //
+        // Rounding up gives every tile one size for the whole gesture. Neighbours then overlap by
+        // under a pixel, which does not show: a tile paints its own background first.
+        val side = measuredTileSize(grid.side)
+        val box = Constraints.fixed(side, side)
         val placed = measurables.mapIndexed { index, measurable ->
             val (column, row) = positions[index]
-            val left = floor(column * side - originX).toInt()
-            val top = floor(row * side - originY).toInt()
-            // Snap to whole pixels the same way on both edges, so neighbours leave no seam.
-            val tile = Constraints.fixed(
-                width = ((column + 1) * side - originX).roundToInt() - left,
-                height = ((row + 1) * side - originY).roundToInt() - top
+            Triple(
+                measurable.measure(box),
+                floor(column * grid.side - grid.originX).toInt(),
+                floor(row * grid.side - grid.originY).toInt()
             )
-            Triple(measurable.measure(tile), left, top)
         }
         layout(constraints.maxWidth, constraints.maxHeight) {
             placed.forEach { (placeable, left, top) -> placeable.place(left, top) }
         }
     }
 }
+
+/**
+ * The size every tile of a grid spaced [side] pixels apart is measured at.
+ *
+ * A function of the spacing alone and not of where the pan happens to sit — which is the whole
+ * point of it, and why it is worth a name of its own. Rounded up rather than down so the grid never
+ * leaves a gap between neighbours; the sub-pixel overlap it trades for does not show, because a
+ * tile paints its own background before anything else.
+ */
+internal fun measuredTileSize(side: Double): Int = ceil(side).toInt()
+
+/**
+ * What one declared slot subcomposes, kept from frame to frame.
+ *
+ * The point of it is [body]'s *identity*. `subcompose` compares the composable it is handed
+ * against the one it composed last by identity, and recomposes the whole subtree when they differ
+ * — and a lambda written inline in a measure block is a new one every time that block runs, which
+ * during a pan is every frame. That recomposed every tile of every layer on every frame, and
+ * re-recorded every tile's drawing with it: the pan that is supposed to cost a layer offset was
+ * being spent tracing paths on the UI thread.
+ *
+ * So the lambda is made once and handed back unchanged for as long as nothing it composes has
+ * changed — for a tile layer, the set of tiles and the composable that draws one, and emphatically
+ * not the pixel the grid happens to start at.
+ */
+private sealed class Held {
+
+    class Plane(val state: MapState<*>, private val camera: MapCameraState) : Held() {
+        private var window: TileWindow? = null
+        private var content: (@Composable (TileKey) -> Unit)? = null
+        private var body: (@Composable () -> Unit)? = null
+
+        fun body(
+            window: TileWindow,
+            content: @Composable (TileKey) -> Unit
+        ): @Composable () -> Unit {
+            body?.let { if (window == this.window && content === this.content) return it }
+            this.window = window
+            this.content = content
+            return (@Composable { TilePlane(state, camera, window, content) }).also { body = it }
+        }
+    }
+
+    class Over(private val overlay: MapOverlayState) : Held() {
+        private var content: (@Composable MapOverlayScope.() -> Unit)? = null
+        private var body: (@Composable () -> Unit)? = null
+
+        fun body(content: @Composable MapOverlayScope.() -> Unit): @Composable () -> Unit {
+            body?.let { if (content === this.content) return it }
+            this.content = content
+            return (@Composable { overlay.content() }).also { body = it }
+        }
+    }
+}
+
+/** The holder for slot [slot], made on first use and replaced only if the layer's source changes. */
+private fun MutableMap<Int, Held>.plane(
+    slot: Int,
+    state: MapState<*>,
+    camera: MapCameraState
+): Held.Plane = (this[slot] as? Held.Plane)?.takeIf { it.state === state }
+    ?: Held.Plane(state, camera).also { this[slot] = it }
+
+private fun MutableMap<Int, Held>.over(slot: Int, overlay: MapOverlayState): Held.Over =
+    this[slot] as? Held.Over ?: Held.Over(overlay).also { this[slot] = it }
 
 /** Where one child ends up, and whether it turns with the map. */
 private data class Placed(

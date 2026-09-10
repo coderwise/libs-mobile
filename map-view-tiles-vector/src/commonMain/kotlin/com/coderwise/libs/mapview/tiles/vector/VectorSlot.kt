@@ -3,6 +3,7 @@ package com.coderwise.libs.mapview.tiles.vector
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -128,7 +129,14 @@ private val LABELLED_LAYERS = setOf("place", "transportation_name")
 /** What each layer is styled by — `class` for most, `admin_level` for boundaries. */
 private val CLASS_LAYERS = VectorStyle.CLASS_AWARE_LAYERS + mapOf("place" to "class")
 
-/** A decoded tile: everything about it that drawing needs, and nothing that loading did. */
+/**
+ * A decoded tile: everything about it that drawing needs, and nothing that loading did.
+ *
+ * Nothing in it is written after it is built — [water] included, which is a `Path` only because
+ * that is what a caller draws. Saying so is what lets [VectorSlot] and [VectorLabels] skip a
+ * recomposition rather than rebuild their draw lambdas and invalidate a tile's drawing with them.
+ */
+@Immutable
 class VectorTile internal constructor(
     internal val render: RenderTile,
     internal val labels: List<Label>,
