@@ -180,36 +180,9 @@ private fun drawingOf(z: Int, layers: List<MvtLayer>, style: VectorStyle): Vecto
         }
     }
 
-    return VectorTile(extent, painted, labelsOf(layers, style), style.ink, style.halo, waterOf(layers))
+    return VectorTile(extent, painted, labelsOf(layers, style), style.ink, style.halo, waterPath(layers))
 }
 
-/** The water polygons of [layers], normalised to `0..1`, or null where there are none. */
-private fun waterOf(layers: List<MvtLayer>): Path? {
-    var any = false
-    val path = Path()
-    layers.filter { it.name == "water" }.forEach { layer ->
-        if (layer.extent <= 0) return@forEach
-        val inv = 1f / layer.extent
-        layer.features.forEach { feature ->
-            if (feature.type != GeometryType.POLYGON) return@forEach
-            val geometry = feature.geometry
-            for (part in 0 until geometry.partCount) {
-                val start = geometry.partStarts[part]
-                val end = geometry.partEnd(part)
-                // Fewer than three vertices cannot enclose anything.
-                if (end - start < 3) continue
-                for (v in start until end) {
-                    val x = geometry.coords[2 * v] * inv
-                    val y = geometry.coords[2 * v + 1] * inv
-                    if (v == start) path.moveTo(x, y) else path.lineTo(x, y)
-                }
-                path.close()
-                any = true
-            }
-        }
-    }
-    return path.takeIf { any }
-}
 
 /**
  * What the tile has to say: places first, biggest first, then road names. That order is the whole
