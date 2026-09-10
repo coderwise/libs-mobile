@@ -4,13 +4,16 @@ package com.coderwise.libs.mapview.tiles.vector.mvt
  * A hand-rolled streaming reader for the Mapbox Vector Tile (MVT) protobuf envelope, version 2
  * (https://github.com/mapbox/vector-tile-spec/blob/master/2.1/vector_tile.proto).
  *
- * It walks the `.pbf` bytes once and builds the decoded [VectorTile] directly, instead of first
- * materialising a full kotlinx-serialization object graph (`MvtTile`/`MvtLayer`/`MvtFeature`/`MvtValue`
- * and their `List`s) and then mapping it. That intermediate graph — two passes' worth of `List`s,
- * boxed values, and per-feature geometry arrays, all thrown away once the [RenderTile] paths are
- * built — was the dominant decode-time garbage that stalled panning at high zoom (many dense tiles
- * stream in per second). Parsing straight into the flat output keeps the transient allocations to
+ * It walks the `.pbf` bytes once and builds the [MvtLayer]s directly, geometry already flattened
+ * into the primitive arrays of [TileGeometry]. The alternative — materialising a full
+ * kotlinx-serialization object graph and then mapping it — costs two passes' worth of `List`s,
+ * boxed values and per-feature point objects, all thrown away once the paths are built, and that
+ * was the dominant decode-time garbage stalling panning at high zoom, where many dense tiles
+ * stream in per second. Parsing straight into the flat output keeps the transient allocations to
  * each feature's command-stream buffer alone.
+ *
+ * The caller says how much of a tile it wants — see `decodeMvt` — and a layer nobody asked for is
+ * measured and skipped rather than parsed.
  *
  * Only the fields the renderer needs are read; everything else (feature ids, layer version, unknown
  * fields) is skipped by wire type. Truncated/garbage tails throw, which the caller already treats as

@@ -153,13 +153,13 @@ draw, the queue's capacity is the only cache there is, and a slot is a pure func
 it is given. Nothing in these libraries caches anything of its own.
 
 ```kotlin
-val state = remember { MapState<VectorTile>(zoomRange = 0..14) }
-remember {
-    TileQueue(scope, state, capacity = 96) { key ->
-        download(key)?.let { withContext(Dispatchers.Default) { decodeVectorTile(key.z, it) } }
-    }
+val state = rememberTileState(zoomRange = 0..14, capacity = 96) { key ->
+    download(key)?.let { withContext(Dispatchers.Default) { decodeVectorTile(key.z, it) } }
 }
 ```
+
+`tileState` is the same for a caller that owns the scope — a view model's, so the tiles survive a
+rotation. Both are `MapState` plus `TileQueue`; nothing else.
 
 Because each slot reads its own `MutableState`, a tile arriving recomposes that tile and no other.
 
@@ -176,7 +176,7 @@ covers this slot, else null — where a placeholder or a spinner would go instea
 
 ```kotlin
 MapView(camera, Modifier.fillMaxSize()) {
-    layer(state) { key -> state.shown(key)?.let { VectorSlot(it.content, it.src) } }
+    layer(state) { key -> state.shown(key)?.let { VectorSlot(it.content, it.src, it.key.z) } }
 }
 ```
 
@@ -186,6 +186,11 @@ MapView(camera, Modifier.fillMaxSize()) {
 and a modifier — and do nothing but draw it. Neither is privileged and the engine cannot tell them
 apart; a switch in the corner swaps them under a live camera.
 
+`VectorSlot` takes one thing more: the zoom of the **cell**, `shown.key.z`, not of the tile it was
+handed. Widths are resolved when a tile is drawn rather than when it is decoded, so an over-zoomed
+ancestor's roads come out at the width the view is asking for instead of the width its own level
+wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
+
 ## The whole public API
 
 ```
@@ -194,6 +199,8 @@ apart; a switch in the corner swaps them under a live camera.
   MapState (window, slot, put, filled, forget)
   MapCameraState (center, zoom, bearing, isInteracting, moveTo, rotateTo), flyTo
   rememberMapCameraState, ZOOM_LIMITS
+  LatLon.onTileGrid(zoom) -> TilePoint, TilePoint.tile(zoom) -> TileKey
+  tileGridToLatLon(x, y, zoom) -> LatLon, MERCATOR_LATITUDE_LIMIT
   MapView(camera, modifier) { layer(state) { key -> … }; overlay { … } }
   MapScope.layer(state) { key -> … }, MapScope.overlay { … }
   MapOverlayScope (project, unproject, Modifier.at(point, anchor))
@@ -202,6 +209,8 @@ apart; a switch in the corner swaps them under a live camera.
 
 :map-view-tiles
   TileQueue(scope, state, workers, capacity) { key -> … }
+  tileState(scope, zoomRange, capacity) { key -> … } -> MapState<T>
+  rememberTileState(key, zoomRange, capacity) { key -> … } -> MapState<T>
   MapState<T>.shown(key, levels) -> Shown(key, content, src)
 
 :map-view-tiles-raster
@@ -209,14 +218,25 @@ apart; a switch in the corner swaps them under a live camera.
 
 :map-view-tiles-vector
   decodeVectorTile(zoom, bytes, style) -> VectorTile
-  VectorStyle(land, water, ink, halo, landcover, waterway, road, place, roadName)
-  VectorStyle.Road(color, casing, width)
-  VectorSlot(tile: VectorTile, src, modifier)
+  VectorStyle(background, ink, halo, waterInk, water, waterway, park, building,
+              roadCasing, landcover, landuse, road, aeroway, boundary,
+              place, roadName, polygonFallback, lineFallback)
+  LayerStyle(fill, stroke, strokeWidth, casing, casingWidth, cap, join,
+             strokeMinZoom, casingMinZoom)
+  ZoomWidth(far, near, farthest)
+  buildRenderTile(layers, style) -> RenderTile
+  DrawScope.drawRenderTile(render, background, zoom, src)
+  VectorSlot(tile: VectorTile, src, zoom, modifier, alpha, cache)
+  VectorSlot(render: RenderTile, background, src, zoom, modifier, alpha, cache)
   VectorLabels(tile: VectorTile, src, modifier, bearing)
-  decodeMvt(data, keep) -> List<MvtLayer>
+  featuresAt(bytes, x, y, radius) -> List<MapFeature>
+  waterPath(bytes) -> Path?
+  decodeMvt(bytes, keep, classLayers, nameLayers, attributeLayers) -> List<MvtLayer>
 ```
 
-Tile maths, tile layout, the gesture detector and the fling curve are all `internal`.
+Tile layout, the gesture detector and the fling curve are `internal`. The projection is not: the
+tile grid is published, because a caller holding a tile keeps having to cross between a coordinate
+and one.
 
 ## What it does under the hood
 
@@ -379,7 +399,7 @@ It is a layer of its own, over the layer that draws the ground:
 
 ```kotlin
 MapView(camera, Modifier.fillMaxSize()) {
-    layer(state) { key -> state.shown(key)?.let { VectorSlot(it.content, it.src) } }
+    layer(state) { key -> state.shown(key)?.let { VectorSlot(it.content, it.src, it.key.z) } }
     layer(state) { key ->
         state.shown(key)?.let { VectorLabels(it.content, it.src, bearing = camera.bearing) }
     }

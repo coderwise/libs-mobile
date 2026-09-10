@@ -24,17 +24,24 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | [`:filepicker`](filepicker) | `com.coderwise.libs:filepicker` | — | System document picker (`rememberTextFilePicker`) that reads the chosen file as text. Not yet released. |
 | [`:logger`](logger) | `com.coderwise.libs:logger` | `0.1.0` | Kermit-backed `AppLogger` facade, plus `enableDeviceVisibleLogging` for iOS debug runs that must be diagnosed off-device. |
 | [`:billing`](billing) | `com.coderwise.libs:billing` | `0.2.0` | One-time (non-consumable) purchases behind one API: Play Billing on Android, a Swift StoreKit 2 bridge on iOS, inert where there is no store. |
-| [`:map-view`](map-view) | `com.coderwise.libs:map-view` | — | The map: a `MapView` of layered tile slots, the camera and gestures that move it, and overlays placed by coordinate. Not yet released; see its [README](map-view/README.md). |
-| `:map-view-tiles` | `com.coderwise.libs:map-view-tiles` | — | Loading for the above: a queue that fills a `MapState` nearest-the-centre first, and what a slot shows until its tile lands. |
+| [`:map-view`](map-view) | `com.coderwise.libs:map-view` | — | The map: a `MapView` of layered tile slots, the camera and gestures that move it, and overlays placed by coordinate. Plus the tile-grid projection the whole XYZ scheme rests on, for callers that have to cross between a coordinate and a tile. Not yet released; see its [README](map-view/README.md). |
+| `:map-view-tiles` | `com.coderwise.libs:map-view-tiles` | — | Loading for the above: `tileState` joins slots to a queue that fills them nearest-the-centre first, and `shown` says what a slot draws until its own tile lands. |
 | `:map-view-tiles-raster` | `com.coderwise.libs:map-view-tiles-raster` | — | Image tiles. |
-| `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | — | MVT tiles: a hand-rolled decoder, a redefinable style, and labels as text composables. Also what a tile knows besides its picture: `featuresAt` for "what did I just press on", and the water as a path for anything drawn over the sea. |
-| [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.6` | **Previous generation.** Dependency-free map primitives: slippy-map tile math + `TileId`. |
-| [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.6` | **Previous generation.** Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
+| `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | — | MVT tiles: a hand-rolled decoder that reads only what you ask for, a redefinable style whose widths ramp with zoom and whose expensive passes can be gated by it, a renderer that paints in a canonical order whatever order the source emits, and labels as text composables. Also what a tile knows besides its picture: `featuresAt` for "what did I just press on", and `waterPath` for anything drawn over the sea. |
+| [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.8` | **Previous generation.** Dependency-free map primitives: slippy-map tile math + `TileId`. |
+| [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.8` | **Previous generation.** Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
 `:map-core` and `:map-engine` are the map these replace. They are kept as they are —
 maintained, no new features — so that an app can move to `:map-view` at its own pace, or
 carry both at once behind a flag: the coordinates and packages are different, so nothing
 stops them sharing a build.
+
+An app finishing that move should not need `:map-core` either. It held two things a
+`:map-view` consumer still wanted — the tile maths, and `TileId` — and the maths is now
+`:map-view`'s own (`LatLon.onTileGrid`, `tileGridToLatLon`). `TileId` is not, deliberately:
+its packed `Long` exists to be a database key, which is an app's concern rather than a
+view's, and `:map-view` addresses a slot on screen with `TileKey` instead. An app that
+persists tiles is better off owning that type.
 
 The [`sample/`](sample) directory holds an unpublished demo app — a gallery with one
 screen per library, running the same list on all five platforms (Android, iOS, Desktop,
@@ -101,7 +108,7 @@ workflow parses it, passes `-PlibVersion`, and publishes **only that module**:
 
 ```bash
 git tag utils-v0.4.0    && git push origin utils-v0.4.0     # → com.coderwise.libs:utils:0.4.0
-git tag map-core-v0.1.6 && git push origin map-core-v0.1.6  # → com.coderwise.libs:map-core:0.1.6
+git tag map-core-v0.1.8 && git push origin map-core-v0.1.8  # → com.coderwise.libs:map-core:0.1.8
 ```
 
 **The four `:map-view*` modules are the exception: release them in lockstep**, at one
