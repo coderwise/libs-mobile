@@ -115,7 +115,7 @@ private fun VectorMapContent(
         }
     ) {
         MapView(camera, Modifier.fillMaxSize()) {
-            layer(tiles) { key -> tiles.shown(key)?.let { VectorSlot(it.content, it.src) } }
+            layer(tiles) { key -> tiles.shown(key)?.let { VectorSlot(it.content, it.src, it.key.z) } }
             // Water over the tiles it came from, so the shape reads against the map it belongs to.
             if (showWater) {
                 layer(tiles) { key ->

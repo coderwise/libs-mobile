@@ -117,7 +117,7 @@ interface MapScope {
  *
  * ```
  * MapView(camera, Modifier.fillMaxSize()) {
- *     layer(ground) { key -> ground.shown(key)?.let { VectorSlot(it.content, it.src) } }
+ *     layer(ground) { key -> ground.shown(key)?.let { VectorSlot(it.content, it.src, it.key.z) } }
  *     layer(ground) { key -> ground.shown(key)?.let { VectorLabels(it.content, it.src) } }
  *     layer(rain) { key -> rain.shown(key)?.let { RasterSlot(it.content, it.src) } }
  *     overlay {
