@@ -18,6 +18,29 @@ class TileGeometry(val coords: IntArray, val partStarts: IntArray) {
     /** Exclusive vertex index where part [k] ends. */
     fun partEnd(k: Int): Int = if (k + 1 < partStarts.size) partStarts[k + 1] else vertexCount
 
+    /**
+     * A representative vertex for the whole feature — where a name that belongs to it goes.
+     *
+     * A point feature has exactly one, and that is the answer. A line or a ring has no single
+     * point, so this takes the middle vertex of its first part: for a lake's label line, which is
+     * what sources ship instead of a centroid, that is the middle of the lake, and for anything
+     * else it is at least on the thing being named. Null when there is no geometry at all.
+     */
+    fun anchorVertex(): Int? {
+        if (vertexCount == 0) return null
+        return (partStarts[0] + partEnd(0)) / 2
+    }
+
+    /**
+     * This geometry's parts as flat `x, y` runs. What the label maths works on, which reads a
+     * line's shape rather than drawing it — allocates, so it is for a once-per-tile pass and not
+     * for anything per frame.
+     */
+    fun parts(): List<FloatArray> = (0 until partCount).map { part ->
+        val start = partStarts[part]
+        FloatArray((partEnd(part) - start) * 2) { coords[2 * start + it].toFloat() }
+    }
+
     companion object {
         val EMPTY = TileGeometry(IntArray(0), IntArray(0))
     }

@@ -9,12 +9,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtLayer
-import com.coderwise.libs.mapview.tiles.vector.mvt.TileGeometry
 import com.coderwise.libs.mapview.tiles.vector.mvt.decodeMvt
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.round
 import kotlin.math.sqrt
 
 /**
@@ -121,13 +119,13 @@ private fun placeLabels(layers: List<MvtLayer>, style: VectorStyle): List<Label>
     .filter { it.name == "place" }
     .flatMap { layer ->
         layer.features.mapNotNull { feature ->
-            if (feature.geometry.vertexCount == 0) return@mapNotNull null
+            val anchor = feature.geometry.anchorVertex() ?: return@mapNotNull null
             val size = style.place(feature.featureClass.orEmpty()) ?: return@mapNotNull null
             val text = feature.name?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
             // As a fraction of the tile, so drawing them needs nothing but the tile's own box.
             Label(
-                feature.geometry.coords[0].toFloat() / layer.extent,
-                feature.geometry.coords[1].toFloat() / layer.extent,
+                feature.geometry.coords[2 * anchor].toFloat() / layer.extent,
+                feature.geometry.coords[2 * anchor + 1].toFloat() / layer.extent,
                 text,
                 size
             )
@@ -179,7 +177,7 @@ private fun straightRun(ring: FloatArray): Run? {
     for (point in 1..<points) {
         val heading = heading(ring, point - 1, point)
         val sofar = heading(ring, start, point)
-        if (point - start > 1 && abs(wrapped(heading - sofar)) > TURN) {
+        if (point - start > 1 && abs(wrapToPi(heading - sofar)) > TURN) {
             best = longer(best, runOf(ring, start, point - 1))
             start = point - 1
         }
@@ -191,9 +189,6 @@ private const val TURN = 0.3f // radians, about 17 degrees
 
 private fun heading(ring: FloatArray, from: Int, to: Int) =
     atan2(ring[2 * to + 1] - ring[2 * from + 1], ring[2 * to] - ring[2 * from])
-
-/** An angle brought back into -pi..pi, so that 359 degrees off is one degree off. */
-private fun wrapped(radians: Float) = radians - round(radians / (2 * PI.toFloat())) * 2 * PI.toFloat()
 
 private fun runOf(ring: FloatArray, from: Int, to: Int): Run? {
     if (to <= from) return null
@@ -211,14 +206,4 @@ private fun runOf(ring: FloatArray, from: Int, to: Int): Run? {
 
 private fun longer(a: Run?, b: Run?) = if (a == null || (b != null && b.length > a.length)) b else a
 
-/**
- * This geometry's parts as flat `x, y` runs — what the label maths works on, which reads a line's
- * shape rather than drawing it. Allocates, so it is for the once-per-tile label pass and not for
- * anything that runs per frame.
- */
-private fun TileGeometry.parts(): List<FloatArray> = (0 until partCount).map { part ->
-    val start = partStarts[part]
-    val end = partEnd(part)
-    FloatArray((end - start) * 2) { coords[2 * start + it].toFloat() }
-}
 
