@@ -229,18 +229,13 @@ private fun TilePlane(
     window: TileWindow,
     content: @Composable (TileKey) -> Unit
 ) {
-    val count = 1 shl window.z
-    val positions = remember(window) {
-        window.y.flatMap { row -> window.x.map { column -> column to row } }
-    }
+    val cells = remember(window) { cellsOf(window) }
 
     Layout(
         content = {
-            positions.forEach { (column, row) ->
-                key(column, row) {
-                    Box(Modifier.fillMaxSize()) {
-                        content(TileKey(window.z, ((column % count) + count) % count, row))
-                    }
+            cells.forEach { cell ->
+                key(cell.slotX, cell.slotY) {
+                    Box(Modifier.fillMaxSize()) { content(cell.key) }
                 }
             }
         }
@@ -265,15 +260,58 @@ private fun TilePlane(
         val side = measuredTileSize(grid.side)
         val box = Constraints.fixed(side, side)
         val placed = measurables.mapIndexed { index, measurable ->
-            val (column, row) = positions[index]
+            val cell = cells[index]
             Triple(
                 measurable.measure(box),
-                floor(column * grid.side - grid.originX).toInt(),
-                floor(row * grid.side - grid.originY).toInt()
+                floor(cell.column * grid.side - grid.originX).toInt(),
+                floor(cell.row * grid.side - grid.originY).toInt()
             )
         }
         layout(constraints.maxWidth, constraints.maxHeight) {
             placed.forEach { (placeable, left, top) -> placeable.place(left, top) }
+        }
+    }
+}
+
+/** One cell of a plane: where it sits on the grid, which tile that is, and which slot draws it. */
+private class TileCell(
+    val slotX: Int,
+    val slotY: Int,
+    val column: Int,
+    val row: Int,
+    val key: TileKey
+)
+
+/**
+ * The cells of [window], in an order a pan does not disturb.
+ *
+ * The obvious emission — every column of every row, in reading order — reorders itself the moment
+ * the window shifts by a row: the same tiles come out one place earlier than they did, and Compose
+ * reconciles that by moving every keyed group in the slot table. That is an arraycopy per tile and
+ * then a re-measure of everything that moved, and text is the expensive half of it — a label whose
+ * group moved loses its paragraph and lays the words out again.
+ *
+ * So a cell is keyed by its place on a torus: the column modulo the number of columns, which does
+ * not change when the window shifts. A tile still on screen keeps its slot, its key and its place
+ * in the emission, and the only slots handed a different tile are the ones whose row or column has
+ * just scrolled off the far side.
+ */
+private fun cellsOf(window: TileWindow): List<TileCell> {
+    val across = window.x.count()
+    val down = window.y.count()
+    if (across == 0 || down == 0) return emptyList()
+
+    val columns = IntArray(across).also { slots -> window.x.forEach { slots[it.mod(across)] = it } }
+    val rows = IntArray(down).also { slots -> window.y.forEach { slots[it.mod(down)] = it } }
+    val count = 1 shl window.z
+
+    return buildList(across * down) {
+        for (slotY in 0..<down) {
+            for (slotX in 0..<across) {
+                val column = columns[slotX]
+                val row = rows[slotY]
+                add(TileCell(slotX, slotY, column, row, TileKey(window.z, column.mod(count), row)))
+            }
         }
     }
 }
