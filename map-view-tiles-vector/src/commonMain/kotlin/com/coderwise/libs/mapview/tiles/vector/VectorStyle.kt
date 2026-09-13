@@ -113,7 +113,23 @@ data class LayerStyle(
      * holding every motorway between the Alps and the North Sea, `transportation` measured 32 ms of
      * the tile's 38 ms total, half of it the casing — paid again for every tile a pan brings on.
      */
-    val casingMinZoom: Int = 0
+    val casingMinZoom: Int = 0,
+    /**
+     * What the single line below [casingMinZoom] is painted in. Null, the default, is [casing] —
+     * the collapsed line is the edge colour, standing in for both passes.
+     *
+     * Worth setting where the collapse is a zoom the user pans and pinches across rather than one
+     * they fly over. A casing and its road do not average to the casing's colour: at the zoom a
+     * side street collapses, two thirds of its width was white, so what the eye had been reading is
+     * something much closer to the land than to the edge. Painting the collapsed line in the edge
+     * colour makes the street *darken* as you zoom out — the one direction it should not — and the
+     * step back is a visible flash of white the moment the casing returns.
+     *
+     * The literal average is nearly the land's own colour, which would leave the street invisible
+     * over the buildings under it, so this is a compromise rather than a computation: light enough
+     * that the step is small, dark enough that the street is still a street.
+     */
+    val coarse: Color? = null
 )
 
 /**
@@ -254,6 +270,20 @@ private val ROAD = Color(0xFFFFFFFF)
 // page of roads outlined in near-black reads as a circuit board.
 private val ROAD_CASING = Color(0xFFA39D93)
 
+// A service road is a driveway, an alley, a parking aisle — the bottom of the road hierarchy, and
+// in a city tile a great many of them. Lighter than ROAD_CASING so they sit behind the streets
+// rather than beside them: this is the colour of their edge where they have one, and below
+// SIDE_STREET_CASING_MIN_ZOOM it is the whole line, so a mews reads as a mews rather than as
+// another road off the high street.
+private val SERVICE_CASING = Color(0xFFC8C2B7)
+
+// What those two draw as below SIDE_STREET_CASING_MIN_ZOOM, where they are a single line rather
+// than a road with an edge (see LayerStyle.coarse). Lighter than the edges above, because two
+// thirds of the width they replace was the white of the road: painted in the edge's own colour the
+// street darkened as you zoomed out, and flashed white again the moment the casing came back.
+private val SIDE_STREET_COARSE = Color(0xFFC6BFB3)
+private val SERVICE_COARSE = Color(0xFFD7D1C7)
+
 // Tracks and footpaths are not streets and must not read as ones: no white fill, no casing, just a
 // thin muted line that a park path can wear without becoming a road.
 private val PATH = Color(0xFFB0A192)
@@ -336,19 +366,27 @@ private fun casingFor(w: Dp): Dp =
  * [LayerStyle.casingMinZoom]). [ROAD_FAR_TAPER] is what that line is scaled to: at the zooms where
  * a tile spans a country the network has to read as lines on the land, not as a mat over it.
  */
-private fun roadPaint(far: Dp, near: Dp) = LayerStyle(
+private fun roadPaint(
+    far: Dp,
+    near: Dp,
+    casingMinZoom: Int = ROAD_CASING_MIN_ZOOM,
+    casing: Color = ROAD_CASING,
+    coarse: Color? = null
+) = LayerStyle(
     stroke = ROAD,
     strokeWidth = ZoomWidth(far, near, farthest = far * ROAD_FAR_TAPER),
-    casing = ROAD_CASING,
+    casing = casing,
     casingWidth = ZoomWidth(casingFor(far), casingFor(near)),
-    casingMinZoom = ROAD_CASING_MIN_ZOOM
+    casingMinZoom = casingMinZoom,
+    coarse = coarse
 )
 
 /** A line that is not a road: no white fill, no casing. */
 private fun trackPaint(color: Color, far: Dp, near: Dp) =
     LayerStyle(stroke = color, strokeWidth = ZoomWidth(far, near))
 
-private val MINOR_ROAD = roadPaint(MINOR_FAR, MINOR_NEAR)
+private val MINOR_ROAD =
+    roadPaint(MINOR_FAR, MINOR_NEAR, SIDE_STREET_CASING_MIN_ZOOM, coarse = SIDE_STREET_COARSE)
 
 /**
  * The road hierarchy. Without it every line in `transportation` drew at one weight: a farm track as
@@ -367,7 +405,10 @@ private fun defaultRoad(kind: String): LayerStyle? = when (kind) {
     "primary" -> roadPaint(1.4.dp, 6.0.dp)
     "secondary" -> roadPaint(1.1.dp, 5.0.dp)
     "tertiary" -> roadPaint(0.9.dp, 4.2.dp)
-    "service" -> roadPaint(0.6.dp, 2.4.dp)
+    "service" -> roadPaint(
+        0.6.dp, 2.4.dp, SIDE_STREET_CASING_MIN_ZOOM,
+        casing = SERVICE_CASING, coarse = SERVICE_COARSE
+    )
     "track" -> trackPaint(PATH, 0.5.dp, 1.8.dp)
     "path", "footway", "cycleway", "pedestrian", "steps" -> trackPaint(PATH, 0.5.dp, 1.6.dp)
     "rail", "transit" -> trackPaint(RAIL, 0.5.dp, 1.6.dp)
@@ -459,6 +500,10 @@ private fun defaultBoundary(adminLevel: String): LayerStyle? = when (adminLevel)
  * Zoom from which buildings are outlined. At z15 a building is big enough that its own edge is what
  * separates it from the one it abuts; below that the outline is most of the tile's draw cost and
  * none of its picture (see [LayerStyle.strokeMinZoom]).
+ *
+ * Gating the *fill* the same way was tried and reverted: it measured as nothing. The outline is the
+ * expensive half — stroking a ring builds a stroke outline from it — and filling a few thousand
+ * small convex polygons is something Skia's scanline filler barely notices.
  */
 private const val BUILDING_OUTLINE_MIN_ZOOM = 15
 
@@ -469,8 +514,28 @@ private const val BUILDING_OUTLINE_MIN_ZOOM = 15
  * Nine, because that is about where a tile stops being a place and starts being a region: at z9 a
  * tile is a county and its roads are still roads; at z8 it is a country and they are a diagram of
  * one.
+ *
+ * That is for the roads that carry the map's structure. A side street keeps its single line for
+ * much longer — see [SIDE_STREET_CASING_MIN_ZOOM].
  */
 private const val ROAD_CASING_MIN_ZOOM = 9
+
+/**
+ * The same, for the streets that make up the bulk of a city tile: service roads and everything the
+ * fallback catches, which is residential, unclassified and living-street — the OpenMapTiles `minor`
+ * class and the great majority of the geometry in `transportation`.
+ *
+ * They are the road network's long tail in both senses. A casing is the same geometry traced a
+ * second time, so the pair costs exactly twice the line, and it is these classes that the doubling
+ * is paid on: collapsing every casing below z15 took a z14 London pan from 276 frames to 458 and
+ * its median frame from 53 ms to 38 ms.
+ *
+ * Fifteen, because that is where a side street becomes something you follow rather than something
+ * you see the pattern of. Below it the hierarchy reads *better* for the collapse: the through roads
+ * keep their white-with-an-edge and the side streets fall back to a plain line, which is the
+ * distinction an atlas draws at that scale anyway.
+ */
+private const val SIDE_STREET_CASING_MIN_ZOOM = 15
 
 /**
  * What a road's [ZoomWidth.far] width is multiplied by at [ZoomWidth.FARTHEST_ZOOM]. Half, measured

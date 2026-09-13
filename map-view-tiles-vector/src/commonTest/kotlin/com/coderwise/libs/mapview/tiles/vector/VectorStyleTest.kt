@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -369,6 +370,53 @@ class VectorStyleTest {
             style.paint("transportation", "motorway"),
             plain.paint("transportation", "motorway")
         )
+    }
+
+    @Test
+    fun `a side street keeps its casing until it is a street you follow`() {
+        val style = VectorStyle()
+        val throughRoad = assertNotNull(style.paint("transportation", "primary"))
+        val sideStreet = assertNotNull(style.paint("transportation", "residential"))
+        val service = assertNotNull(style.paint("transportation", "service"))
+
+        // A casing is the same geometry traced a second time, and the side streets are most of the
+        // geometry — so they are the classes where the doubling is worth deferring.
+        assertTrue(
+            sideStreet.casingMinZoom > throughRoad.casingMinZoom,
+            "a side street is cased from z${sideStreet.casingMinZoom}, no later than a primary road"
+        )
+        assertEquals(sideStreet.casingMinZoom, service.casingMinZoom)
+
+        // And a service road is painted lighter than a street at both ends of that gate: it is the
+        // colour of its edge above, and the whole of the line below.
+        assertNotEquals(sideStreet.casing, service.casing)
+        val edge = assertNotNull(service.casing)
+        val street = assertNotNull(sideStreet.casing)
+        assertTrue(
+            edge.red > street.red && edge.green > street.green && edge.blue > street.blue,
+            "a service road's edge is no lighter than a street's"
+        )
+
+        // And the line each collapses to below that gate is lighter still than its own edge. Two
+        // thirds of the width it replaces was the white of the road, so a collapsed line painted in
+        // the edge's colour makes the street darken as you zoom out and flash white as you zoom in.
+        listOf("a side street" to sideStreet, "a service road" to service).forEach { (what, paint) ->
+            val casing = assertNotNull(paint.casing)
+            val coarse = assertNotNull(paint.coarse, "$what has no colour of its own to collapse to")
+            assertTrue(
+                coarse.red > casing.red && coarse.green > casing.green && coarse.blue > casing.blue,
+                "$what collapses to $coarse, no lighter than the $casing edge it stands in for"
+            )
+        }
+
+        // A road that keeps its casing all the way out has nothing to collapse and says nothing.
+        assertNull(throughRoad.coarse)
+
+        // Deferred, not dropped: at the zoom where you follow a street rather than see the pattern
+        // of them, it is a white road with an edge like any other.
+        assertEquals(throughRoad.casing, sideStreet.casing)
+        assertEquals(throughRoad.stroke, sideStreet.stroke)
+        assertTrue(sideStreet.casingMinZoom <= 15, "a side street is uncased as far in as z${sideStreet.casingMinZoom}")
     }
 
     @Test

@@ -163,7 +163,8 @@ private fun LayerStyle.lineMinZoom(): Int =
  * such band — a paint with no casing has nothing to collapse, and one that keeps its casing at
  * every zoom never leaves the band unclaimed.
  */
-private fun LayerStyle.coarseLine(): Color? = casing?.takeIf { casingMinZoom > strokeMinZoom }
+private fun LayerStyle.coarseLine(): Color? =
+    if (casing == null || casingMinZoom <= strokeMinZoom) null else coarse ?: casing
 
 /**
  * The merged geometry drawn with one paint: everything filled, and everything stroked as a line.
