@@ -223,9 +223,9 @@ private fun LatLon.pressOn(zoom: Float): Press {
 
 private suspend fun vectorTile(http: HttpClient, key: TileKey, style: VectorStyle): VectorTile? {
     val bytes = vectorTileBytes(http, key) ?: return null
-    // Tens of milliseconds a tile: a protobuf parse plus a few thousand path segments, which is
-    // exactly the work that must not happen on the thread drawing the frames.
-    return withContext(Dispatchers.Default) { decodeVectorTile(key.z, bytes, style) }
+    // Tens of milliseconds a tile -- a protobuf parse plus a few thousand path segments -- and
+    // `decodeVectorTile` takes itself off the frame-drawing thread, so there is nothing to wrap.
+    return decodeVectorTile(key.z, bytes, style)
 }
 
 /**

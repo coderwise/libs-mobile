@@ -17,39 +17,44 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.sqrt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Decodes a vector tile into the paths that draw it, in the colours [style] asks for.
  *
- * Costs tens of milliseconds and belongs off the main thread — and, better still, upstream of the
- * view entirely, so that a tile is decoded once when it arrives rather than whenever a slot happens
- * to want it.
+ * Costs tens of milliseconds, so it takes itself off the main thread rather than asking the caller
+ * to remember: a tile decoded where a composable started it is a tile decoded on the UI thread, and
+ * tens of milliseconds there is a frame and a half. Still better decoded upstream of the view
+ * entirely, so that a tile is decoded once when it arrives rather than whenever a slot wants it.
  *
  * Widths are not baked in: they are [ZoomWidth]s resolved against the zoom the slot is drawing at,
  * so one decoded tile serves every zoom it is stretched over. [zoom] is the level the tile was cut
  * at, which is what the labels gate on.
  */
-fun decodeVectorTile(
+suspend fun decodeVectorTile(
     zoom: Int,
     bytes: ByteArray,
     style: VectorStyle = VectorStyle()
-): VectorTile? = runCatching {
-    val layers = decodeMvt(
-        bytes,
-        keep = DRAWN_LAYERS,
-        classLayers = CLASS_LAYERS,
-        nameLayers = LABELLED_LAYERS
-    )
-    VectorTile(
-        render = buildRenderTile(layers, style),
-        labels = labelsOf(layers, style),
-        background = style.background,
-        ink = style.ink,
-        halo = style.halo,
-        water = waterPath(layers),
-        zoom = zoom
-    )
-}.getOrNull()
+): VectorTile? = withContext(Dispatchers.Default) {
+    runCatching {
+        val layers = decodeMvt(
+            bytes,
+            keep = DRAWN_LAYERS,
+            classLayers = CLASS_LAYERS,
+            nameLayers = LABELLED_LAYERS
+        )
+        VectorTile(
+            render = buildRenderTile(layers, style),
+            labels = labelsOf(layers, style),
+            background = style.background,
+            ink = style.ink,
+            halo = style.halo,
+            water = waterPath(layers),
+            zoom = zoom
+        )
+    }.getOrNull()
+}
 
 /**
  * One slot's worth of vector tile: draws the [src] fraction of an already-decoded [tile].
@@ -231,8 +236,13 @@ private fun fits(name: String, size: Float, room: Float): Boolean =
 /** What a tile measures on screen, in dp, at an integer zoom — the view's own constant. */
 private const val TILE_DP = 256f
 
-/** The narrowest a glyph gets as a fraction of its font size, across the scripts a map carries. */
-private const val NARROWEST_GLYPH = 0.2f
+/**
+ * The narrowest a glyph gets as a fraction of its font size, across the scripts a map carries.
+ *
+ * Shared with [VectorLabels], which applies the same bound a second time once it knows how big the
+ * tile actually is on screen — see [couldFit].
+ */
+internal const val NARROWEST_GLYPH = 0.2f
 
 /** The straightest stretch of a line: where a name can sit without following a bend. */
 private class Run(val midX: Float, val midY: Float, val turn: Float, val length: Float)

@@ -154,7 +154,7 @@ it is given. Nothing in these libraries caches anything of its own.
 
 ```kotlin
 val state = rememberTileState(zoomRange = 0..14, capacity = 96) { key ->
-    download(key)?.let { withContext(Dispatchers.Default) { decodeVectorTile(key.z, it) } }
+    download(key)?.let { decodeVectorTile(key.z, it) }
 }
 ```
 
@@ -217,7 +217,7 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   RasterSlot(tile: ImageBitmap, src, modifier)
 
 :map-view-tiles-vector
-  decodeVectorTile(zoom, bytes, style) -> VectorTile
+  suspend decodeVectorTile(zoom, bytes, style) -> VectorTile
   VectorStyle(background, ink, halo, waterInk, water, waterway, park, building,
               roadCasing, landcover, landuse, road, aeroway, boundary,
               place, roadName, polygonFallback, lineFallback)

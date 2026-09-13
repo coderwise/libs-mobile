@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
@@ -67,11 +68,19 @@ fun VectorLabels(
         }
     ) { measurables, constraints ->
         val side = constraints.maxWidth / src.width // the whole tile, in pixels
-        val names = measurables.map { it.measure(Constraints()) } // as wide as the words need
+        // Laying a name out is what costs, so a name that cannot fit the run it has to sit on is
+        // dropped before that rather than after: [couldFit] is the same font-free bound the decode
+        // uses, but against this tile's real size on screen instead of the widest one is ever
+        // stretched to, which is a factor of two of names it can now rule out. The rest are
+        // measured as wide as the words need.
+        val names = measurables.mapIndexed { index, measurable ->
+            if (couldFit(mine[index], side)) measurable.measure(Constraints()) else null
+        }
         val taken = mutableListOf<Rect>()
 
         layout(constraints.maxWidth, constraints.maxHeight) {
             names.forEachIndexed { index, name ->
+                if (name == null) return@forEachIndexed
                 val label = mine[index]
                 // A road name is only worth placing where its road runs straight for that long.
                 if (name.width > label.room * side) return@forEachIndexed
@@ -104,6 +113,17 @@ fun VectorLabels(
  * largest thing left on the UI thread.
  */
 private const val LABEL_BUDGET = 48
+
+/**
+ * Whether [label] could be drawn along its own run on a tile [side] pixels across — the cheap half
+ * of the test the placement loop does properly once the words are laid out.
+ *
+ * The same bound the decode applies in `fits`, and for the same reason, except that this one knows
+ * what the tile measures on screen and so needs no allowance for how far it might be stretched. A
+ * place has infinite room and always passes.
+ */
+internal fun Density.couldFit(label: Label, side: Float): Boolean =
+    label.room * side >= NARROWEST_GLYPH * label.size.sp.toPx() * label.text.length
 
 /** What a turned box covers, centred on nothing: the caller moves it onto the label. */
 private fun turned(degrees: Float, width: Float, height: Float): Rect {
