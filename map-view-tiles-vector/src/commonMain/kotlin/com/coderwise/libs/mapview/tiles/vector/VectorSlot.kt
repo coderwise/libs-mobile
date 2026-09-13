@@ -205,8 +205,8 @@ private fun roadLabels(layers: List<MvtLayer>, size: Float): List<Label> = layer
     .filter { it.name == "transportation_name" }
     .flatMap { layer ->
         layer.features
-            .mapNotNull { feature -> feature.name?.takeIf { it.isNotEmpty() }?.let { it to feature } }
-            .groupBy({ it.first }, { it.second })
+            .filter { !it.name.isNullOrEmpty() }
+            .groupBy { it.name!! }
             .mapNotNull { (name, pieces) ->
                 val run = pieces.flatMap { it.geometry.parts() }.mapNotNull(::straightRun)
                     .maxByOrNull { it.length } ?: return@mapNotNull null
