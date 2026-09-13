@@ -286,10 +286,18 @@ private val SERVICE_COARSE = Color(0xFFD7D1C7)
 
 // Tracks and footpaths are not streets and must not read as ones: no white fill, no casing, just a
 // thin muted line that a park path can wear without becoming a road.
-private val PATH = Color(0xFFB0A192)
+//
+// Muted rather more than it used to be. A city centre is made of footways — alleys, courtyards,
+// pedestrianised streets, steps — and at z14 they were an eighth of every pixel on the map,
+// sampled: four times the ink of the side streets and seven times the road casing, all of it
+// darker than either. It read as a scribble under the map rather than as detail on it. This is the
+// weight of a path at the zoom it is worth following, not the zoom it is worth counting.
+private val PATH = Color(0xFFCCC1B2)
 
-// Railways come through `transportation` too, and were being painted as white streets.
-private val RAIL = Color(0xFF9A958D)
+// Railways come through `transportation` too, and were being painted as white streets. Lightened
+// with the paths and for the same reason: the fan of lines outside a terminus is the densest dark
+// thing on a city tile, and it is not what the map is about at that scale.
+private val RAIL = Color(0xFFB4AEA5)
 
 // A shipping line is not a road: in the water's own colour family so it reads as a crossing.
 private val FERRY = Color(0xFF6E9DB3)
