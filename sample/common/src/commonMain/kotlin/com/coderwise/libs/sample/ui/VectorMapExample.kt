@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +72,8 @@ import kotlin.math.floor
  *   what anything drawn over the sea — a coverage overlay, a scratch map — needs in order not to
  *   cover it.
  *
- * Buildings appear from zoom 15, where they are big enough to be worth outlining.
+ * Buildings are outlined from zoom 15, where one is big enough for its own edge to separate it
+ * from the building it abuts.
  */
 @Composable
 internal fun VectorMapExample() {
@@ -110,6 +112,11 @@ private fun VectorMapContent(
 ) {
     var showWater by remember { mutableStateOf(false) }
     var found by remember { mutableStateOf<List<MapFeature>?>(null) }
+    // What the slots resolve widths and zoom gates against. From the camera rather than from the
+    // cell, because the cell stops where the source does — OpenFreeMap's planet build stops at 14,
+    // so a cell is a z14 cell at z17 too, and a road asked to grow past z14 never would. Derived,
+    // so a pinch reaches the slots when it crosses a level and not sixty times a second.
+    val viewZoom by remember(camera) { derivedStateOf { floor(camera.zoom).toInt() } }
 
     Box(
         Modifier.fillMaxSize().mapGestures(camera) { at ->
@@ -118,7 +125,7 @@ private fun VectorMapContent(
         }
     ) {
         MapView(camera, Modifier.fillMaxSize()) {
-            layer(tiles) { key -> tiles.shown(key)?.let { VectorSlot(it.content, it.src, it.key.z) } }
+            layer(tiles) { key -> tiles.shown(key)?.let { VectorSlot(it.content, it.src, viewZoom) } }
             // Water over the tiles it came from, so the shape reads against the map it belongs to.
             if (showWater) {
                 layer(tiles) { key ->

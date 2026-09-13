@@ -63,9 +63,16 @@ suspend fun decodeVectorTile(
  * calls however far the tile is magnified. Line widths are applied at draw time, so a road stays
  * the same width on screen instead of fattening with the magnification.
  *
- * [zoom] is the zoom of the cell being drawn — hand it `shown.key.z`. It is what the widths and the
- * zoom gates are resolved against, so an over-zoomed ancestor's roads come out at the width the
- * view is asking for rather than the width its own level wanted.
+ * [zoom] is **the zoom the camera is at**, floored — not the level the tile was cut at, and not the
+ * level of the cell drawing it. It is what the widths and the zoom gates are resolved against, so
+ * a magnified tile's roads come out at the width the view is asking for rather than the width its
+ * own level wanted, and a gate above the deepest level a source ships still opens.
+ *
+ * Handing it the tile's own level instead is the mistake to avoid, and `shown.key.z` and the
+ * cell's `key.z` are both that: a source that stops at z14 has a grid that stops at z14, so a gate
+ * set at z15 never opens and a road never grows past the width z14 asked for however far you zoom
+ * in. Derive it from the camera — `derivedStateOf { floor(camera.zoom).toInt() }`, so the slots
+ * hear about it when the level changes and not on every frame of a pinch.
  */
 @Composable
 fun VectorSlot(
