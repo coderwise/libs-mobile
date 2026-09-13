@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -48,9 +49,12 @@ fun VectorLabels(
     modifier: Modifier = Modifier,
     bearing: Float = 0f
 ) {
-    // Only the names this tile owns: its neighbours place their own.
-    val mine = tile.labels.filter {
-        it.x >= src.left && it.x < src.right && it.y >= src.top && it.y < src.bottom
+    // Only the names this tile owns: its neighbours place their own. And only the first
+    // [LABEL_BUDGET] of those — see the constant.
+    val mine = remember(tile, src) {
+        tile.labels.filter {
+            it.x >= src.left && it.x < src.right && it.y >= src.top && it.y < src.bottom
+        }.take(LABEL_BUDGET)
     }
     val apart = with(LocalDensity.current) { 3.dp.toPx() }
 
@@ -85,6 +89,21 @@ fun VectorLabels(
         }
     }
 }
+
+/**
+ * How many of a tile's names are worth considering.
+ *
+ * They arrive in priority order — the biggest places first, then the road names with the most road
+ * to stand on — and a name that collides with one already placed is dropped. A 256 dp square holds
+ * a dozen or so before it is full, and it fills from the top of that order, so the names beyond
+ * this many are ones that would lose.
+ *
+ * The budget is what keeps that cheap. A z14 city tile carries around five hundred names, and
+ * finding out that a name collides means laying its words out first: uncapped, a pan through
+ * London measured nine thousand paragraphs a swipe and drew a dozen of them per tile. This was the
+ * largest thing left on the UI thread.
+ */
+private const val LABEL_BUDGET = 48
 
 /** What a turned box covers, centred on nothing: the caller moves it onto the label. */
 private fun turned(degrees: Float, width: Float, height: Float): Rect {

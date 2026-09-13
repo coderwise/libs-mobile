@@ -198,6 +198,7 @@ private fun roadLabels(layers: List<MvtLayer>, size: Float): List<Label> = layer
             .mapNotNull { (name, pieces) ->
                 val run = pieces.flatMap { it.geometry.parts() }.mapNotNull(::straightRun)
                     .maxByOrNull { it.length } ?: return@mapNotNull null
+                if (!fits(name, size, run.length / layer.extent)) return@mapNotNull null
                 Label(
                     x = run.midX / layer.extent,
                     y = run.midY / layer.extent,
@@ -210,6 +211,28 @@ private fun roadLabels(layers: List<MvtLayer>, size: Float): List<Label> = layer
             }
     }
     .sortedByDescending { it.room }
+
+/**
+ * Whether a name of [size] could ever be drawn along a run [room] tiles long.
+ *
+ * The layout drops a road name that is wider than the straight road it has to sit on, and it can
+ * only find that out by laying the words out. A city tile at z14 offers around five hundred names
+ * and places a dozen of them, so nearly all of that text is measured to be thrown away — it was
+ * the largest thing left on the UI thread during a pan.
+ *
+ * The test here needs no font: a tile is [TILE_DP] on screen at an integer zoom and twice that
+ * between levels, and no glyph is narrower than about [NARROWEST_GLYPH] of its size. Both are
+ * bounds in the generous direction, so a name that could be drawn at any zoom this tile is
+ * stretched to still gets its chance; what goes is only what could never have fitted.
+ */
+private fun fits(name: String, size: Float, room: Float): Boolean =
+    room * 2f * TILE_DP >= NARROWEST_GLYPH * size * name.length
+
+/** What a tile measures on screen, in dp, at an integer zoom — the view's own constant. */
+private const val TILE_DP = 256f
+
+/** The narrowest a glyph gets as a fraction of its font size, across the scripts a map carries. */
+private const val NARROWEST_GLYPH = 0.2f
 
 /** The straightest stretch of a line: where a name can sit without following a bend. */
 private class Run(val midX: Float, val midY: Float, val turn: Float, val length: Float)
