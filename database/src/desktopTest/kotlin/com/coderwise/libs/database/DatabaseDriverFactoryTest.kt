@@ -38,33 +38,31 @@ class DatabaseDriverFactoryTest {
             file.delete()
             file.also { it.mkdirs() }
         }
-        System.setProperty(DATA_DIR_PROPERTY, dataDir.absolutePath)
     }
 
     @AfterTest
     fun tearDown() {
-        System.clearProperty(DATA_DIR_PROPERTY)
         dataDir.deleteRecursively()
     }
 
     @Test
     fun `rows written by one run are there for the next`() {
-        val first = DatabaseDriverFactory().createDriver(schema(1), "test.db")
+        val first = DatabaseDriverFactory(dataDir).createDriver(schema(1), "test.db")
         first.execute(null, "INSERT INTO Note(id) VALUES ('a');", 0)
         first.close()
 
-        val second = DatabaseDriverFactory().createDriver(schema(1), "test.db")
+        val second = DatabaseDriverFactory(dataDir).createDriver(schema(1), "test.db")
         assertEquals(listOf("a"), second.noteIds())
         second.close()
     }
 
     @Test
     fun `a file from an older version is migrated rather than recreated`() {
-        val first = DatabaseDriverFactory().createDriver(schema(1), "test.db")
+        val first = DatabaseDriverFactory(dataDir).createDriver(schema(1), "test.db")
         first.execute(null, "INSERT INTO Note(id) VALUES ('a');", 0)
         first.close()
 
-        val second = DatabaseDriverFactory().createDriver(schema(2), "test.db")
+        val second = DatabaseDriverFactory(dataDir).createDriver(schema(2), "test.db")
         // The row survived, and the column the migration adds is there to be written.
         second.execute(null, "UPDATE Note SET body = 'kept' WHERE id = 'a';", 0)
         assertEquals(listOf("a"), second.noteIds())
@@ -74,7 +72,7 @@ class DatabaseDriverFactoryTest {
 
     @Test
     fun `the database lands in the data directory under the name it was asked for`() {
-        DatabaseDriverFactory().createDriver(schema(1), "named.db").close()
+        DatabaseDriverFactory(dataDir).createDriver(schema(1), "named.db").close()
 
         assertEquals(true, File(dataDir, "named.db").exists())
     }

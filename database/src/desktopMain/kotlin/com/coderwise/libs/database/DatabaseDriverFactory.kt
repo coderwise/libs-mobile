@@ -7,29 +7,23 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import java.io.File
 
 /**
- * The desktop database is a file, in the same per-user directory the settings store writes to, so
- * that quitting the app is not the same thing as deleting everything in it. It used to be
- * `IN_MEMORY`, which every other target's driver was not: the app worked until it was restarted,
- * and then presented itself as empty.
+ * The desktop database is a file under [dataDir], so that quitting the app is not the same thing as
+ * deleting everything in it. It used to be `IN_MEMORY`, which every other target's driver was not:
+ * the app worked until it was restarted and then presented itself as empty.
  *
- * Directory is [DATA_DIR_PROPERTY] when set — a test, or an app that keeps its files elsewhere —
- * and `~/.mapsOn` otherwise, which is what `:settings` uses on desktop for the same reason.
+ * Where that directory is, is the application's business and not this library's — every app that
+ * depends on it keeps its files somewhere of its own — so it is passed in. See
+ * `databaseDriverModule`, which asks the app graph for it under [DATA_DIR_QUALIFIER].
  */
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-actual class DatabaseDriverFactory {
+actual class DatabaseDriverFactory(private val dataDir: File) {
     actual fun createDriver(schema: SqlSchema<QueryResult.Value<Unit>>, name: String): SqlDriver {
-        val directory = File(
-            System.getProperty(DATA_DIR_PROPERTY)
-                ?: (System.getProperty("user.home") + "/.mapsOn")
-        )
-        directory.mkdirs()
-        val driver = JdbcSqliteDriver("jdbc:sqlite:${File(directory, name).absolutePath}")
+        dataDir.mkdirs()
+        val driver = JdbcSqliteDriver("jdbc:sqlite:${File(dataDir, name).absolutePath}")
         driver.migrateTo(schema)
         return driver
     }
 }
-
-const val DATA_DIR_PROPERTY = "com.coderwise.dataDir"
 
 /**
  * Creates the schema in a new file, or migrates one written by an older version of the app.
