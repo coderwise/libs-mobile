@@ -9,6 +9,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -22,16 +23,37 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/** Which tiles cover the viewport, how big they are on screen and where they start. */
-internal data class TileGrid(
-    val z: Int,
-    val columns: IntRange,
-    val rows: IntRange,
-    val side: Double,
-    val originX: Double,
-    val originY: Double
-) {
-    val window get() = TileWindow(z, columns, rows)
+/**
+ * How far apart the tiles of level [z] sit on screen at [zoom].
+ *
+ * A function of the zoom alone, and the one place it is worked out: the grid, the plane that lays
+ * the tiles out and the layer that pans them all have to agree on it to the last bit, or the plane
+ * drifts out from under the window it was laid out for.
+ */
+internal fun tileSpacing(zoom: Float, z: Int, density: Float): Double =
+    Mercator.worldPixels(zoom, density) / (1 shl z)
+
+/**
+ * Where the plane laid out for [window] has to sit now, as the layer holding it has to move.
+ *
+ * The grid is laid out at its own origin — the window's first column at zero — and this is the
+ * whole of what a pan does to it until the window changes. It is read in the draw phase, so it
+ * allocates one [Offset] and touches no ranges; and it is in screen axes rather than map axes,
+ * because a layer translation is, and the same layer turns the plane.
+ */
+internal fun panTranslation(
+    camera: MapCameraState,
+    window: TileWindow,
+    width: Float,
+    height: Float,
+    density: Float
+): Offset {
+    val world = Mercator.worldPixels(camera.zoom, density)
+    val side = tileSpacing(camera.zoom, window.z, density)
+    return camera.toScreen(
+        window.x.first * side - (camera.x * world - width / 2),
+        window.y.first * side - (camera.y * world - height / 2)
+    )
 }
 
 /**
@@ -51,23 +73,25 @@ internal fun planeSize(width: Int, height: Int, bearing: Float): IntSize {
 }
 
 /**
+ * Which tiles cover a [width] x [height] map plane.
+ *
  * A tile is 256 dp on screen whatever the density, which is already in the world size. Only the
  * integer part of the zoom picks a level, the fraction scales the tile, which is what keeps a
  * pinch continuous.
  *
  * [width] and [height] are the map plane's, not the viewport's: with a bearing they differ.
  */
-internal fun tileGrid(
+internal fun tileWindow(
     camera: MapCameraState,
     width: Float,
     height: Float,
     density: Float,
     state: MapState<*>
-): TileGrid {
+): TileWindow {
     val z = floor(camera.zoom).toInt().coerceIn(state.zoomRange.first, state.zoomRange.last)
     val count = 1 shl z
     val world = Mercator.worldPixels(camera.zoom, density)
-    val side = world / count
+    val side = tileSpacing(camera.zoom, z, density)
     val originX = camera.x * world - width / 2
     val originY = camera.y * world - height / 2
 
@@ -75,7 +99,7 @@ internal fun tileGrid(
     val rows = (floor(originY / side).toInt()..<ceil((originY + height) / side).toInt())
         .let { it.first.coerceAtLeast(0)..it.last.coerceAtMost(count - 1) } // the poles end the world
 
-    return TileGrid(z, columns, rows, side, originX, originY)
+    return TileWindow(z, columns, rows)
 }
 
 /** What a map is made of: layers of tiles, in the order they are declared. */
@@ -153,6 +177,11 @@ fun MapView(
         overlay.measured(width.toFloat(), height.toFloat(), density)
 
         val plane = planeSize(width, height, camera.bearing)
+        // Bound out here, where `density` is the layout's: a layer block brings a density of its
+        // own, and the camera reads belong to the layer's observation scope rather than this one.
+        val panned = { window: TileWindow ->
+            panTranslation(camera, window, plane.width.toFloat(), plane.height.toFloat(), density)
+        }
         // A slot the content block no longer declares takes its holder with it.
         if (held.size > slots.size) held.keys.retainAll { it < slots.size }
 
@@ -161,11 +190,12 @@ fun MapView(
                 is Slot.Tiled -> {
                     // Every layer is laid out on the level its own source has, over a plane big
                     // enough to fill the viewport once it is turned. Only *which* tiles is settled
-                    // here; where they go the plane works out for itself, in its own measure block,
-                    // which is what keeps a pan out of composition entirely.
-                    val window = tileGrid(
+                    // here — which is what keeps a pan out of composition. The plane lays them out
+                    // relative to this window in its own measure block, and where the window itself
+                    // has got to is a property of the layer below, so a pan reaches neither.
+                    val window = tileWindow(
                         camera, plane.width.toFloat(), plane.height.toFloat(), density, declared.state
-                    ).window
+                    )
                     declared.state.window = window
                     val body = held.plane(slot, declared.state, camera).body(window, declared.content)
                     subcompose(slot, body)
@@ -174,7 +204,7 @@ fun MapView(
                                 placeable = measurable.measure(Constraints.fixed(plane.width, plane.height)),
                                 left = (width - plane.width) / 2,
                                 top = (height - plane.height) / 2,
-                                turned = true
+                                window = window
                             )
                         }
                 }
@@ -200,14 +230,31 @@ fun MapView(
         }
 
         layout(width, height) {
-            placeables.forEach { (placeable, left, top, turned) ->
+            placeables.forEach { (placeable, left, top, window) ->
                 // The plane is centred on the viewport, so turning it about its own middle turns
                 // it about the point the camera is looking at. Overlays are not turned: a pin
                 // stays upright, and what should follow the map asks the projection where to go.
-                if (turned) {
-                    placeable.placeWithLayer(left, top) { rotationZ = -camera.bearing }
-                } else {
+                if (window == null) {
                     placeable.place(left, top)
+                    return@forEach
+                }
+                placeable.placeWithLayer(left, top) {
+                    rotationZ = -camera.bearing
+                    // And the pan, as a layer property rather than a position.
+                    //
+                    // This block runs in the draw phase: a state read in it re-runs the block and
+                    // sets the layer's properties, and stops there. Nothing above is re-measured,
+                    // nothing below is re-placed, and no display list is recorded again — a drag
+                    // moves two floats on a render node and the map moves with them, which is what
+                    // a map engine does with its camera matrix.
+                    //
+                    // The alternative, and what this used to be, is a pan baked into every tile's
+                    // position. That re-places every tile of every layer on every frame, and a
+                    // child moved without a layer of its own invalidates the layer above it, so
+                    // the plane re-recorded its whole draw each time as well.
+                    val at = panned(window)
+                    translationX = at.x
+                    translationY = at.y
                 }
             }
         }
@@ -218,13 +265,15 @@ fun MapView(
  * One tile layer: the tiles of one source, laid out on the unturned map plane.
  *
  * [window] says which tiles, and is the only thing here that composition depends on — so the layer
- * re-composes when the set of tiles changes and at no other time. Where the tiles go is read from
- * the camera in the measure block below, so a pan re-places children that are already composed and
- * already drawn.
+ * re-composes when the set of tiles changes and at no other time.
+ *
+ * The grid is laid out at its own origin: the window's first column and row at zero, every tile a
+ * whole number of spacings from there. Where that origin has got to is the business of the layer
+ * above — see [panTranslation] — so nothing here is a function of where the pan sits, and a drag
+ * touches neither this measure block nor anything it places.
  */
 @Composable
 private fun TilePlane(
-    state: MapState<*>,
     camera: MapCameraState,
     window: TileWindow,
     content: @Composable (TileKey) -> Unit
@@ -240,11 +289,9 @@ private fun TilePlane(
             }
         }
     ) { measurables, constraints ->
-        // The camera is read here, in the layout phase: panning invalidates this measure and
-        // nothing above it, so the frame costs a re-placement rather than a recomposition.
-        val grid = tileGrid(
-            camera, constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat(), density, state
-        )
+        // The zoom is read here and the pan is not, which is the whole point: a drag leaves this
+        // measure valid, and only a pinch or a new window re-runs it.
+        val spacing = tileSpacing(camera.zoom, window.z, density)
         // One size for every tile, at every pan offset.
         //
         // Sizing a tile from the gap between its own two snapped edges looks like the careful thing
@@ -257,14 +304,14 @@ private fun TilePlane(
         //
         // Rounding up gives every tile one size for the whole gesture. Neighbours then overlap by
         // under a pixel, which does not show: a tile paints its own background first.
-        val side = measuredTileSize(grid.side)
+        val side = measuredTileSize(spacing)
         val box = Constraints.fixed(side, side)
         val placed = measurables.mapIndexed { index, measurable ->
             val cell = cells[index]
             Triple(
                 measurable.measure(box),
-                floor(cell.column * grid.side - grid.originX).toInt(),
-                floor(cell.row * grid.side - grid.originY).toInt()
+                gridStep(cell.column - window.x.first, spacing),
+                gridStep(cell.row - window.y.first, spacing)
             )
         }
         layout(constraints.maxWidth, constraints.maxHeight) {
@@ -317,6 +364,20 @@ private fun cellsOf(window: TileWindow): List<TileCell> {
 }
 
 /**
+ * Where the [step]th tile of a grid spaced [side] pixels apart is placed, counting from the grid's
+ * own origin — which is the window's first column, not the viewport's edge, because the pan
+ * between the two is a layer translation rather than a position.
+ *
+ * Rounded *up*, and that is the whole of the reason it has a name. The grid's far edge sits at a
+ * fraction of a pixel — the translation carrying the pan is not a whole number — so rounding a
+ * tile's position down leaves the last one a fraction of a pixel short of the plane's edge and the
+ * map shows a sliver of nothing along it. Rounding up cannot: every tile is at least as far along
+ * as the true grid puts it, and [measuredTileSize] is wide enough that the one behind still reaches
+ * it.
+ */
+internal fun gridStep(step: Int, side: Double): Int = ceil(step * side).toInt()
+
+/**
  * The size every tile of a grid spaced [side] pixels apart is measured at.
  *
  * A function of the spacing alone and not of where the pan happens to sit — which is the whole
@@ -354,7 +415,7 @@ private sealed class Held {
             body?.let { if (window == this.window && content === this.content) return it }
             this.window = window
             this.content = content
-            return (@Composable { TilePlane(state, camera, window, content) }).also { body = it }
+            return (@Composable { TilePlane(camera, window, content) }).also { body = it }
         }
     }
 
@@ -381,12 +442,15 @@ private fun MutableMap<Int, Held>.plane(
 private fun MutableMap<Int, Held>.over(slot: Int, overlay: MapOverlayState): Held.Over =
     this[slot] as? Held.Over ?: Held.Over(overlay).also { this[slot] = it }
 
-/** Where one child ends up, and whether it turns with the map. */
+/**
+ * Where one child ends up, and — for a tile plane — the window it was laid out for, which is what
+ * the pan is measured against. An overlay has no window and does not turn with the map.
+ */
 private data class Placed(
     val placeable: Placeable,
     val left: Int,
     val top: Int,
-    val turned: Boolean = false
+    val window: TileWindow? = null
 )
 
 /** One thing the content block declared: a composable per tile, or one over all of them. */

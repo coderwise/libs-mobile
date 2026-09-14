@@ -1,5 +1,6 @@
 package com.coderwise.libs.mapview
 
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -38,18 +39,48 @@ class TileSizingTest {
 
     @Test
     fun `neighbours never leave a gap`() {
-        listOf(256.0, 384.5, 704.0, 945.4, 1023.001).forEach { side ->
+        SPACINGS.forEach { side ->
             val size = measuredTileSize(side)
-            (0..8).forEach { column ->
-                val left = floor(column * side).toInt()
-                val next = floor((column + 1) * side).toInt()
+            (0..8).forEach { step ->
+                val left = gridStep(step, side)
+                val next = gridStep(step + 1, side)
                 assertTrue(
                     left + size >= next,
-                    "gap of ${next - (left + size)}px after column $column at spacing $side"
+                    "gap of ${next - (left + size)}px after step $step at spacing $side"
                 )
             }
         }
     }
+
+    @Test
+    fun `and the grid reaches both edges of the plane wherever the pan sits`() {
+        // What the plane and the layer above it do between them: tiles laid out from the window's
+        // own origin, and the pan applied as a translation. The two have to cover the viewport
+        // between them at every offset, or a sliver of nothing shows along an edge.
+        SPACINGS.forEach { side ->
+            val size = measuredTileSize(side)
+            (0..400).forEach { tick ->
+                val origin = tick * side / 97.0 - 3 * side
+                listOf(1080f, 1440f, 2400f).forEach { width ->
+                    val first = floor(origin / side).toInt()
+                    val last = ceil((origin + width) / side).toInt() - 1
+                    val pan = first * side - origin // what panTranslation hands the layer
+                    assertTrue(
+                        gridStep(0, side) + pan <= 0.0,
+                        "${-(gridStep(0, side) + pan)}px uncovered at the near edge, spacing $side"
+                    )
+                    assertTrue(
+                        gridStep(last - first, side) + size + pan >= width,
+                        "${width - (gridStep(last - first, side) + size + pan)}px uncovered at the " +
+                            "far edge of a ${width}px plane, spacing $side"
+                    )
+                }
+            }
+        }
+    }
+
+    /** Spacings a real grid lands on: whole, half, and as fractional as a third of a level gets. */
+    private val SPACINGS = listOf(256.0, 384.5, 704.0, 945.4, 1023.001, 967.9384)
 
     @Test
     fun `and overlap by less than a pixel`() {

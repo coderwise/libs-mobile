@@ -90,15 +90,15 @@ class BearingTest {
     @Test
     fun `a turned map asks for the tiles the corners need`() {
         val state = MapState<Unit>(zoomRange = 0..19)
-        val straight = tileGrid(MapCameraState(london, 12f), 1000f, 1000f, 1f, state)
+        val straight = tileWindow(MapCameraState(london, 12f), 1000f, 1000f, 1f, state)
         val turned = planeSize(1000, 1000, 45f).let {
-            tileGrid(MapCameraState(london, 12f, bearing = 45f), it.width.toFloat(), it.height.toFloat(), 1f, state)
+            tileWindow(MapCameraState(london, 12f, bearing = 45f), it.width.toFloat(), it.height.toFloat(), 1f, state)
         }
         assertTrue(
-            turned.window.keys.size > straight.window.keys.size,
-            "a turned viewport reaches further: ${turned.window.keys.size} vs ${straight.window.keys.size}"
+            turned.keys.size > straight.keys.size,
+            "a turned viewport reaches further: ${turned.keys.size} vs ${straight.keys.size}"
         )
-        assertTrue(straight.window.keys.all { it in turned.window.keys }, "and still covers the middle")
+        assertTrue(straight.keys.all { it in turned.keys }, "and still covers the middle")
     }
 }
 
