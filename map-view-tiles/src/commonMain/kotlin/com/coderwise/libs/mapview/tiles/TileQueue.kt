@@ -5,6 +5,7 @@ import com.coderwise.libs.mapview.MapState
 import com.coderwise.libs.mapview.TileKey
 import com.coderwise.libs.mapview.TileWindow
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -19,10 +20,14 @@ import kotlin.time.TimeSource
 /**
  * Fills a [MapState]'s slots, and is the only thing in the app that fetches.
  *
- * The workers run on whatever [scope] they are given, and [T] is whatever [fetch] returns —
+ * [scope] is what the queue lives as long as, and [T] is whatever [fetch] returns —
  * the bytes off the wire, or a decoded tile if the decoding belongs upstream of the view. Where a
  * tile comes from and what it costs to make, blocking dispatcher and all, is [fetch]'s business;
  * the queue only decides which tile is worth having next, and how many to keep.
+ *
+ * The workers and the bookkeeping run on [Dispatchers.Default] whatever [scope] is given, so that
+ * a queue on a composition's scope does not do its thinking on the UI thread. [fetch] is called
+ * from there and is free to go wherever it likes.
  *
  * A real queue rather than a coroutine per tile: the view publishes the window it wants, this
  * replaces its want-list with that window, and a fixed set of workers takes the most useful tile
@@ -62,8 +67,16 @@ class TileQueue<T>(
         private set
 
     init {
-        scope.launch { snapshotFlow { state.window }.collect { want(it) } }
-        repeat(workers) { scope.launch { work() } }
+        // Off the caller's dispatcher, deliberately. A queue handed a composition's scope runs on
+        // the UI dispatcher, which on Android delivers at the top of a frame — so every window the
+        // view publishes, every tile that lands and every worker that resumes was landing on the
+        // UI thread in front of that frame's measure and draw. Panning publishes a window each
+        // time the grid crosses a tile, which is where the hitch was.
+        //
+        // What this does not move is [fetch]: it is called from here, so it starts on a worker,
+        // but where it does its work is its own business, as the class doc says.
+        scope.launch(Dispatchers.Default) { snapshotFlow { state.window }.collect { want(it) } }
+        repeat(workers) { scope.launch(Dispatchers.Default) { work() } }
     }
 
     private suspend fun want(window: TileWindow) {
