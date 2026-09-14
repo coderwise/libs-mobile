@@ -326,6 +326,44 @@ Two things follow for anyone measuring this library again:
   nothing. The sample has a release build type for exactly this. It happened to make no difference
   to *this* bottleneck, which is the GPU's, but it will to any that is not.
 
+### What the texture cache still costs, and one way round it that does not work
+
+Measured on the emulator, which the rule above says not to trust for this — so read the ratios and
+not the milliseconds. What makes them worth keeping is that both halves of each comparison were
+taken on that one machine through that one software rasteriser, and an order of magnitude does not
+come out of the difference between a phone and an emulator.
+
+Caching leaves one cost behind, and it is the only one left worth naming. A tile is rasterised the
+frame it first appears, so every time the grid crosses a tile boundary the five or so tiles that
+crossing just exposed are rasterised inside that one frame — `flush layers`, about 68 ms. A pan
+that stays inside a tile costs 1.9 ms a frame; a fling crosses a boundary every few frames, so it
+meets that lump on a regular beat and reads as jitter rather than as slowness. Nothing in the
+pipeline is redundant by then: 315 tile-layer renders across 57 crossings is 5.5 tiles each, which
+is exactly the column or row that came on screen.
+
+The obvious answer is to move that rasterising off the render thread — draw the tile into an
+`ImageBitmap` on `Dispatchers.Default` and blit it. That part works: `CanvasDrawScope` will draw a
+`RenderTile` into an `ImageBitmap` with no composition and no UI thread, so it is the same
+`drawRenderTile` call either way.
+
+**It is an order of magnitude too slow to be any use.** One dense z14 tile takes 119-166 ms that
+way. HWUI's `flush layers` does about five of them in 68 ms — some 14 ms each, on the same machine,
+through the same software Skia. So the worker never finishes before the next restart cancels it,
+the slot never records a finished bitmap, and it blanks again on the next pass: a loop, and on
+screen a tile flickering between the map and bare ground. Frame captures during short pans hold
+32.5-34.8% of pixels on an edge with the texture cache, and drop to 18.8% with the worker.
+
+Two traps in the measuring of it, both worth knowing:
+
+- **A blank map is a fast map.** Rasterising on a worker and drawing only the ground colour while
+  it is in flight measured 1.55% janky frames at 19 ms, better than anything else here. It was
+  drawing almost nothing. Frame timings mean nothing without a look at what is on the screen.
+- Reading the slot's size from state inside the coroutine while capturing its bitmap pool by value
+  gets a live size and a stale pool, and the first rasterisation of every slot quietly does nothing.
+
+What is left is to make a z14 tile cheaper to draw. The lump is five tiles' worth of paths and
+nothing else, so anything the style gates away at that level comes off it in proportion.
+
 ## Things worth pushing on
 
 
