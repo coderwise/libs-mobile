@@ -6,9 +6,12 @@ import androidx.core.content.FileProvider
 import org.koin.core.context.GlobalContext
 import java.io.File
 
-actual fun shareFile(fileName: String, content: String, mimeType: String) {
+actual fun shareFile(fileName: String, mimeType: String, writeContent: (Appendable) -> Unit) {
     val context: Context = GlobalContext.get().get()
-    val file = File(context.cacheDir, fileName).also { it.writeText(content) }
+    // A BufferedWriter is an Appendable, so the caller's text goes to disk as it is produced.
+    val file = File(context.cacheDir, fileName).also { target ->
+        target.bufferedWriter().use { writeContent(it) }
+    }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = mimeType
