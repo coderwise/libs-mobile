@@ -279,7 +279,13 @@ private suspend fun PointerInputScope.detectMapGestures(
     onEnd: (Offset) -> Unit
 ) = awaitEachGesture {
     var zoom = 1f
-    var pan = Offset.Zero
+    // Pan the gesture has seen and not yet handed over. Before the slop is crossed that is
+    // everything, and it is handed over in full on the first move rather than dropped: a map has
+    // nothing to compete with for a drag — no list under it to scroll instead — so the touch slop
+    // is not a claim being settled, it is only a question of when the drag started. Dropping it
+    // leaves the ground a slop behind the finger for the rest of the gesture, and a drag-lift-drag
+    // pan across a city leaves it a slop further behind on every stroke.
+    var owed = Offset.Zero
     var turn = 0f
     var turning = false
     var pastSlop = false
@@ -295,13 +301,12 @@ private suspend fun PointerInputScope.detectMapGestures(
         cancelled = event.changes.fastAny { it.isConsumed }
         if (!cancelled) {
             val zoomChange = event.calculateZoom()
-            val panChange = event.calculatePan()
             val turnChange = event.calculateRotation()
+            owed += event.calculatePan()
             if (!pastSlop) {
                 zoom *= zoomChange
-                pan += panChange
                 val motion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
-                pastSlop = motion > viewConfiguration.touchSlop || pan.getDistance() > viewConfiguration.touchSlop
+                pastSlop = motion > viewConfiguration.touchSlop || owed.getDistance() > viewConfiguration.touchSlop
             }
             // A twist has to be meant: until the fingers have turned this far between them the
             // map stays where it is, and after that every degree counts.
@@ -312,10 +317,11 @@ private suspend fun PointerInputScope.detectMapGestures(
             if (pastSlop || turning) {
                 onGesture(
                     event.calculateCentroid(useCurrent = false),
-                    panChange,
+                    owed,
                     zoomChange,
                     if (turning) turnChange else 0f
                 )
+                owed = Offset.Zero
                 event.changes.fastForEach { if (it.positionChanged()) it.consume() }
             }
             val down = event.changes.filter { it.pressed }
