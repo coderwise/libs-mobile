@@ -39,6 +39,11 @@ kotlin {
                 implementation(libs.sqldelight.sqlite)
             }
         }
+        sourceSets.getByName("desktopTest") {
+            dependencies {
+                implementation(libs.kotlin.test)
+            }
+        }
     }
 }
 
