@@ -27,7 +27,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
  * navigation library, no DI container, and no resources — so that what a reader has to
  * understand to copy an example is the library it demonstrates, and nothing else.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SampleApp() {
     MaterialTheme {
@@ -52,6 +55,11 @@ fun SampleApp() {
         // Hoisted above the branch, so coming back from an example lands where the reader left
         // the list rather than at the top of it.
         val galleryState = rememberLazyListState()
+
+        // One screen deep is the whole back stack, so the system gesture needs nothing more
+        // than the same exit the top bar's arrow takes. Without it, Android's back leaves the
+        // app from an example rather than returning to the list.
+        BackHandler(enabled = selected != null) { selected = null }
 
         if (selected == null) {
             ExampleGallery(examples, galleryState, onSelect = { selected = it })
