@@ -15,19 +15,19 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 
 | Module | Coordinates | Latest | Summary |
 |---|---|---|---|
-| [`:utils`](utils) | `com.coderwise.libs:utils` | `0.5.0` | Cross-platform utilities: file and text sharing, platform system-bar colors, generic `LruCache`. |
+| [`:utils`](utils) | `com.coderwise.libs:utils` | `0.6.0` | Cross-platform utilities: file and text sharing, platform system-bar colors, generic `LruCache`. |
 | [`:permissions`](permissions) | `com.coderwise.libs:permissions` | `0.6.0` | Runtime permission state (location, camera, Bluetooth, notifications) for Compose Multiplatform, plus `rememberAppSettingsLauncher` for refusals the OS no longer prompts for. |
-| [`:database`](database) | `com.coderwise.libs:database` | `0.1.0` | SQLDelight driver factory + Koin DI. |
-| [`:location`](location) | `com.coderwise.libs:location` | `0.3.0` | GPS location provider (current location + updates `Flow`), with opt-in background delivery on iOS. |
+| [`:database`](database) | `com.coderwise.libs:database` | `0.3.0` | SQLDelight driver factory + Koin DI. |
+| [`:location`](location) | `com.coderwise.libs:location` | `0.3.1` | GPS location provider (current location + updates `Flow`), with opt-in background delivery on iOS. |
 | [`:settings`](settings) | `com.coderwise.libs:settings` | `0.1.0` | Typed, serializable settings persistence (DataStore-backed). |
 | [`:imagepicker`](imagepicker) | `com.coderwise.libs:imagepicker` | `0.1.0` | System image picker (`rememberImagePicker`) with automatic downscaling. |
-| [`:filepicker`](filepicker) | `com.coderwise.libs:filepicker` | — | System document picker (`rememberTextFilePicker`) that reads the chosen file as text. Not yet released. |
+| [`:filepicker`](filepicker) | `com.coderwise.libs:filepicker` | `0.2.0` | System document picker (`rememberTextFilePicker`) that reads the chosen file as text. |
 | [`:logger`](logger) | `com.coderwise.libs:logger` | `0.1.0` | Kermit-backed `AppLogger` facade, plus `enableDeviceVisibleLogging` for iOS debug runs that must be diagnosed off-device. |
 | [`:billing`](billing) | `com.coderwise.libs:billing` | `0.2.0` | One-time (non-consumable) purchases behind one API: Play Billing on Android, a Swift StoreKit 2 bridge on iOS, inert where there is no store. |
-| [`:map-view`](map-view) | `com.coderwise.libs:map-view` | — | The map: a `MapView` of layered tile slots, the camera and gestures that move it, and overlays placed by coordinate. Plus the tile-grid projection the whole XYZ scheme rests on, for callers that have to cross between a coordinate and a tile. Not yet released; see its [README](map-view/README.md). |
-| `:map-view-tiles` | `com.coderwise.libs:map-view-tiles` | — | Loading for the above: `tileState` joins slots to a queue that fills them nearest-the-centre first, and `shown` says what a slot draws until its own tile lands. |
-| `:map-view-tiles-raster` | `com.coderwise.libs:map-view-tiles-raster` | — | Image tiles. |
-| `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | — | MVT tiles: a hand-rolled decoder that reads only what you ask for, a redefinable style whose widths ramp with zoom and whose expensive passes can be gated by it, a renderer that paints in a canonical order whatever order the source emits, and labels as text composables. Also what a tile knows besides its picture: `featuresAt` for "what did I just press on", and `waterPath` for anything drawn over the sea. |
+| [`:map-view`](map-view) | `com.coderwise.libs:map-view` | `0.1.1` | The map: a `MapView` of layered tile slots, the camera and gestures that move it, and overlays placed by coordinate. Plus the tile-grid projection the whole XYZ scheme rests on, for callers that have to cross between a coordinate and a tile. See its [README](map-view/README.md). |
+| `:map-view-tiles` | `com.coderwise.libs:map-view-tiles` | `0.1.1` | Loading for the above: `tileState` joins slots to a queue that fills them nearest-the-centre first, and `shown` says what a slot draws until its own tile lands. |
+| `:map-view-tiles-raster` | `com.coderwise.libs:map-view-tiles-raster` | `0.1.0` | Image tiles. |
+| `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | `0.1.1` | MVT tiles: a hand-rolled decoder that reads only what you ask for, a redefinable style whose widths ramp with zoom and whose expensive passes can be gated by it, a renderer that paints in a canonical order whatever order the source emits, and labels drawn straight to the canvas. Also what a tile knows besides its picture: `featuresAt` for "what did I just press on", and `waterPath` for anything drawn over the sea. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.8` | **Previous generation.** Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.8` | **Previous generation.** Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
