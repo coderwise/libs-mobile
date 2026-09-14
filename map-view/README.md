@@ -295,19 +295,38 @@ once and 150 ms twice — that only large effects are worth believing here:
   MVT parsing dropped about 30%, path building 25%.
 - **Thinning the geometry.** Dropping a quarter of the points did nothing measurable, so it is not
   in the code. Point count is not the constraint at this scale.
-- **An offscreen compositing layer per tile.** Worse: Compose does not cache one between frames, so
-  it only adds a buffer.
+- **An offscreen compositing layer per tile.** Read the next section before believing this one. On
+  the emulator it looked like it only added a buffer. On a phone it is the largest win there is.
+
+## What the device said, and why the section above is not to be trusted
+
+Everything above was measured on the emulator, which rasterises in software. A phone does not, and
+the conclusion about compositing layers comes out backwards on one. Panning central London at zoom
+14 on a Pixel 7, `gfxinfo` over eight swipes:
+
+| pan | tile as a display list | tile as a texture |
+|---|---|---|
+| drag | 100% of frames janky, 200 ms median | 10% janky, 11 ms |
+| fling | 58% janky, 61 ms median | 18-21% janky, 22-24 ms |
+
+Graphics memory goes *down* with it, 263 MB to 210 MB: a bounded set of tile textures is smaller
+than the path-mask atlas Skia churns when every path moves every frame. So `VectorSlot`'s `cache`
+is on by default.
+
+The frame breakdown says why, and it is not what the emulator's said. The UI thread does almost
+nothing: it sits in `postAndWait` for 108 ms waiting on the render thread, which spends 116 ms in
+`Drawing`, 67 ms in `Vulkan finish frame`, and allocates about 150 Vulkan images a frame — the same
+paths rasterised into fresh masks, every frame, because the map moved under them.
+
+Two things follow for anyone measuring this library again:
+
+- **Do not tune rasterisation on an emulator.** It inverts this result.
+- **Do not tune anything on a debug build.** A debuggable APK is pinned to ART's `verify` filter
+  and cannot be AOT compiled at all — `cmd package compile -m speed -f` reports success and changes
+  nothing. The sample has a release build type for exactly this. It happened to make no difference
+  to *this* bottleneck, which is the GPU's, but it will to any that is not.
 
 ## Things worth pushing on
-
-- **Rasterise a vector tile once instead of every frame.** The per-frame breakdown says where the
-  remaining time goes: 10 ms on the UI thread, 60-90 ms on the render thread. Recording a display
-  list costs 186 us and decoding never touches the frame, so what is left is Skia tessellating the
-  same paths again for every frame the tile sits on screen — about 30,000 points a tile. Drawing
-  each tile into an ImageBitmap once and blitting it afterwards is what the raster source does at
-  21 ms a frame. It costs the crispness that vector tiles are for, and about 1 MB a tile of memory,
-  so it is a trade rather than a win — and worth checking on real hardware first, since the
-  emulator translates GL to Metal and may be flattering the raster path.
 
 
 - **Tilt** — not implemented. Bearing is (see above); a pitched camera is a different projection

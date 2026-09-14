@@ -81,7 +81,7 @@ fun VectorSlot(
     zoom: Int = tile.zoom,
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
-    cache: () -> Boolean = { false }
+    cache: () -> Boolean = Cached
 ) = VectorSlot(tile.render, tile.background, src, zoom, modifier, alpha, cache)
 
 /**
@@ -92,14 +92,32 @@ fun VectorSlot(
  * list is captured once, so moving the grid moves a layer instead of re-tracing every stroke of
  * every tile on every frame.
  *
- * [cache] goes one step further and asks for a *compositing* layer — the geometry is rasterised
- * into a texture once and the texture reused until the drawing changes, so a pan blends textures
- * rather than replaying a display list. It costs a texture per visible tile in graphics memory, and
- * it is **not** an unqualified win: measured on a dense city centre it cuts janky frames on a slow
- * drag (37.7% against 96.6% without) and makes them far worse on a fling (35.3% against 4.4%, and
- * a third of the frames delivered), because a fling changes what is on screen faster than a texture
- * can be reused. Hence a lambda rather than a flag: it is read in the draw phase, so a caller can
- * answer it per frame from what the gesture is doing without recomposing the grid.
+ * [cache] asks for a *compositing* layer on top of that — the geometry is rasterised into a
+ * texture once and the texture reused until the drawing changes, so a pan blends textures rather
+ * than rasterising every path again. It is **on by default**, because on a real device it is the
+ * difference between a map that follows your finger and one that does not, and on a dense tile it
+ * is not close. Panning central London at z14 on a Pixel 7:
+ *
+ * | pan | without | with |
+ * |---|---|---|
+ * | drag | 100% of frames janky, 200 ms median | 10% janky, 11 ms |
+ * | fling | 58% janky, 61 ms median | 18-21% janky, 22-24 ms |
+ *
+ * Without it the bottleneck is not Compose at all — the UI thread sits in `postAndWait` while the
+ * render thread spends over a hundred milliseconds a frame in Skia, re-rasterising the same few
+ * thousand paths into the same masks because the map moved. A texture is drawn once.
+ *
+ * It costs a texture per visible tile in graphics memory and it is still cheaper than not having
+ * it: the same pan measured 210 MB of graphics memory with it against 263 MB without, because the
+ * path-mask atlas Skia churns when every path moves every frame is bigger than the tiles are.
+ *
+ * A lambda rather than a flag because it is read in the draw phase, so a caller that does want to
+ * turn it off — a map that never moves, a device short of graphics memory — can answer it per
+ * frame from what the gesture is doing, and change its mind without recomposing the grid.
+ *
+ * An earlier measurement on an emulator said the opposite, that caching made a fling far worse.
+ * That was the emulator: it rasterises in software, where a texture is expensive and a path is not.
+ * Do not tune this on one.
  *
  * [alpha] is applied as a layer property, not per draw op, so fading a tile in does not invalidate
  * its drawing. Without [cache] the alpha is what the layer is for, and it modulates instead.
@@ -112,7 +130,7 @@ fun VectorSlot(
     zoom: Int,
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
-    cache: () -> Boolean = { false }
+    cache: () -> Boolean = Cached
 ) {
     Spacer(
         modifier
@@ -128,6 +146,9 @@ fun VectorSlot(
             .drawBehind { drawRenderTile(render, background, zoom, src) }
     )
 }
+
+/** The default `cache`: see [VectorSlot]. A val, so every slot shares the one lambda. */
+private val Cached: () -> Boolean = { true }
 
 /** Everything the style paints or labels; the rest of the tile is never parsed into features. */
 private val DRAWN_LAYERS = setOf(
