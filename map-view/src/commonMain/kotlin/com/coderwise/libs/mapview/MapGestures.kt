@@ -161,8 +161,13 @@ private const val ZOOM_PER_SCREEN = 4f
  */
 private const val SCROLL_PER_LEVEL = 40f
 
-/** How far two fingers must turn between them before the map takes it as a turn. */
-private const val TURN_SLOP_DEGREES = 7f
+/**
+ * How far two fingers must turn between them before the map takes it as a turn. Generous, because
+ * a pinch is an arc: thumb and forefinger sweep several degrees between them on the way in or out
+ * without anyone meaning to turn anything, and a map that comes off north during every zoom is a
+ * map you spend your time straightening.
+ */
+private const val TURN_SLOP_DEGREES = 20f
 
 internal const val MIN_FLING_DP = 20f
 internal const val MAX_FLING_DP = 3_000f
