@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -304,7 +305,13 @@ private fun TilePlane(
         //
         // Rounding up gives every tile one size for the whole gesture. Neighbours then overlap by
         // under a pixel, which does not show: a tile paints its own background first.
-        val side = measuredTileSize(spacing)
+        // Over-zoomed far enough past its own level, a tile's box outgrows what layout can hold:
+        // a source that stops at z14 seen at zoom 20 spaces its tiles 2^6 * 256 dp apart, which on
+        // a 2x screen is 32768 px and more than [Constraints] can represent in both axes at once.
+        // So the tile is measured at a fraction of its box and blown back up by the layer it is
+        // placed in — the same pixels either way, since a tile draws to whatever size it is given.
+        val magnification = tileMagnification(spacing)
+        val side = measuredTileSize(spacing / magnification)
         val box = Constraints.fixed(side, side)
         val placed = measurables.mapIndexed { index, measurable ->
             val cell = cells[index]
@@ -315,7 +322,18 @@ private fun TilePlane(
             )
         }
         layout(constraints.maxWidth, constraints.maxHeight) {
-            placed.forEach { (placeable, left, top) -> placeable.place(left, top) }
+            placed.forEach { (placeable, left, top) ->
+                if (magnification == 1.0) {
+                    placeable.place(left, top)
+                } else {
+                    placeable.placeWithLayer(left, top) {
+                        // From the tile's own corner, which is the point the grid placed.
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        scaleX = magnification.toFloat()
+                        scaleY = magnification.toFloat()
+                    }
+                }
+            }
         }
     }
 }
@@ -386,6 +404,32 @@ internal fun gridStep(step: Int, side: Double): Int = ceil(step * side).toInt()
  * tile paints its own background before anything else.
  */
 internal fun measuredTileSize(side: Double): Int = ceil(side).toInt()
+
+/**
+ * The largest box a tile is measured in. Past this it is measured smaller and scaled up — see
+ * [tileMagnification].
+ *
+ * [Constraints] is what forces the scaling to exist at all — it holds 2^15 - 1 in each axis, and
+ * an over-zoomed grid outgrows that — but it is not what sets this number. A slot that caches its
+ * drawing rasterises into a texture of the size it was measured at, so the box is also a bill in
+ * graphics memory: 64 MB a tile here, and four times that at the 8192 a GPU would still accept.
+ * Hence a cap set by what a tile costs to hold rather than by what layout can express.
+ */
+private const val MAX_TILE_SIDE_PX = 4096
+
+/**
+ * How much bigger a tile is drawn than it is measured: 1 for anything that fits in
+ * [MAX_TILE_SIDE_PX], and otherwise the power of two that brings it back inside.
+ *
+ * A power of two so the box a tile is measured in stays one of the sizes it would have been
+ * measured at anyway, and so the scale is exact in binary: the grid is placed at the true spacing
+ * and the drawn tile has to reach exactly as far.
+ */
+internal fun tileMagnification(spacing: Double): Double {
+    var magnification = 1.0
+    while (spacing / magnification > MAX_TILE_SIDE_PX) magnification *= 2.0
+    return magnification
+}
 
 /**
  * What one declared slot subcomposes, kept from frame to frame.

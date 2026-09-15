@@ -1,5 +1,6 @@
 package com.coderwise.libs.mapview
 
+import androidx.compose.ui.unit.Constraints
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.test.Test
@@ -81,6 +82,38 @@ class TileSizingTest {
 
     /** Spacings a real grid lands on: whole, half, and as fractional as a third of a level gets. */
     private val SPACINGS = listOf(256.0, 384.5, 704.0, 945.4, 1023.001, 967.9384)
+
+    /**
+     * A source that stops at z14 drawn at zoom 20 on a 2x screen spaces its tiles 32768px apart,
+     * which `Constraints` cannot hold in both axes — it used to throw while a track card composed.
+     * The box a tile is measured in has to stay inside what layout can represent, and the tile has
+     * to still reach its neighbour once the layer has scaled it back up.
+     */
+    @Test
+    fun `an over-zoomed tile is measured small enough to lay out`() {
+        // Every over-zoom a z14 source can be asked for, at every density a screen has.
+        listOf(1f, 2f, 3f, 4f).forEach { density ->
+            (0..8).forEach { overZoom ->
+                val spacing = tileSpacing(14f + overZoom, 14, density)
+                val magnification = tileMagnification(spacing)
+                val side = measuredTileSize(spacing / magnification)
+
+                Constraints.fixed(side, side) // what TilePlane measures with; used to throw
+                assertTrue(
+                    side * magnification >= spacing,
+                    "a tile ${spacing - side * magnification}px short of its cell at density " +
+                        "$density, over-zoom $overZoom"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `and is not scaled at all until it has to be`() {
+        SPACINGS.forEach { side ->
+            assertEquals(1.0, tileMagnification(side), "spacing $side was scaled needlessly")
+        }
+    }
 
     @Test
     fun `and overlap by less than a pixel`() {
