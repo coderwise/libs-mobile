@@ -277,6 +277,10 @@ private suspend fun PointerInputScope.detectDoubleTap(
  * Pan and pinch, plus the lift-off velocity a fling needs. Velocity is measured only while exactly
  * one finger is down — the centroid jumps when a pointer goes down or up, and that jump would
  * invent velocity nobody produced.
+ *
+ * A gesture that ever had two fingers in it does not fling at all. The finger left behind by a
+ * pinch is still travelling — that is what the pinch was — so measuring its lift-off reads a
+ * throw the user never made, and the map sails off the moment they let go of a zoom.
  */
 private suspend fun PointerInputScope.detectMapGestures(
     onStart: () -> Unit,
@@ -295,6 +299,7 @@ private suspend fun PointerInputScope.detectMapGestures(
     var turning = false
     var pastSlop = false
     var tracked: PointerId? = null
+    var pinched = false
     var cancelled = false
     val liftOff = LiftOff()
 
@@ -331,7 +336,7 @@ private suspend fun PointerInputScope.detectMapGestures(
             }
             val down = event.changes.filter { it.pressed }
             when {
-                down.size > 1 -> { liftOff.reset(); tracked = null }
+                down.size > 1 -> { liftOff.reset(); tracked = null; pinched = true }
                 // Nothing is sampled once the pointer is up: see LiftOff.
                 down.size == 1 -> down.first().let {
                     if (tracked != it.id) { liftOff.reset(); tracked = it.id }
@@ -341,5 +346,5 @@ private suspend fun PointerInputScope.detectMapGestures(
         }
     } while (!cancelled && event.changes.fastAny { it.pressed })
 
-    if (!cancelled && tracked != null) onEnd(liftOff.velocity())
+    if (!cancelled && tracked != null && !pinched) onEnd(liftOff.velocity())
 }
