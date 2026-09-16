@@ -133,8 +133,19 @@ private fun AndroidLocation.toGpsLocation() = GpsLocation(
     latitude = latitude,
     longitude = longitude,
     bearing = if (hasBearing()) bearing else null,
-    elevation = if (hasAltitude()) altitude else null,
+    elevation = mslElevation(),
     time = time,
     accuracy = if (hasAccuracy()) accuracy else null,
     speed = if (hasSpeed()) speed else null
 )
+
+// `altitude` is height above the WGS84 ellipsoid, which is tens of metres away from the sea level
+// every other source quotes — around -37 m in southern Ontario, and GPX's <ele> is defined as mean
+// sea level. From API 34 the platform applies the geoid model itself, so take its answer when it
+// has one. Below that there is no geoid model to ask, and the ellipsoid height is all we have.
+private fun AndroidLocation.mslElevation(): Double? = when {
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && hasMslAltitude() ->
+        mslAltitudeMeters
+    hasAltitude() -> altitude
+    else -> null
+}
