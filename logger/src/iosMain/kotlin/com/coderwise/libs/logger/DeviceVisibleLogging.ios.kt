@@ -24,6 +24,9 @@ const val DEFAULT_MAX_LOG_BYTES: Long = 4L * 1024 * 1024
  * session with the screen off. A file covers those: the same lines are kept in
  * `Documents/[fileName]`, to be pulled off the device afterwards.
  *
+ * This replaces the configured writers rather than adding to them, so it has to
+ * run before [AppLogger.enableRecentLines], not after.
+ *
  * Release binaries keep the os_log default and write no file. Redaction there is
  * a feature, and a plaintext log sitting in the container is not something to
  * ship to users.

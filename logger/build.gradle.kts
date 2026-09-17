@@ -32,6 +32,10 @@ kotlin {
             // say where the lines go, which is half the point of the module.
             api(libs.kermit)
         }
+
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
     }
 }
 
