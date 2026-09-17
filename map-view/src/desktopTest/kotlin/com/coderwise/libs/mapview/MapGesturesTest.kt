@@ -13,6 +13,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -53,6 +54,42 @@ class MapGesturesTest {
             abs(quick.center.lon - slow.center.lon) < 1e-9,
             "the pinch tail was flung: ${quick.center.lon} vs ${slow.center.lon}"
         )
+    }
+
+    /**
+     * A gesture that earns no fling still has to end. The map is the user's while a finger is on
+     * it, and anything moving the camera on the app's behalf — following a GPS fix, most of all —
+     * waits for that to be over. A pinch that never says it finished leaves the map held for
+     * good, and the camera never moves itself again.
+     */
+    @Test
+    fun `a pinch lets go of the map`() {
+        val camera = gesture {
+            down(0, Offset(190f, 200f))
+            down(1, Offset(210f, 200f))
+            repeat(10) { step ->
+                updatePointerTo(0, Offset(190f - (step + 1) * 15f, 200f))
+                updatePointerTo(1, Offset(210f + (step + 1) * 15f, 200f))
+                move()
+            }
+            up(1)
+            up(0)
+        }
+
+        assertTrue(camera.zoom > START_ZOOM, "the pinch did not zoom: ${camera.zoom}")
+        assertFalse(camera.isInteracting, "the map was still held after the pinch")
+    }
+
+    /** And a plain drag, which has always ended, still ends. */
+    @Test
+    fun `a drag lets go of the map`() {
+        val camera = gesture {
+            down(0, Offset(300f, 200f))
+            repeat(7) { step -> moveTo(0, Offset(300f - (step + 1) * 30f, 200f), delayMillis = 200) }
+            up(0)
+        }
+
+        assertFalse(camera.isInteracting, "the map was still held after the drag")
     }
 
     /**

@@ -67,7 +67,7 @@ fun Modifier.mapGestures(
         detectMapGestures(
             onStart = {
                 fling?.cancel() // touching the map catches it
-                camera.isInteracting = true
+                camera.beginInteraction()
             },
             onGesture = { centroid, pan, zoom, turn ->
                 camera.pan(pan.x, pan.y, density)
@@ -80,10 +80,11 @@ fun Modifier.mapGestures(
                 // Thresholds in dp per second, so a flick means the same thing on any screen.
                 val throwing = flingVelocity(velocity.x, velocity.y, MIN_FLING_DP * density, MAX_FLING_DP * density)
                 if (throwing == null) {
-                    camera.isInteracting = false
+                    camera.endInteraction()
                     return@detectMapGestures
                 }
-                // The throw is still the user's: the map is theirs until it comes to rest.
+                // The throw is still the user's: the map is theirs until it comes to rest, so the
+                // gesture hands its hold on the camera to the fling rather than ending it here.
                 fling = scope.launch {
                     try {
                         var last = Offset.Zero
@@ -92,7 +93,7 @@ fun Modifier.mapGestures(
                             last = value
                         }
                     } finally {
-                        camera.isInteracting = false
+                        camera.endInteraction()
                     }
                 }
             }
@@ -123,6 +124,8 @@ fun Modifier.mapGestures(
         // Innermost, so it is offered the drag before panning is: what starts as a second tap
         // and then moves is a zoom, and consuming it is what tells the pan detector to let go.
         detectDoubleTap(
+            onZoomStart = { camera.beginInteraction() },
+            onZoomEnd = { camera.endInteraction() },
             onZoom = { at, dy ->
                 fling?.cancel()
                 val levels = dy / size.height * ZOOM_PER_SCREEN
@@ -139,8 +142,13 @@ fun Modifier.mapGestures(
             onZoomIn = { at ->
                 fling?.cancel()
                 scope.launch {
-                    animate(camera.zoom, floor(camera.zoom) + 1f) { zoom, _ ->
-                        camera.zoomTo(zoom, at.x, at.y, size.width.toFloat(), size.height.toFloat(), density)
+                    camera.beginInteraction()
+                    try {
+                        animate(camera.zoom, floor(camera.zoom) + 1f) { zoom, _ ->
+                            camera.zoomTo(zoom, at.x, at.y, size.width.toFloat(), size.height.toFloat(), density)
+                        }
+                    } finally {
+                        camera.endInteraction()
                     }
                 }
             }
@@ -238,8 +246,14 @@ internal class LiftOff {
  * [onZoom] for every step of a drag when the second tap is held instead of released. Both are
  * anchored on where the *first* tap landed, so the place being zoomed into stays put rather than
  * following the finger. When no second tap arrives, the first was a plain [onTap].
+ *
+ * A held zoom is bracketed by [onZoomStart] and [onZoomEnd], which is how the map stays the
+ * user's across it: taking the drag away from the pan detector cancels that gesture, and without
+ * the bracket the map would count as let go while a finger is still zooming it.
  */
 private suspend fun PointerInputScope.detectDoubleTap(
+    onZoomStart: () -> Unit,
+    onZoomEnd: () -> Unit,
     onZoom: (at: Offset, dy: Float) -> Unit,
     onTap: (at: Offset) -> Unit,
     onZoomIn: (at: Offset) -> Unit
@@ -257,18 +271,23 @@ private suspend fun PointerInputScope.detectDoubleTap(
 
     var zooming = false
     var last = second.position
-    while (true) {
-        val event = awaitPointerEvent()
-        val change = event.changes.firstOrNull { it.id == second.id } ?: break
-        if (!change.pressed) break
-        // Held and moved: a zoom. Sideways movement is ignored, so a wobbly drag still zooms
-        // straight, and the slop is what keeps a shaky double tap from nudging the zoom.
-        if (zooming || abs(change.position.y - second.position.y) > viewConfiguration.touchSlop) {
-            zooming = true
-            onZoom(first.position, change.position.y - last.y)
-            last = change.position
-            change.consume()
+    try {
+        while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == second.id } ?: break
+            if (!change.pressed) break
+            // Held and moved: a zoom. Sideways movement is ignored, so a wobbly drag still zooms
+            // straight, and the slop is what keeps a shaky double tap from nudging the zoom.
+            if (zooming || abs(change.position.y - second.position.y) > viewConfiguration.touchSlop) {
+                if (!zooming) onZoomStart()
+                zooming = true
+                onZoom(first.position, change.position.y - last.y)
+                last = change.position
+                change.consume()
+            }
         }
+    } finally {
+        if (zooming) onZoomEnd()
     }
     if (!zooming) onZoomIn(first.position)
 }
@@ -301,50 +320,60 @@ private suspend fun PointerInputScope.detectMapGestures(
     var tracked: PointerId? = null
     var pinched = false
     var cancelled = false
+    var finished = false
     val liftOff = LiftOff()
 
     awaitFirstDown(requireUnconsumed = false)
     onStart()
 
-    do {
-        val event = awaitPointerEvent()
-        cancelled = event.changes.fastAny { it.isConsumed }
-        if (!cancelled) {
-            val zoomChange = event.calculateZoom()
-            val turnChange = event.calculateRotation()
-            owed += event.calculatePan()
-            if (!pastSlop) {
-                zoom *= zoomChange
-                val motion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
-                pastSlop = motion > viewConfiguration.touchSlop || owed.getDistance() > viewConfiguration.touchSlop
-            }
-            // A twist has to be meant: until the fingers have turned this far between them the
-            // map stays where it is, and after that every degree counts.
-            if (!turning) {
-                turn += turnChange
-                turning = abs(turn) > TURN_SLOP_DEGREES
-            }
-            if (pastSlop || turning) {
-                onGesture(
-                    event.calculateCentroid(useCurrent = false),
-                    owed,
-                    zoomChange,
-                    if (turning) turnChange else 0f
-                )
-                owed = Offset.Zero
-                event.changes.fastForEach { if (it.positionChanged()) it.consume() }
-            }
-            val down = event.changes.filter { it.pressed }
-            when {
-                down.size > 1 -> { liftOff.reset(); tracked = null; pinched = true }
-                // Nothing is sampled once the pointer is up: see LiftOff.
-                down.size == 1 -> down.first().let {
-                    if (tracked != it.id) { liftOff.reset(); tracked = it.id }
-                    liftOff.add(it)
+    try {
+        do {
+            val event = awaitPointerEvent()
+            cancelled = event.changes.fastAny { it.isConsumed }
+            if (!cancelled) {
+                val zoomChange = event.calculateZoom()
+                val turnChange = event.calculateRotation()
+                owed += event.calculatePan()
+                if (!pastSlop) {
+                    zoom *= zoomChange
+                    val motion = abs(1 - zoom) * event.calculateCentroidSize(useCurrent = false)
+                    pastSlop = motion > viewConfiguration.touchSlop || owed.getDistance() > viewConfiguration.touchSlop
+                }
+                // A twist has to be meant: until the fingers have turned this far between them the
+                // map stays where it is, and after that every degree counts.
+                if (!turning) {
+                    turn += turnChange
+                    turning = abs(turn) > TURN_SLOP_DEGREES
+                }
+                if (pastSlop || turning) {
+                    onGesture(
+                        event.calculateCentroid(useCurrent = false),
+                        owed,
+                        zoomChange,
+                        if (turning) turnChange else 0f
+                    )
+                    owed = Offset.Zero
+                    event.changes.fastForEach { if (it.positionChanged()) it.consume() }
+                }
+                val down = event.changes.filter { it.pressed }
+                when {
+                    down.size > 1 -> { liftOff.reset(); tracked = null; pinched = true }
+                    // Nothing is sampled once the pointer is up: see LiftOff.
+                    down.size == 1 -> down.first().let {
+                        if (tracked != it.id) { liftOff.reset(); tracked = it.id }
+                        liftOff.add(it)
+                    }
                 }
             }
-        }
-    } while (!cancelled && event.changes.fastAny { it.pressed })
-
-    if (!cancelled && tracked != null && !pinched) onEnd(liftOff.velocity())
+        } while (!cancelled && event.changes.fastAny { it.pressed })
+        finished = true
+    } finally {
+        // Every gesture ends, including the ones that earn no throw: a pinch, whose trailing
+        // finger is finishing a zoom rather than making one; a gesture taken over by something
+        // else; one cut short when the detector itself goes away. They end with no velocity
+        // rather than not ending at all — whoever is holding the map has to be told it has been
+        // let go, or it stays held for good and nothing on the app's side moves the camera again.
+        val thrown = finished && !cancelled && tracked != null && !pinched
+        onEnd(if (thrown) liftOff.velocity() else Offset.Zero)
+    }
 }

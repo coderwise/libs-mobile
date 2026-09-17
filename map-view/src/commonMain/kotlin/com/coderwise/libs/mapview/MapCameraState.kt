@@ -8,7 +8,7 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -36,14 +36,31 @@ class MapCameraState(
         private set
 
     /**
+     * How many gestures have hold of the map at once. A count rather than a flag because they
+     * overlap: a fling is still running when the finger that catches it goes down, and a
+     * double-tap zoom takes over from the pan that was cancelled to let it start. A flag would be
+     * cleared by whichever of the two let go first, leaving the map free under a finger still on
+     * it.
+     */
+    private var interactions by mutableIntStateOf(0)
+
+    /**
      * Whether the user has hold of the map — a finger on it, or a fling still running.
      *
      * Anything that moves the camera on the app's behalf should wait for this: a map that jumps
      * back to the current position under a finger that is dragging it away is a map fighting its
      * user. Set by [mapGestures]; a camera with no gestures on it is never interacting.
      */
-    var isInteracting by mutableStateOf(false)
-        internal set
+    val isInteracting: Boolean get() = interactions > 0
+
+    /** The map is the user's until the matching [endInteraction]; the two always come in pairs. */
+    internal fun beginInteraction() {
+        interactions++
+    }
+
+    internal fun endInteraction() {
+        if (interactions > 0) interactions--
+    }
 
     /**
      * What is at the top of the screen, in degrees clockwise from north: 0 is north-up, 90 puts
