@@ -13,6 +13,7 @@ import co.touchlab.kermit.Logger
 object AppLogger {
 
     private var recentWriter: RecentLogWriter? = null
+    private var recentFile: LogFile? = null
 
     /**
      * Starts keeping the last [capacity] lines in memory, readable through
@@ -24,6 +25,9 @@ object AppLogger {
      * runs worth investigating are neither — a TestFlight or Play build, driven
      * with the phone in a pocket. Holding the tail in the process lets the app
      * hand its own log to a share sheet, from any build type.
+     *
+     * In the process, though, is as long as it lasts. Pair it with
+     * [enableRecentLinesFile] wherever the run can outlive the process.
      *
      * On iOS, call it *after* [enableDeviceVisibleLogging], which replaces the
      * configured writers rather than adding to them.
@@ -42,10 +46,46 @@ object AppLogger {
     }
 
     /**
-     * The retained log lines, oldest first — empty until
-     * [enableRecentLines] has been called.
+     * Keeps the same lines in a file under [directory], so they outlive the
+     * process that wrote them.
+     *
+     * [enableRecentLines] alone answers the question it exists for backwards:
+     * it holds a run's log right up until the run is long enough for the OS to
+     * reclaim the app, and the long runs are the ones worth reading. A drive
+     * that ends with the app killed and relaunched leaves a tail covering the
+     * relaunch and nothing else.
+     *
+     * Once this is on, [recentLines] reads the file rather than memory. The
+     * file keeps one rotated generation at [maxBytes] each, so what it holds is
+     * bounded without being one run long.
+     *
+     * Adds a writer, like [enableRecentLines], and can be called with or
+     * without it; keeping both means a platform with no filesystem (the
+     * browser) still has the in-memory tail. On iOS call it *after*
+     * [enableDeviceVisibleLogging], which replaces the configured writers
+     * rather than adding to them. Calling it again is a no-op.
+     *
+     * @param directory an existing directory the app may write to, and that the
+     *   OS will not reclaim between the run and reading it back — `filesDir` on
+     *   Android, Documents on iOS.
      */
-    fun recentLines(): List<String> = recentWriter?.snapshot() ?: emptyList()
+    fun enableRecentLinesFile(
+        directory: String,
+        fileName: String,
+        maxBytes: Long = DEFAULT_RECENT_FILE_BYTES,
+    ) {
+        if (recentFile != null) return
+        val file = openLogFile(directory, fileName, maxBytes) ?: return
+        recentFile = file
+        Logger.addLogWriter(LogFileWriter(file))
+    }
+
+    /**
+     * The retained log lines, oldest first — from the file once
+     * [enableRecentLinesFile] has been called, otherwise from memory, and empty
+     * until one of the two has been.
+     */
+    fun recentLines(): List<String> = recentFile?.lines() ?: recentWriter?.snapshot() ?: emptyList()
 
     fun info(tag: String, message: String) {
         Logger.i(messageString = message, tag = tag)
@@ -60,4 +100,8 @@ object AppLogger {
     }
 
     private const val DEFAULT_RECENT_LINES = 5_000
+
+    // Two generations of this is ~20k lines at the ~100 bytes a line runs to:
+    // comfortably longer than a run worth reading, and small enough to mail.
+    private const val DEFAULT_RECENT_FILE_BYTES = 1L * 1024 * 1024
 }

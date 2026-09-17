@@ -22,7 +22,18 @@ kotlin {
     wasmJs { browser() }
     jvm("desktop")
 
+    // Declaring a dependsOn edge below would otherwise switch the default
+    // hierarchy off, taking iosMain and webMain — and every actual in them —
+    // out of the build.
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
+        // java.io backs the log file on both JVM targets: Android is where it
+        // matters, desktop is where a real filesystem is available to tests.
+        val jvmSharedMain by creating { dependsOn(commonMain.get()) }
+        getByName("androidMain").dependsOn(jvmSharedMain)
+        getByName("desktopMain").dependsOn(jvmSharedMain)
+
         commonMain.dependencies {
             // api, not implementation: AppLogger's own signatures hide Kermit, but
             // the module configures Kermit's global Logger (enableDeviceVisibleLogging

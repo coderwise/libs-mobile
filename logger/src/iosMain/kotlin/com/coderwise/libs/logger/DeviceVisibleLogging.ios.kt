@@ -43,12 +43,13 @@ fun enableDeviceVisibleLogging(
 ) {
     if (!Platform.isDebugBinary) return
 
-    val path = logFilePath(fileName)
-    if (path == null) {
+    val directory = documentsDirectory()
+    val file = directory?.let { openLogFile(it, fileName, maxFileBytes) }
+    if (file == null) {
         Logger.setLogWriters(CommonWriter())
         AppLogger.warn(TAG, "no Documents directory — file logging disabled, stdout only")
         return
     }
-    Logger.setLogWriters(CommonWriter(), FileLogWriter(path, maxFileBytes))
-    AppLogger.info(TAG, "logging to stdout and $path")
+    Logger.setLogWriters(CommonWriter(), LogFileWriter(file))
+    AppLogger.info(TAG, "logging to stdout and $directory/$fileName")
 }

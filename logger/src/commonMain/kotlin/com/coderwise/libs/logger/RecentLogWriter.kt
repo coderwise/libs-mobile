@@ -2,7 +2,6 @@ package com.coderwise.libs.logger
 
 import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Severity
-import kotlin.time.Clock
 
 /**
  * Keeps the last [capacity] log lines in memory so the app can read its own log
@@ -20,19 +19,7 @@ internal class RecentLogWriter(private val capacity: Int) : LogWriter() {
     private var nextIndex = 0
 
     override fun log(severity: Severity, message: String, tag: String, throwable: Throwable?) {
-        val line = buildString {
-            append(Clock.System.now())
-            append(' ')
-            append(severity.name.first())
-            append('/')
-            append(tag)
-            append(": ")
-            append(message)
-            if (throwable != null) {
-                append(" | ")
-                append(throwable.stackTraceToString())
-            }
-        }
+        val line = formatLogLine(severity, message, tag, throwable)
         val slot = nextIndex
         nextIndex = (slot + 1) % capacity
         lines[slot] = line
