@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import platform.CoreLocation.CLActivityType
 import platform.CoreLocation.CLActivityTypeOther
 import platform.CoreLocation.CLLocation
@@ -67,8 +68,12 @@ class IosLocationProvider(
     private val activityType: CLActivityType = CLActivityTypeOther,
 ) : LocationProvider {
 
-    override suspend fun getCurrentLocation(): Result<GpsLocation> {
-        return suspendCancellableCoroutine { cont ->
+    // Built on main for the same reason as locationUpdates(): CoreLocation delivers
+    // delegate callbacks on the creating thread's run loop, and a coroutine worker
+    // thread has none — called from Dispatchers.Default/IO, neither callback ever
+    // fires and this suspends forever.
+    override suspend fun getCurrentLocation(): Result<GpsLocation> = withContext(Dispatchers.Main) {
+        suspendCancellableCoroutine { cont ->
             val manager = CLLocationManager()
             val delegate = object : NSObject(), CLLocationManagerDelegateProtocol {
                 override fun locationManager(

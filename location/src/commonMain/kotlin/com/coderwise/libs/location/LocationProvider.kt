@@ -14,6 +14,13 @@ import kotlinx.coroutines.flow.Flow
  * `locationModule` without resolving this interface don't ship a permission they never ask for.
  */
 interface LocationProvider {
+    /**
+     * A single fix. Safe to call from any dispatcher.
+     *
+     * The library adds no timeout of its own: the call waits for as long as the platform does, which
+     * includes a first-run permission prompt the user hasn't answered yet and, without a clear
+     * sky, a slow first fix. Wrap it in `withTimeoutOrNull` where the UI can't wait that long.
+     */
     suspend fun getCurrentLocation(): Result<GpsLocation>
 
     fun locationUpdates(): Flow<Result<GpsLocation>>
