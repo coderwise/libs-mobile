@@ -4,28 +4,28 @@ compileSdk = "37"
 minSdk = "26"
 
 # Build / plugins
-agp = "9.4.0"
-compose-multiplatform = "1.12.0"
-kotlin = "2.4.10"
+agp = "9.4.1"
+compose-multiplatform = "1.12.1"
+kotlin = "2.4.20"
 mavenPublish = "0.37.0"
 
 # Libraries
 androidx-activity = "1.13.0"
-androidx-core-ktx = "1.19.0"
+androidx-core-ktx = "1.19.1"
 compose-material3 = "1.9.0"
 coroutines = "1.11.0"
 datastore = "1.2.1"
-kermit = "2.1.0"
+kermit = "2.2.0"
 koin = "4.2.2"
 kotlinx-browser = "0.5.0"
 # Sample only: the map engine experiment fetches nothing of its own, so the example that
 # points it at OpenStreetMap needs a client.
-ktor = "3.5.2"
+ktor = "3.6.0"
 lifecycle = "2.11.0"
-okio = "3.18.1"
+okio = "3.18.2"
 play-billing = "9.1.0"
 serialization = "1.11.0"
-sqldelight = "2.3.2"
+sqldelight = "2.4.0"
 
 [libraries]
 androidx-activity = { module = "androidx.activity:activity", version.ref = "androidx-activity" }
