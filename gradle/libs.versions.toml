@@ -11,6 +11,7 @@ mavenPublish = "0.37.0"
 
 # Libraries
 androidx-activity = "1.13.0"
+androidx-camera = "1.6.2"
 androidx-core-ktx = "1.19.1"
 compose-material3 = "1.9.0"
 coroutines = "1.11.0"
@@ -30,6 +31,10 @@ sqldelight = "2.4.0"
 [libraries]
 androidx-activity = { module = "androidx.activity:activity", version.ref = "androidx-activity" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "androidx-camera" }
+androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "androidx-camera" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "androidx-camera" }
+androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "androidx-camera" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core-ktx" }
 androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
 androidx-datastore-core-okio = { module = "androidx.datastore:datastore-core-okio", version.ref = "datastore" }
