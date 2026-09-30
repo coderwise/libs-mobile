@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-actual fun rememberImagePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
+actual fun rememberImagePicker(maxDimensionPx: Int?, onResult: (ByteArray?) -> Unit): () -> Unit {
     if (LocalInspectionMode.current) return {}
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -27,7 +27,7 @@ actual fun rememberImagePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
                 val bytes = withContext(Dispatchers.IO) {
                     runCatching {
                         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                            ?.let(::downscaleImageBytes)
+                            ?.let { limitImageBytes(it, maxDimensionPx) }
                     }.getOrNull()
                 }
                 currentOnResult(bytes)

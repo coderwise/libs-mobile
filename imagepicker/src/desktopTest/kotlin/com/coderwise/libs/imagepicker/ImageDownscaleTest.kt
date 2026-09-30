@@ -42,4 +42,27 @@ class ImageDownscaleTest {
 
         assertSame(small, result, "small images should be returned as-is, not re-encoded")
     }
+
+    @Test
+    fun `a custom cap is honoured`() {
+        val result = downscaleImageBytes(pngBytes(4000, 3000), maxDimensionPx = 2000)
+
+        val (w, h) = result.dimensions()
+        assertEquals(2000, maxOf(w, h))
+        assertEquals(1500, h)
+    }
+
+    @Test
+    fun `no cap hands back the original bytes untouched`() {
+        val original = pngBytes(4000, 3000)
+
+        assertSame(original, limitImageBytes(original, maxDimensionPx = null))
+    }
+
+    @Test
+    fun `a cap scales down through the same path as the default`() {
+        val result = limitImageBytes(pngBytes(4000, 3000), maxDimensionPx = 1280)
+
+        assertEquals(1280, maxOf(result.dimensions().first, result.dimensions().second))
+    }
 }

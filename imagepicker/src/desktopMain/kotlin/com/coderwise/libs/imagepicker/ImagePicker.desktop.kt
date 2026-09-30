@@ -14,7 +14,7 @@ import java.io.File
 private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "gif", "bmp", "webp")
 
 @Composable
-actual fun rememberImagePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
+actual fun rememberImagePicker(maxDimensionPx: Int?, onResult: (ByteArray?) -> Unit): () -> Unit {
     val scope = rememberCoroutineScope()
     val currentOnResult by rememberUpdatedState(onResult)
     return {
@@ -28,7 +28,7 @@ actual fun rememberImagePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
                 val dir = dialog.directory
                 val name = dialog.file
                 if (dir != null && name != null) {
-                    runCatching { downscaleImageBytes(File(dir, name).readBytes()) }.getOrNull()
+                    runCatching { limitImageBytes(File(dir, name).readBytes(), maxDimensionPx) }.getOrNull()
                 } else {
                     null
                 }

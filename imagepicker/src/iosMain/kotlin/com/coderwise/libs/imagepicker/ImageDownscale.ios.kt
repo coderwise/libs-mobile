@@ -17,14 +17,14 @@ import platform.posix.memcpy
 import kotlin.math.max
 
 @OptIn(ExperimentalForeignApi::class)
-internal actual fun downscaleImageBytes(bytes: ByteArray): ByteArray {
+internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): ByteArray {
     if (bytes.isEmpty()) return bytes
     val source = UIImage(data = bytes.toNSData())
     val (srcW, srcH) = source.size.useContents { width to height }
     val longEdge = max(srcW, srcH)
-    if (longEdge <= MAX_IMAGE_DIMENSION_PX.toDouble()) return bytes
+    if (longEdge <= maxDimensionPx.toDouble()) return bytes
 
-    val scale = MAX_IMAGE_DIMENSION_PX.toDouble() / longEdge
+    val scale = maxDimensionPx.toDouble() / longEdge
     val newW = srcW * scale
     val newH = srcH * scale
 

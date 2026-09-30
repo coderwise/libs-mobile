@@ -11,7 +11,8 @@ import org.w3c.dom.HTMLInputElement
 import org.w3c.files.FileReader
 
 @Composable
-actual fun rememberImagePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
+@Suppress("UNUSED_PARAMETER") // The web targets never scale, so there is no cap to apply.
+actual fun rememberImagePicker(maxDimensionPx: Int?, onResult: (ByteArray?) -> Unit): () -> Unit {
     val currentOnResult by rememberUpdatedState(onResult)
     return {
         val input = document.createElement("input") as HTMLInputElement

@@ -6,12 +6,12 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
-internal actual fun downscaleImageBytes(bytes: ByteArray): ByteArray = runCatching {
+internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): ByteArray = runCatching {
     val source = ImageIO.read(ByteArrayInputStream(bytes)) ?: return bytes
     val longEdge = maxOf(source.width, source.height)
-    if (longEdge <= MAX_IMAGE_DIMENSION_PX) return bytes
+    if (longEdge <= maxDimensionPx) return bytes
 
-    val scale = MAX_IMAGE_DIMENSION_PX.toDouble() / longEdge
+    val scale = maxDimensionPx.toDouble() / longEdge
     val w = (source.width * scale).toInt().coerceAtLeast(1)
     val h = (source.height * scale).toInt().coerceAtLeast(1)
 

@@ -20,7 +20,7 @@ import platform.darwin.dispatch_get_main_queue
 import platform.posix.memcpy
 
 @Composable
-actual fun rememberImagePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
+actual fun rememberImagePicker(maxDimensionPx: Int?, onResult: (ByteArray?) -> Unit): () -> Unit {
     val currentOnResult by rememberUpdatedState(onResult)
     // Hold a strong reference to the active delegate; PHPicker keeps only a weak one, so without
     // this the delegate would be collected before the callback fires.
@@ -32,6 +32,7 @@ actual fun rememberImagePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
         }
         val picker = PHPickerViewController(configuration = config)
         val delegate = ImagePickerDelegate(
+            maxDimensionPx = maxDimensionPx,
             onResult = { bytes ->
                 delegateHolder.current = null
                 currentOnResult(bytes)
@@ -54,6 +55,7 @@ private class DelegateHolder {
 }
 
 private class ImagePickerDelegate(
+    private val maxDimensionPx: Int?,
     private val onResult: (ByteArray?) -> Unit,
     private val dismiss: () -> Unit,
 ) : NSObject(), PHPickerViewControllerDelegateProtocol {
@@ -66,7 +68,7 @@ private class ImagePickerDelegate(
             return
         }
         result.itemProvider.loadDataRepresentationForTypeIdentifier("public.image") { data, _ ->
-            val bytes = data?.toByteArray()?.let(::downscaleImageBytes)
+            val bytes = data?.toByteArray()?.let { limitImageBytes(it, maxDimensionPx) }
             dispatch_async(dispatch_get_main_queue()) { onResult(bytes) }
         }
     }
