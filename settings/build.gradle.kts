@@ -47,6 +47,13 @@ kotlin {
         iosMain.get().dependsOn(nonWebMain)
         sourceSets.getByName("desktopMain").dependsOn(nonWebMain)
 
+        sourceSets.getByName("desktopTest") {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
+
         // localStorage is reached the same way from both web targets, so the browser-backed
         // store is written once, in webMain.
         webMain.dependencies {
