@@ -9,31 +9,31 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.FileDialog
 import java.awt.Frame
-import java.io.File
 
 private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "gif", "bmp", "webp")
 
 @Composable
-actual fun rememberImagePicker(maxDimensionPx: Int?, onResult: (ByteArray?) -> Unit): () -> Unit {
+actual fun rememberPhotoPicker(
+    maxDimensionPx: Int?,
+    maxItems: Int?,
+    onResult: (List<PickedImage>) -> Unit,
+): () -> Unit {
     val scope = rememberCoroutineScope()
     val currentOnResult by rememberUpdatedState(onResult)
     return {
         scope.launch {
-            val bytes = withContext(Dispatchers.IO) {
+            val images = withContext(Dispatchers.IO) {
                 val dialog = FileDialog(null as Frame?, "Choose image", FileDialog.LOAD).apply {
+                    isMultipleMode = maxItems != 1
                     // Honoured on macOS/Linux; Windows AWT ignores the filter but still opens the dialog.
                     setFilenameFilter { _, name -> name.substringAfterLast('.', "").lowercase() in IMAGE_EXTENSIONS }
                     isVisible = true
                 }
-                val dir = dialog.directory
-                val name = dialog.file
-                if (dir != null && name != null) {
-                    runCatching { limitImageBytes(File(dir, name).readBytes(), maxDimensionPx) }.getOrNull()
-                } else {
-                    null
+                dialog.files.take(maxItems ?: Int.MAX_VALUE).mapNotNull { file ->
+                    runCatching { pickedImage(file.readBytes(), maxDimensionPx) }.getOrNull()
                 }
             }
-            currentOnResult(bytes)
+            currentOnResult(images)
         }
     }
 }

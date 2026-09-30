@@ -20,22 +20,27 @@ import platform.darwin.dispatch_get_main_queue
 import platform.posix.memcpy
 
 @Composable
-actual fun rememberImagePicker(maxDimensionPx: Int?, onResult: (ByteArray?) -> Unit): () -> Unit {
+actual fun rememberPhotoPicker(
+    maxDimensionPx: Int?,
+    maxItems: Int?,
+    onResult: (List<PickedImage>) -> Unit,
+): () -> Unit {
     val currentOnResult by rememberUpdatedState(onResult)
     // Hold a strong reference to the active delegate; PHPicker keeps only a weak one, so without
     // this the delegate would be collected before the callback fires.
     val delegateHolder = remember { DelegateHolder() }
     return launch@{
         val config = PHPickerConfiguration().apply {
-            selectionLimit = 1
+            // Zero means no limit.
+            selectionLimit = (maxItems ?: 0).toLong()
             filter = PHPickerFilter.imagesFilter()
         }
         val picker = PHPickerViewController(configuration = config)
         val delegate = ImagePickerDelegate(
             maxDimensionPx = maxDimensionPx,
-            onResult = { bytes ->
+            onResult = { images ->
                 delegateHolder.current = null
-                currentOnResult(bytes)
+                currentOnResult(images)
             },
             dismiss = { picker.dismissViewControllerAnimated(true, completion = null) },
         )
@@ -43,7 +48,7 @@ actual fun rememberImagePicker(maxDimensionPx: Int?, onResult: (ByteArray?) -> U
         picker.delegate = delegate
         val root = UIApplication.sharedApplication.keyWindow?.rootViewController ?: run {
             delegateHolder.current = null
-            currentOnResult(null)
+            currentOnResult(emptyList())
             return@launch
         }
         root.presentViewController(picker, animated = true, completion = null)
@@ -56,20 +61,35 @@ private class DelegateHolder {
 
 private class ImagePickerDelegate(
     private val maxDimensionPx: Int?,
-    private val onResult: (ByteArray?) -> Unit,
+    private val onResult: (List<PickedImage>) -> Unit,
     private val dismiss: () -> Unit,
 ) : NSObject(), PHPickerViewControllerDelegateProtocol {
 
     override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {
         dismiss()
-        val result = didFinishPicking.firstOrNull() as? PHPickerResult
-        if (result == null) {
-            onResult(null)
+        val results = didFinishPicking.filterIsInstance<PHPickerResult>()
+        if (results.isEmpty()) {
+            onResult(emptyList())
             return
         }
-        result.itemProvider.loadDataRepresentationForTypeIdentifier("public.image") { data, _ ->
-            val bytes = data?.toByteArray()?.let { limitImageBytes(it, maxDimensionPx) }
-            dispatch_async(dispatch_get_main_queue()) { onResult(bytes) }
+        // Each file loads on its own queue and they finish in any order; the answers are put back in
+        // the order chosen, on the main queue, which also keeps the counting single-threaded.
+        val images = arrayOfNulls<PickedImage>(results.size)
+        var remaining = results.size
+        results.forEachIndexed { index, result ->
+            result.itemProvider.loadDataRepresentationForTypeIdentifier("public.image") { data, _ ->
+                val image = data?.toByteArray()?.let { original ->
+                    PickedImage(
+                        limitImageBytes(original, maxDimensionPx),
+                        exifCapturedAt(original) ?: imageIoCapturedAt(original),
+                    )
+                }
+                dispatch_async(dispatch_get_main_queue()) {
+                    images[index] = image
+                    remaining -= 1
+                    if (remaining == 0) onResult(images.filterNotNull())
+                }
+            }
         }
     }
 }

@@ -18,6 +18,13 @@ internal const val IMAGE_JPEG_QUALITY = 85
  */
 internal expect fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int = MAX_IMAGE_DIMENSION_PX): ByteArray
 
+/**
+ * The picked file as handed to the app: [limitImageBytes] to the cap, and the date it was taken,
+ * read from [original] because scaling re-encodes and so loses the metadata.
+ */
+internal fun pickedImage(original: ByteArray, maxDimensionPx: Int?): PickedImage =
+    PickedImage(limitImageBytes(original, maxDimensionPx), exifCapturedAt(original))
+
 /** [bytes] as they are for a null cap, else [downscaleImageBytes] to it. */
 internal fun limitImageBytes(bytes: ByteArray, maxDimensionPx: Int?): ByteArray =
     if (maxDimensionPx == null) bytes else downscaleImageBytes(bytes, maxDimensionPx)

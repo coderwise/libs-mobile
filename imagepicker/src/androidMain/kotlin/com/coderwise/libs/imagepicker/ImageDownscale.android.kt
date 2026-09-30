@@ -2,8 +2,8 @@ package com.coderwise.libs.imagepicker
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import java.io.ByteArrayOutputStream
-import androidx.core.graphics.scale
 
 internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): ByteArray = runCatching {
     // Cheap bounds-only pass to learn the source dimensions without allocating the full bitmap.
@@ -22,18 +22,19 @@ internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): 
         BitmapFactory.Options().apply { inSampleSize = sample },
     ) ?: return bytes
 
-    val scale = maxDimensionPx.toFloat() / maxOf(decoded.width, decoded.height)
-    val scaled = if (scale < 1f) {
-        decoded.scale(
-            (decoded.width * scale).toInt().coerceAtLeast(1),
-            (decoded.height * scale).toInt().coerceAtLeast(1),
-        )
-    } else {
-        decoded
+    // BitmapFactory ignores the EXIF orientation and the re-encode drops it, so the picture has to be
+    // turned here or it would come out on its side. Turning and scaling are one transform.
+    val orientation = Orientation.of(exifOrientation(bytes))
+    val scale = minOf(1f, maxDimensionPx.toFloat() / maxOf(decoded.width, decoded.height))
+    val matrix = Matrix().apply {
+        if (orientation.mirrored) postScale(-1f, 1f)
+        postRotate(orientation.degrees)
+        postScale(scale, scale)
     }
+    val upright = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
 
     ByteArrayOutputStream().use { out ->
-        scaled.compress(Bitmap.CompressFormat.JPEG, IMAGE_JPEG_QUALITY, out)
+        upright.compress(Bitmap.CompressFormat.JPEG, IMAGE_JPEG_QUALITY, out)
         out.toByteArray()
     }
 }.getOrDefault(bytes)
