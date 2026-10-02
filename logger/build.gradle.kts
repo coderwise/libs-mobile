@@ -30,7 +30,7 @@ kotlin {
     sourceSets {
         // java.io backs the log file on both JVM targets: Android is where it
         // matters, desktop is where a real filesystem is available to tests.
-        val jvmSharedMain by creating { dependsOn(commonMain.get()) }
+        val jvmSharedMain = create("jvmSharedMain") { dependsOn(commonMain.get()) }
         getByName("androidMain").dependsOn(jvmSharedMain)
         getByName("desktopMain").dependsOn(jvmSharedMain)
 

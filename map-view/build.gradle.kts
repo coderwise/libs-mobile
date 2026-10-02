@@ -34,7 +34,7 @@ kotlin {
         }
         // The gesture detector can only be exercised by actually sending it pointers, and one
         // host is enough for that: the code under test is common.
-        val desktopTest by getting {
+        getByName("desktopTest") {
             dependencies {
                 implementation(libs.compose.ui.test)
                 implementation(libs.compose.ui.test.junit4)
