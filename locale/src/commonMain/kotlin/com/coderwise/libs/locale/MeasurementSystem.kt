@@ -30,6 +30,6 @@ enum class MeasurementSystem {
     }
 }
 
-/** The [MeasurementSystem] of the device's region, or metric when the region is unknown. */
+/** The [MeasurementSystem] of the device's country (see [deviceCountryCode]), or metric when unknown. */
 fun deviceMeasurementSystem(): MeasurementSystem =
-    MeasurementSystem.forRegionCode(deviceRegionCode())
+    MeasurementSystem.forRegionCode(deviceCountryCode())

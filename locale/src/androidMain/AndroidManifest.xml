@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Hands deviceCountryCode() the application Context it needs for TelephonyManager,
+            so the common API stays argument-free. Not exported; it serves no data.
+        -->
+        <provider
+            android:name="com.coderwise.libs.locale.LocaleContextProvider"
+            android:authorities="${applicationId}.coderwise-locale"
+            android:exported="false" />
+    </application>
+
+</manifest>
