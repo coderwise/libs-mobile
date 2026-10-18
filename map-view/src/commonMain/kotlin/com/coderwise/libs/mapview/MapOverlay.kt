@@ -56,6 +56,51 @@ sealed interface MapOverlayScope {
      * caller's, as it would be anywhere else in a layout.
      */
     fun Modifier.at(point: LatLon, anchor: Alignment = Alignment.Center): Modifier
+
+    /**
+     * Appends a subpath to [path] for [world], a shape in the form [toWorld] makes, as it stands on
+     * screen now. Every call starts with its own `moveTo`, so several shapes can go into one
+     * [Path] — the rings of a polygon, drawn with an even-odd fill, are its holes — and each is
+     * taken the short way across the antimeridian rather than back across the whole world.
+     *
+     * Only the affine is left to do, so tracing is cheap enough for the draw pass: call it there,
+     * where it reads the camera and the shape follows the map. Does nothing for fewer than two
+     * points.
+     */
+    fun trace(path: Path, world: DoubleArray)
+
+    /**
+     * A tap on a shape of your own, which is a tap within [touchWidth] of it — [distance] says how
+     * far, in pixels, a touch at an offset lands from it, and 0 anywhere inside a polygon.
+     *
+     * The offset is in the map's pixels, the same as [project] gives, so a shape measures itself
+     * with the projection it is drawn through. Several shapes can lie over the same pixels: the
+     * nearest one wins the tap, not the topmost, and one that is missed hands the tap on to whatever
+     * lies under it, the map included. A drag that starts on a shape still pans the map. This is
+     * what [Polyline] uses for its own taps.
+     *
+     * The modifier fills no space and draws nothing, so put it on something that already covers the
+     * map, such as the `Canvas` the shape is drawn on.
+     */
+    fun Modifier.mapTap(
+        distance: (Offset) -> Float,
+        touchWidth: Dp = 24.dp,
+        onClick: () -> Unit
+    ): Modifier
+}
+
+/**
+ * [this] as pairs of unit-Mercator x and y, the form [MapOverlayScope.trace] draws from.
+ *
+ * Projecting a point is a logarithm and a tangent plus an affine, and only the affine depends on
+ * the camera. A shape pays for the hard half once instead of on every frame it is drawn, so keep
+ * the result for as long as the points stay the same.
+ */
+fun List<LatLon>.toWorld(): DoubleArray = DoubleArray(size * 2).also {
+    forEachIndexed { i, point ->
+        it[i * 2] = Mercator.x(point.lon)
+        it[i * 2 + 1] = Mercator.y(point.lat)
+    }
 }
 
 /**
@@ -73,22 +118,15 @@ fun MapOverlayScope.Polyline(
     touchWidth: Dp = 24.dp,
     onClick: (() -> Unit)? = null
 ) {
-    // Projecting a point is a logarithm and a tangent plus an affine, and only the affine depends
-    // on the camera. A track pays for the hard half once instead of on every frame it is drawn.
-    val world = remember(points) {
-        DoubleArray(points.size * 2).also {
-            points.forEachIndexed { i, point ->
-                it[i * 2] = Mercator.x(point.lon)
-                it[i * 2 + 1] = Mercator.y(point.lat)
-            }
-        }
-    }
+    val world = remember(points) { points.toWorld() }
     val path = remember { Path() }
     val overlay = this as MapOverlayState
+    val distance = remember(overlay, world) { { at: Offset -> overlay.distanceTo(world, at) } }
 
-    Canvas(modifier.fillMaxSize().tappable(overlay, world, touchWidth, onClick)) {
+    val sized = modifier.fillMaxSize()
+    Canvas(if (onClick == null) sized else sized.mapTap(distance, touchWidth, onClick)) {
         path.rewind()
-        overlay.trace(path, world) // reads the camera, so the line redraws as the map moves
+        trace(path, world) // reads the camera, so the line redraws as the map moves
         drawPath(
             path = path,
             color = color,
@@ -98,37 +136,30 @@ fun MapOverlayScope.Polyline(
 }
 
 /**
- * A tap within [touchWidth] of the line, and nothing else.
+ * A tap within reach of a shape, and nothing else.
  *
- * A line covers the whole map however thin it looks, and Compose stops hit testing at the first
+ * A shape covers the whole map however thin it looks, and Compose stops hit testing at the first
  * sibling it lands on — so a plain `pointerInput` here would make this the only tappable thing on
  * the map, whatever it was drawn over. Sharing the input with its siblings is what lets the tap
- * carry on down to the next line, and to the map underneath when it misses them all.
+ * carry on down to the next shape, and to the map underneath when it misses them all.
  *
  * Only the lift is consumed, and only once the gesture is known to be a tap: a drag that starts on
- * the line still pans the map, because panning cancels this before the finger comes up.
+ * the shape still pans the map, because panning cancels this before the finger comes up.
  */
-private fun Modifier.tappable(
-    overlay: MapOverlayState,
-    world: DoubleArray,
-    touchWidth: Dp,
-    onClick: (() -> Unit)?
-): Modifier = if (onClick == null) this else then(TapOnLine(overlay, world, touchWidth, onClick))
-
-private data class TapOnLine(
+private data class ShapeTap(
     val overlay: MapOverlayState,
-    val world: DoubleArray,
+    val distance: (Offset) -> Float,
     val touchWidth: Dp,
     val onClick: () -> Unit
-) : ModifierNodeElement<TapOnLineNode>() {
-    override fun create() = TapOnLineNode(this)
-    override fun update(node: TapOnLineNode) {
-        node.line = this
+) : ModifierNodeElement<ShapeTapNode>() {
+    override fun create() = ShapeTapNode(this)
+    override fun update(node: ShapeTapNode) {
+        node.tap = this
     }
 }
 
-private class TapOnLineNode(line: TapOnLine) : DelegatingNode(), PointerInputModifierNode {
-    var line = line
+private class ShapeTapNode(tap: ShapeTap) : DelegatingNode(), PointerInputModifierNode {
+    var tap = tap
         set(value) {
             field = value
             pointer.resetPointerInputHandler()
@@ -137,20 +168,20 @@ private class TapOnLineNode(line: TapOnLine) : DelegatingNode(), PointerInputMod
     private val pointer = delegate(
         SuspendingPointerInputModifierNode {
             awaitEachGesture {
-                // Every line hears the touch down before any of them acts on it, so the one that
+                // Every shape hears the touch down before any of them acts on it, so the one that
                 // takes it can be the nearest rather than whichever happens to lie underneath.
                 val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                val distance = line.overlay.distanceTo(line.world, down.position)
-                line.overlay.offer(down.id, distance, this@TapOnLineNode)
+                val distance = tap.distance(down.position)
+                tap.overlay.offer(down.id, distance, this@ShapeTapNode)
                 awaitPointerEvent(PointerEventPass.Main)
 
-                val reach = line.touchWidth.toPx() / 2
+                val reach = tap.touchWidth.toPx() / 2
                 // Consumed already: something with a shape of its own, a marker say, has it.
                 if (down.isConsumed || distance > reach) return@awaitEachGesture
-                if (!line.overlay.nearest(this@TapOnLineNode)) return@awaitEachGesture
+                if (!tap.overlay.nearest(this@ShapeTapNode)) return@awaitEachGesture
                 val up = waitForUpOrCancellation() ?: return@awaitEachGesture
                 up.consume()
-                line.onClick()
+                tap.onClick()
             }
         }
     )
@@ -163,7 +194,7 @@ private class TapOnLineNode(line: TapOnLine) : DelegatingNode(), PointerInputMod
 
     override fun onCancelPointerInput() = pointer.onCancelPointerInput()
 
-    /** Everything below a line is still there to be tapped, which is the whole map. */
+    /** Everything below a shape is still there to be tapped, which is the whole map. */
     override fun sharePointerInputWithSiblings() = true
 }
 
@@ -203,8 +234,13 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
 
     override fun Modifier.at(point: LatLon, anchor: Alignment): Modifier = then(Anchor(point, anchor))
 
-    /** Writes [world] — pairs of unit-Mercator x and y — into [path] as it stands now on screen. */
-    fun trace(path: Path, world: DoubleArray) {
+    override fun Modifier.mapTap(
+        distance: (Offset) -> Float,
+        touchWidth: Dp,
+        onClick: () -> Unit
+    ): Modifier = then(ShapeTap(this@MapOverlayState, distance, touchWidth, onClick))
+
+    override fun trace(path: Path, world: DoubleArray) {
         if (world.size < 4) return
         val scale = Mercator.worldPixels(camera.zoom, density)
         var x = (world[0] - camera.x).nearest
@@ -224,7 +260,7 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
     private var claimedBy: PointerId? = null
     private var claimedAt = Float.MAX_VALUE
 
-    /** A line saying how far the touch landed from it. The nearest one wins the tap. */
+    /** A shape saying how far the touch landed from it. The nearest one wins the tap. */
     fun offer(pointer: PointerId, distance: Float, line: Any) {
         if (pointer != claimedBy) {
             claimedBy = pointer

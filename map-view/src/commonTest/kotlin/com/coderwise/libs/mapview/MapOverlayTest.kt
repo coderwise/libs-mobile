@@ -58,4 +58,16 @@ class MapOverlayTest {
         assertEquals(2 * (one.x - 540f), two.x - 540f, 1e-1f)
         assertEquals(2 * (one.y - 960f), two.y - 960f, 1e-1f)
     }
+
+    @Test
+    fun `a shape in world form is a pair of unit Mercator coordinates for each point`() {
+        val points = listOf(london, LatLon(-18.0, 179.0), LatLon(0.0, 0.0))
+        val world = points.toWorld()
+        assertEquals(6, world.size)
+        points.forEachIndexed { i, point ->
+            assertEquals(Mercator.x(point.lon), world[i * 2], 0.0, "x of $point")
+            assertEquals(Mercator.y(point.lat), world[i * 2 + 1], 0.0, "y of $point")
+        }
+        assertEquals(0, emptyList<LatLon>().toWorld().size)
+    }
 }

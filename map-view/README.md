@@ -82,6 +82,11 @@ of projecting a point that is a logarithm and a tangent depends only on the poin
 once per track rather than once per frame, and only the affine is left in the draw pass. The line
 is stroked in dp and never simplified — clipping and tessellating it is the graphics layer's job.
 
+That half is yours to use for a shape of your own. `points.toWorld()` does it once, and
+`trace(path, world)` does the rest in the draw pass: it adds a subpath to the `Path` for the shape as
+it stands on screen now, the short way across the antimeridian. Each call starts a subpath of its
+own, so the rings of a polygon go into one `Path` and an even-odd fill makes the inner ones holes.
+
 ### Which way is up
 
 `camera.bearing` is what is at the top of the screen, in degrees clockwise from north: 0 is
@@ -124,6 +129,11 @@ window first, because until that closes the tap might still be a zoom.
 
 Only the lift is consumed, and only once the gesture is known to be a tap — a drag that starts on a
 line still pans the map.
+
+None of that is particular to a line. `Modifier.mapTap(distance, touchWidth, onClick)` is the same
+arbitration for a shape of your own: `distance` says how far, in pixels, a touch lands from it
+(0 anywhere inside a polygon), and `Polyline` is built on it. A line and a polygon on the same
+pixels compete as two lines do — the nearest wins — and a miss falls through to the map.
 
 ### The state is the interface
 
@@ -203,7 +213,8 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   tileGridToLatLon(x, y, zoom) -> LatLon, MERCATOR_LATITUDE_LIMIT
   MapView(camera, modifier) { layer(state) { key -> … }; overlay { … } }
   MapScope.layer(state) { key -> … }, MapScope.overlay { … }
-  MapOverlayScope (project, unproject, Modifier.at(point, anchor))
+  MapOverlayScope (project, unproject, trace, Modifier.at(point, anchor), Modifier.mapTap(distance, touchWidth, onClick))
+  List<LatLon>.toWorld() -> DoubleArray
   MapOverlayScope.Polyline(points, color, modifier, width, touchWidth, onClick)
   Modifier.mapGestures(camera, rotatable, onTap)
 
