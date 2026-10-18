@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.LayoutScopeMarker
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
@@ -14,6 +17,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.PI
@@ -280,12 +284,16 @@ private fun TilePlane(
     content: @Composable (TileKey) -> Unit
 ) {
     val cells = remember(window) { cellsOf(window) }
+    val density = LocalDensity.current.density
+    val magnified = remember(camera, window.z, density) { magnificationAt(camera, window.z, density) }
 
     Layout(
         content = {
-            cells.forEach { cell ->
-                key(cell.slotX, cell.slotY) {
-                    Box(Modifier.fillMaxSize()) { content(cell.key) }
+            CompositionLocalProvider(LocalTileMagnification provides magnified) {
+                cells.forEach { cell ->
+                    key(cell.slotX, cell.slotY) {
+                        Box(Modifier.fillMaxSize()) { content(cell.key) }
+                    }
                 }
             }
         }
@@ -429,6 +437,29 @@ internal fun tileMagnification(spacing: Double): Double {
     var magnification = 1.0
     while (spacing / magnification > MAX_TILE_SIDE_PX) magnification *= 2.0
     return magnification
+}
+
+/**
+ * How much bigger than it was measured the tile being composed is drawn, which is [tileMagnification]
+ * of the layer it is in; 1 outside a layer.
+ *
+ * A tile that outgrows [MAX_TILE_SIDE_PX] is measured smaller and blown up by the layer it is placed
+ * in, and everything it draws goes up with it: a path is magnified, which is what a stretched tile
+ * is, but so is text, which is not. A source that stops at z14 seen at z18 on a 2.6x screen draws
+ * its tiles four times as big as it measured them, and a name drawn at 12 sp comes out at 48.
+ * Whatever draws something that should stay the size it was asked for — labels, above all — divides
+ * its sizes by this and draws in the tile's own measured pixels.
+ *
+ * A function rather than a number because it changes with the zoom, and it is meant to be read in
+ * the draw phase. It is derived, so it only says something new when the answer does — a power of
+ * two, crossed a few times in a whole pinch — and not on every frame of one.
+ */
+val LocalTileMagnification = staticCompositionLocalOf<() -> Float> { { 1f } }
+
+/** [LocalTileMagnification] for the layer of level [z]: [tileMagnification] of the spacing it is measured at. */
+private fun magnificationAt(camera: MapCameraState, z: Int, density: Float): () -> Float {
+    val magnification = derivedStateOf { tileMagnification(tileSpacing(camera.zoom, z, density)).toFloat() }
+    return { magnification.value }
 }
 
 /**

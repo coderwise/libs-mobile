@@ -229,12 +229,17 @@ private fun MvtFeature.appendNormalized(path: Path, inv: Float, close: Boolean) 
  *
  * [src] is a fraction of the tile in `0..1`: the whole of it for a tile at its own zoom, and a
  * smaller square of an ancestor's when the view has zoomed past what the source carries.
+ *
+ * [magnification] is how much bigger than it was measured the slot is shown, when whatever lays it
+ * out scales it up — `LocalTileMagnification` in `:map-view`. A road is drawn at the width the style
+ * asks for in the slot's own pixels, so it is divided by this to stay that wide on screen.
  */
 fun DrawScope.drawRenderTile(
     renderTile: RenderTile,
     background: Color,
     zoom: Int,
     src: Rect,
+    magnification: Float = 1f,
 ) {
     clipRect {
         drawRect(color = background)
@@ -242,7 +247,7 @@ fun DrawScope.drawRenderTile(
 
         val scaleX = size.width + TILE_BLEED * 2
         val scaleY = size.height + TILE_BLEED * 2
-        val widthScale = strokeWidthScale(scaleX, scaleY, src)
+        val widthScale = strokeWidthScale(scaleX, scaleY, src, magnification)
         val matrix = srcMatrix(scaleX, scaleY, src)
         withTransform({ transform(matrix) }) {
             renderTile.ops.forEach { op ->
@@ -254,7 +259,9 @@ fun DrawScope.drawRenderTile(
                         op.path,
                         color = op.color,
                         // The stroke is drawn inside a transform scaled by widthScale, so divide
-                        // it back out: op.width.at(zoom).toPx() is what lands on the screen.
+                        // it back out: op.width.at(zoom).toPx() is what lands on the screen — in
+                        // the pixels this was measured in, which is why [magnification] is part
+                        // of it: whatever scales the whole slot up scales the road with it.
                         style = Stroke(
                             width = op.width.at(zoom).toPx() / widthScale,
                             cap = op.cap,
@@ -295,9 +302,14 @@ internal fun srcMatrix(scaleX: Float, scaleY: Float, src: Rect): Matrix = Matrix
  * an over-zoomed ancestor's normalised paths are blown up by, which is `1/src.width`. Only the box
  * scale used to be divided out, so an over-zoomed road came out that many times too thick — four
  * times at z16 and eight at z17 off a z14 source, which is every vector source shipped.
+ *
+ * And the third: a slot measured smaller than it is shown, because it would not fit [MapView]'s
+ * limit on a tile's size, is scaled up by the layer it is placed in, outside anything drawn here.
+ * That is [magnification], and it is the same thing again from the other side: a road drawn at
+ * 3 dp in a slot shown at four times its size is 12.
  */
-internal fun strokeWidthScale(scaleX: Float, scaleY: Float, src: Rect): Float =
-    (scaleX + scaleY) / 2f * (2f / (src.width + src.height))
+internal fun strokeWidthScale(scaleX: Float, scaleY: Float, src: Rect, magnification: Float = 1f): Float =
+    (scaleX + scaleY) / 2f * (2f / (src.width + src.height)) * magnification
 
 /** Sub-pixel overdraw on each slot edge to hide antialiased seams between adjacent tiles. */
 internal const val TILE_BLEED = 0.5f

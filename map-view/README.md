@@ -217,6 +217,7 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   List<LatLon>.toWorld() -> DoubleArray
   MapOverlayScope.Polyline(points, color, modifier, width, touchWidth, onClick)
   Modifier.mapGestures(camera, rotatable, onTap)
+  LocalTileMagnification: () -> Float
 
 :map-view-tiles
   TileQueue(scope, state, workers, capacity) { key -> … }
@@ -236,10 +237,10 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
              strokeMinZoom, casingMinZoom)
   ZoomWidth(far, near, farthest)
   buildRenderTile(layers, style) -> RenderTile
-  DrawScope.drawRenderTile(render, background, zoom, src)
-  VectorSlot(tile: VectorTile, src, zoom, modifier, alpha, cache)
-  VectorSlot(render: RenderTile, background, src, zoom, modifier, alpha, cache)
-  VectorLabels(tile: VectorTile, src, modifier, bearing)
+  DrawScope.drawRenderTile(render, background, zoom, src, magnification)
+  VectorSlot(tile: VectorTile, src, zoom, modifier, alpha, cache, magnification)
+  VectorSlot(render: RenderTile, background, src, zoom, modifier, alpha, cache, magnification)
+  VectorLabels(tile: VectorTile, src, modifier, bearing, magnification)
   featuresAt(bytes, x, y, radius) -> List<MapFeature>
   waterPath(bytes) -> Path?
   decodeMvt(bytes, keep, classLayers, nameLayers, attributeLayers) -> List<MvtLayer>
@@ -386,6 +387,11 @@ nothing else, so anything the style gates away at that level comes off it in pro
 - **Anything else drawn inside a tile layer turns with it.** `VectorLabels` takes a `bearing` and
   undoes it, but a layer of your own that draws text has to do the same — the layer is one turned
   plane, and it is not told which way it faces.
+- **And is scaled with it.** A tile bigger than 4096 px is measured smaller and scaled up, which
+  a source that stops at z14 reaches at z17 on a 2.6x screen, and text drawn in it goes up with it.
+  `LocalTileMagnification.current` is the factor, read in the draw phase; `VectorSlot` and
+  `VectorLabels` take it as `magnification` and keep road widths and name sizes what the style asked
+  for. A layer of your own that draws text or strokes has to divide its sizes by it too.
 - **Fling tile churn** — a hard flick still asks for every screenful of ground it races over.
   Priority handles the standing case (what is on screen goes first, and nothing is prefetched
   while the map moves), but a request already in flight is never cancelled, so the tiles of a
@@ -469,7 +475,13 @@ It is a layer of its own, over the layer that draws the ground:
 MapView(camera, Modifier.fillMaxSize()) {
     layer(state) { key -> state.shown(key)?.let { VectorSlot(it.content, it.src, it.key.z) } }
     layer(state) { key ->
-        state.shown(key)?.let { VectorLabels(it.content, it.src, bearing = camera.bearing) }
+        state.shown(key)?.let {
+            VectorLabels(
+                it.content, it.src,
+                bearing = camera.bearing,
+                magnification = LocalTileMagnification.current
+            )
+        }
     }
 }
 ```

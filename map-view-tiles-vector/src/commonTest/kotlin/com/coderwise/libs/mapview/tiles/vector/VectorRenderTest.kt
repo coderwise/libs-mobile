@@ -36,6 +36,20 @@ class VectorRenderTest {
         )
     }
 
+    @Test
+    fun `stroke width scale includes what the layer scales the whole slot up by`() {
+        // A slot measured at a quarter of its size and shown through a layer scaled 4x: the road is
+        // drawn in the slot's pixels, so it has to be a quarter as wide in them.
+        assertEquals(
+            257f * 4f,
+            strokeWidthScale(scaleX = 257f, scaleY = 257f, src = whole, magnification = 4f)
+        )
+        assertEquals(
+            256f * 8f * 2f,
+            strokeWidthScale(scaleX = 256f, scaleY = 256f, src = cell(8, 3, 5), magnification = 2f)
+        )
+    }
+
     // --- srcMatrix -----------------------------------------------------------------------------
     //
     // A cell that resolves to an ancestor draws that ancestor's paths through [srcMatrix]. If the

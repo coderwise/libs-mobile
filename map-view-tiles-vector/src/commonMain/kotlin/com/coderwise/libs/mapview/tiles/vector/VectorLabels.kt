@@ -55,13 +55,20 @@ import kotlin.math.sin
  * without it the names turn with the ground and are upside down past a certain angle. A place name
  * takes the bearing back out and stays level; a road name keeps following its road, and only turns
  * end for end when that is what makes it read left to right.
+ *
+ * Pass the layer's [magnification] too — `LocalTileMagnification.current` from `:map-view` — when
+ * the map can be zoomed past the level of its source. A tile that outgrows what can be measured is
+ * drawn smaller and scaled up, and text drawn inside it goes up with it: without this a z14 source
+ * seen at z18 has names four times the size they were asked for. It is read where the names are laid
+ * out, so a change in it lays them out again, at the size they are meant to end up.
  */
 @Composable
 fun VectorLabels(
     tile: VectorTile,
     src: Rect,
     modifier: Modifier = Modifier,
-    bearing: Float = 0f
+    bearing: Float = 0f,
+    magnification: () -> Float = Unmagnified
 ) {
     // Only the names this tile owns: its neighbours place their own. And only the first
     // [LABEL_BUDGET] of those — see the constant.
@@ -79,13 +86,19 @@ fun VectorLabels(
         modifier
             .fillMaxSize()
             .drawWithCache {
-                val placed = density.place(mine, measurer, src, size.width / src.width, bearing, apart)
+                // Everything below is in the pixels this was measured in, which a magnified layer
+                // then scales up: a name is laid out at the size that scaling turns into the one
+                // it was asked for, and so are the gap between names and the width of the halo.
+                val scale = magnification()
+                val placed = density.place(
+                    mine, measurer, src, size.width / src.width, bearing, apart / scale, scale
+                )
                 onDrawBehind {
                     placed.forEach { name ->
                         rotate(name.angle, pivot = name.middle) {
                             // Halo and fill off one paragraph: the same layout drawn twice, rather
                             // than two text nodes measuring the same words.
-                            drawText(name.layout, tile.halo, name.topLeft, drawStyle = Stroke(outline))
+                            drawText(name.layout, tile.halo, name.topLeft, drawStyle = Stroke(outline / scale))
                             // Fill named rather than left to default: a null drawStyle means "as
                             // the layout's style says", and the paragraph's paint still carries the
                             // Stroke from the pass above — so the fill would thicken the name into
@@ -116,7 +129,8 @@ private fun Density.place(
     src: Rect,
     side: Float,
     bearing: Float,
-    apart: Float
+    apart: Float,
+    magnification: Float
 ): List<PlacedName> {
     val placed = mutableListOf<PlacedName>()
     val taken = mutableListOf<Rect>()
@@ -124,10 +138,10 @@ private fun Density.place(
     labels.forEach { label ->
         // Laying a name out is what costs, so a name that cannot fit the run it has to sit on is
         // dropped before that rather than after.
-        if (!couldFit(label, side)) return@forEach
+        if (!couldFit(label, side, magnification)) return@forEach
         val layout = measurer.measure(
             label.text,
-            TextStyle(fontSize = label.size.sp, fontWeight = FontWeight.Medium),
+            TextStyle(fontSize = (label.size / magnification).sp, fontWeight = FontWeight.Medium),
             softWrap = false
         )
         val width = layout.size.width.toFloat()
@@ -165,9 +179,12 @@ private const val LABEL_BUDGET = 48
  * The same font-free bound the decode applies, but against what the tile actually measures on
  * screen rather than the widest it is ever stretched to. NARROWEST_GLYPH is a lower bound on a
  * glyph's advance, so a name this turns away is one the real width test turns away too.
+ *
+ * [side] is in the pixels the tile was measured in, and so is the type once it is divided by the
+ * layer's [magnification], which is the size the name is laid out at.
  */
-internal fun Density.couldFit(label: Label, side: Float): Boolean =
-    label.room * side >= NARROWEST_GLYPH * label.size.sp.toPx() * label.text.length
+internal fun Density.couldFit(label: Label, side: Float, magnification: Float = 1f): Boolean =
+    label.room * side >= NARROWEST_GLYPH * (label.size / magnification).sp.toPx() * label.text.length
 
 /** What a turned box covers, centred on nothing: the caller moves it onto the label. */
 private fun turned(degrees: Float, width: Float, height: Float): Rect {

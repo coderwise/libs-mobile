@@ -81,8 +81,9 @@ fun VectorSlot(
     zoom: Int = tile.zoom,
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
-    cache: () -> Boolean = Cached
-) = VectorSlot(tile.render, tile.background, src, zoom, modifier, alpha, cache)
+    cache: () -> Boolean = Cached,
+    magnification: () -> Float = Unmagnified
+) = VectorSlot(tile.render, tile.background, src, zoom, modifier, alpha, cache, magnification)
 
 /**
  * The same, for a caller holding its own decoded tile: everything here needs is the paths and the
@@ -121,6 +122,11 @@ fun VectorSlot(
  *
  * [alpha] is applied as a layer property, not per draw op, so fading a tile in does not invalidate
  * its drawing. Without [cache] the alpha is what the layer is for, and it modulates instead.
+ *
+ * [magnification] is how much the layer this is placed in scales it up — `LocalTileMagnification`
+ * from `:map-view`, which is what a source that stops at z14 reaches by z17 on a dense screen. Road
+ * widths are in the slot's own pixels, so without it they come out that many times too thick. Like
+ * [cache] it is read in the draw phase, so a change redraws the tile and recomposes nothing.
  */
 @Composable
 fun VectorSlot(
@@ -130,7 +136,8 @@ fun VectorSlot(
     zoom: Int,
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
-    cache: () -> Boolean = Cached
+    cache: () -> Boolean = Cached,
+    magnification: () -> Float = Unmagnified
 ) {
     Spacer(
         modifier
@@ -143,12 +150,15 @@ fun VectorSlot(
                 compositingStrategy =
                     if (cache()) CompositingStrategy.Offscreen else CompositingStrategy.ModulateAlpha
             }
-            .drawBehind { drawRenderTile(render, background, zoom, src) }
+            .drawBehind { drawRenderTile(render, background, zoom, src, magnification()) }
     )
 }
 
 /** The default `cache`: see [VectorSlot]. A val, so every slot shares the one lambda. */
 private val Cached: () -> Boolean = { true }
+
+/** The default `magnification`: a layer that is not scaled up. Shared with [VectorLabels]. */
+internal val Unmagnified: () -> Float = { 1f }
 
 /** Everything the style paints or labels; the rest of the tile is never parsed into features. */
 private val DRAWN_LAYERS = setOf(

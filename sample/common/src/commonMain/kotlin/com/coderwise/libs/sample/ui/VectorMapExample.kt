@@ -32,9 +32,11 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
 import com.coderwise.libs.mapcore.MapMath
 import com.coderwise.libs.mapview.LatLon
+import com.coderwise.libs.mapview.LocalTileMagnification
 import com.coderwise.libs.mapview.MapCameraState
 import com.coderwise.libs.mapview.MapState
 import com.coderwise.libs.mapview.MapView
+import com.coderwise.libs.mapview.Polyline
 import com.coderwise.libs.mapview.TileKey
 import com.coderwise.libs.mapview.ZOOM_LIMITS
 import com.coderwise.libs.mapview.mapGestures
@@ -112,6 +114,7 @@ private fun VectorMapContent(
 ) {
     var showWater by remember { mutableStateOf(false) }
     var found by remember { mutableStateOf<List<MapFeature>?>(null) }
+    var routePicked by remember { mutableStateOf(false) }
     // What the slots resolve widths and zoom gates against. From the camera rather than from the
     // cell, because the cell stops where the source does — OpenFreeMap's planet build stops at 14,
     // so a cell is a z14 cell at z17 too, and a road asked to grow past z14 never would. Derived,
@@ -121,11 +124,16 @@ private fun VectorMapContent(
     Box(
         Modifier.fillMaxSize().mapGestures(camera) { at ->
             found = null
+            routePicked = false
             scope.launch { found = identify(at.pressOn(camera.zoom)) }
         }
     ) {
         MapView(camera, Modifier.fillMaxSize()) {
-            layer(tiles) { key -> tiles.shown(key)?.let { VectorSlot(it.content, it.src, viewZoom) } }
+            layer(tiles) { key ->
+                tiles.shown(key)?.let {
+                    VectorSlot(it.content, it.src, viewZoom, magnification = LocalTileMagnification.current)
+                }
+            }
             // Water over the tiles it came from, so the shape reads against the map it belongs to.
             if (showWater) {
                 layer(tiles) { key ->
@@ -138,8 +146,25 @@ private fun VectorMapContent(
             // is as often as not across a seam.
             layer(tiles) { key ->
                 tiles.shown(key)?.let {
-                    VectorLabels(tile = it.content, src = it.src, bearing = camera.bearing)
+                    VectorLabels(
+                        tile = it.content,
+                        src = it.src,
+                        bearing = camera.bearing,
+                        // Past z16 on a dense screen the layer is scaled up, and so would the names be,
+                        // as the roads would above.
+                        magnification = LocalTileMagnification.current
+                    )
                 }
+            }
+            // A line of the app's own over the map. Tapping it picks it, and the tap goes no further:
+            // the feature card only answers for taps that missed it.
+            overlay {
+                Polyline(
+                    points = ROUTE,
+                    color = if (routePicked) ROUTE_PICKED else ROUTE_COLOR,
+                    width = if (routePicked) 9.dp else 5.dp,
+                    onClick = { routePicked = true }
+                )
             }
         }
 
@@ -252,6 +277,17 @@ private const val OPENFREEMAP = "https://tiles.openfreemap.org/planet/20260906_0
  * metres wide, so a line has to be catchable by one; an area answers by containment and ignores it.
  */
 private const val PRESS_RADIUS = 0.01f
+
+/** Trafalgar Square to Waterloo by way of Whitehall and Westminster Bridge. */
+private val ROUTE = listOf(
+    LatLon(51.5080, -0.1281),
+    LatLon(51.5034, -0.1264),
+    LatLon(51.5010, -0.1264),
+    LatLon(51.5008, -0.1218),
+    LatLon(51.5031, -0.1132)
+)
+private val ROUTE_COLOR = Color(0xFF1565C0)
+private val ROUTE_PICKED = Color(0xFFE65100)
 
 /** Enough to read as water over the map, not enough to hide what is under it. */
 private val WATER_MARK = Color(0x662D6CDF)

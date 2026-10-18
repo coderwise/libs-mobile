@@ -50,4 +50,20 @@ class LabelFitTest {
         assertTrue(density.couldFit(road("Main Street", size = 10f, room = room), side = 256f))
         assertFalse(density.couldFit(road("Main Street", size = 24f, room = room), side = 256f))
     }
+
+    @Test
+    fun `a magnified layer measures the type smaller, so a name that fits it is not turned away`() {
+        // The layer is drawn four times as big as the tile was measured, so the run under the name is
+        // a quarter of what it ends up as — and so is the type, which is what is laid out. 11 letters
+        // at 10 px need 22 px unscaled, and 5.5 px at a quarter of that; the run is 12.8.
+        val label = road("Main Street", size = 10f, room = 0.2f)
+        assertFalse(density.couldFit(label, side = 64f))
+        assertTrue(density.couldFit(label, side = 64f, magnification = 4f))
+    }
+
+    @Test
+    fun `and a name that does not fit even at its own size is still turned away`() {
+        // The same name on a run a hundredth as long: 0.64 px, against 5.5.
+        assertFalse(density.couldFit(road("Main Street", size = 10f, room = 0.01f), side = 64f, magnification = 4f))
+    }
 }
