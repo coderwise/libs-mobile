@@ -29,6 +29,9 @@ one cache serves any way of turning a tile into something to draw.
   with what is held as the fallback when the network fails), `OfflineOnly` (never the network).
 - **`tileUrl`** fills a `{z}/{x}/{y}` template, flipping the row for TMS servers.
 
+It depends on `:map-view-core` for `TileKey` and on okio, and on nothing else: no Compose, no
+Skiko. A server or a downloader can use it as it is.
+
 A cache is never the reason a tile does not load: a store that cannot be read is a miss, and one that
 cannot be written is skipped.
 

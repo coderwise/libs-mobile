@@ -23,8 +23,9 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             // api: TileKey is in every signature, and FileTileStore is made from an okio
-            // FileSystem and Path.
-            api(project(":map-view"))
+            // FileSystem and Path. Only the key, and not `:map-view`: a cache has no use for
+            // Compose, and Compose brings Skiko, which a wasm test bundle cannot do without.
+            api(project(":map-view-core"))
             api(libs.okio)
             implementation(libs.kotlinx.coroutines.core)
         }
