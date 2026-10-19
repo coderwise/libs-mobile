@@ -30,6 +30,8 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | `:map-view-tiles` | `com.coderwise.libs:map-view-tiles` | `0.1.4` | Loading for the above: `tileState` joins slots to a queue that fills them nearest-the-centre first, and `shown` says what a slot draws until its own tile lands. |
 | `:map-view-tiles-raster` | `com.coderwise.libs:map-view-tiles-raster` | `0.1.4` | Image tiles. |
 | `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | `0.1.4` | MVT tiles: a hand-rolled decoder that reads only what you ask for, a redefinable style whose widths ramp with zoom and whose expensive passes can be gated by it, a renderer that paints in a canonical order whatever order the source emits, and labels drawn straight to the canvas. Also what a tile knows besides its picture: `featuresAt` for "what did I just press on", and `waterPath` for anything drawn over the sea. |
+| [`:map-view-controls`](map-view-controls) | `com.coderwise.libs:map-view-controls` | `unreleased` | The parts of a map screen that are not the map: `ZoomButtons`, a `ScaleBar` (metric or imperial), `NorthButton` and `CompassTape`, `CourseUp` to keep the top of the map pointing the way you are heading, and an `Attribution` plate. Depends on nothing but Compose. |
+| [`:map-view-cache`](map-view-cache) | `com.coderwise.libs:map-view-cache` | `unreleased` | A tile cache that wraps the function a tile queue is given, so the queue never knows it is there: `cached` with four `CacheMode`s over a size-bounded `FileTileStore` (least recently used first) or a `MemoryTileStore`, and `tileUrl` for `{z}/{x}/{y}` templates. Fetches nothing itself. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.8` | **Previous generation.** Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.8` | **Previous generation.** Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
@@ -113,12 +115,13 @@ git tag utils-v0.4.0    && git push origin utils-v0.4.0     # → com.coderwise.
 git tag map-core-v0.1.8 && git push origin map-core-v0.1.8  # → com.coderwise.libs:map-core:0.1.8
 ```
 
-**The four `:map-view*` modules are the exception: release them in lockstep**, at one
-version, `:map-view` first. `:map-view-tiles` records the version it was built against in
-its POM, so a mixed release would have it asking for a `:map-view` that does not exist:
+**The `:map-view*` modules are the exception: release them in lockstep**, at one
+version, `:map-view` first. `:map-view-tiles` and the modules after it record the version they
+were built against in their POMs, so a mixed release would have one asking for a `:map-view`
+that does not exist:
 
 ```bash
-for m in map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector; do
+for m in map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector map-view-controls map-view-cache; do
   git tag $m-v0.1.0 && git push origin $m-v0.1.0
 done
 ```

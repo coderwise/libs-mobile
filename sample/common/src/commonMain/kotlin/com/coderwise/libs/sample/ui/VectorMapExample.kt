@@ -38,6 +38,12 @@ import com.coderwise.libs.mapview.MapState
 import com.coderwise.libs.mapview.MapView
 import com.coderwise.libs.mapview.Polyline
 import com.coderwise.libs.mapview.TileKey
+import com.coderwise.libs.mapview.cache.CacheMode
+import com.coderwise.libs.mapview.cache.MemoryTileStore
+import com.coderwise.libs.mapview.cache.cached
+import com.coderwise.libs.mapview.controls.Attribution
+import com.coderwise.libs.mapview.controls.NorthButton
+import com.coderwise.libs.mapview.controls.ScaleBar
 import com.coderwise.libs.mapview.ZOOM_LIMITS
 import com.coderwise.libs.mapview.mapGestures
 import com.coderwise.libs.mapview.rememberMapCameraState
@@ -87,18 +93,26 @@ internal fun VectorMapExample() {
 
     val http = remember { HttpClient() }
     DisposableEffect(http) { onDispose { http.close() } }
+    // The bytes go through a cache first, which is the whole of what `:map-view-cache` is: a
+    // function in front of the function the queue is given. Memory here because this sample runs
+    // in the browser too; an app with a file system gives `cached` a `FileTileStore` instead.
+    val tileBytes = remember(http) {
+        cached(MemoryTileStore(), source = "openfreemap", mode = CacheMode.CacheFirst) { key ->
+            vectorTileBytes(http, key)
+        }
+    }
     // Slots and the queue that fills them in one call — the raster example wires the same two up
     // by hand, which is worth reading once. Only to 14: OpenFreeMap's planet tiles stop there, and
     // past it the grid lays the deepest level out bigger rather than asking for tiles that do not
     // exist.
     val tiles = rememberTileState(zoomRange = 0..14, capacity = 64) { key ->
-        vectorTile(http, key, style)
+        vectorTile(tileBytes, key, style)
     }
 
     VectorMapContent(camera, tiles, scope) { at ->
-        // What the tile says is under the finger. The bytes are fetched again rather than kept:
-        // this runs on a tap, not on a frame, and the tile is in the HTTP cache by now.
-        val bytes = vectorTileBytes(http, at.tile) ?: return@VectorMapContent emptyList()
+        // What the tile says is under the finger. The bytes are asked for again rather than kept:
+        // this runs on a tap, not on a frame, and the tile is in the cache by now.
+        val bytes = tileBytes(at.tile) ?: return@VectorMapContent emptyList()
         withContext(Dispatchers.Default) {
             featuresAt(bytes, at.x, at.y, radius = PRESS_RADIUS)
         }
@@ -175,6 +189,11 @@ private fun VectorMapContent(
             onZoomOut = { camera.moveTo(camera.center, (camera.zoom - 1f).coerceIn(ZOOM_LIMITS)) }
         )
 
+        // What `:map-view-controls` adds: a north button that is only there while the map is turned
+        // (two fingers twist it), and a scale bar that says what its bar is at the zoom it is at.
+        NorthButton(camera, Modifier.align(Alignment.TopEnd).padding(12.dp))
+        ScaleBar(camera, Modifier.align(Alignment.TopCenter).padding(12.dp))
+
         FilterChip(
             selected = showWater,
             onClick = { showWater = !showWater },
@@ -187,7 +206,7 @@ private fun VectorMapContent(
         }
 
         // OpenFreeMap serves OpenStreetMap data, and asks for both to be credited.
-        Plate(
+        Attribution(
             "© OpenFreeMap © OpenStreetMap contributors",
             Modifier.align(Alignment.BottomEnd).padding(8.dp)
         )
@@ -253,8 +272,12 @@ private fun LatLon.pressOn(zoom: Float): Press {
     )
 }
 
-private suspend fun vectorTile(http: HttpClient, key: TileKey, style: VectorStyle): VectorTile? {
-    val bytes = vectorTileBytes(http, key) ?: return null
+private suspend fun vectorTile(
+    tileBytes: suspend (TileKey) -> ByteArray?,
+    key: TileKey,
+    style: VectorStyle
+): VectorTile? {
+    val bytes = tileBytes(key) ?: return null
     // Tens of milliseconds a tile -- a protobuf parse plus a few thousand path segments -- and
     // `decodeVectorTile` takes itself off the frame-drawing thread, so there is nothing to wrap.
     return decodeVectorTile(key.z, bytes, style)

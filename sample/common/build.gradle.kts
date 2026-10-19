@@ -33,6 +33,8 @@ kotlin {
             implementation(project(":map-core"))
             implementation(project(":map-engine"))
             implementation(project(":map-view"))
+            implementation(project(":map-view-cache"))
+            implementation(project(":map-view-controls"))
             implementation(project(":map-view-tiles"))
             implementation(project(":map-view-tiles-raster"))
             implementation(project(":map-view-tiles-vector"))

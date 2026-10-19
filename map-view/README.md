@@ -207,7 +207,7 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
 :map-view
   LatLon, TileKey, TileWindow
   MapState (window, slot, put, filled, forget)
-  MapCameraState (center, zoom, bearing, isInteracting, moveTo, rotateTo), flyTo
+  MapCameraState (center, zoom, bearing, metersPerDp, isInteracting, moveTo, rotateTo), flyTo
   rememberMapCameraState, ZOOM_LIMITS
   LatLon.onTileGrid(zoom) -> TilePoint, TilePoint.tile(zoom) -> TileKey
   tileGridToLatLon(x, y, zoom) -> LatLon, MERCATOR_LATITUDE_LIMIT
@@ -244,6 +244,20 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   featuresAt(bytes, x, y, radius) -> List<MapFeature>
   waterPath(bytes) -> Path?
   decodeMvt(bytes, keep, classLayers, nameLayers, attributeLayers) -> List<MvtLayer>
+
+:map-view-controls
+  ZoomButtons(camera, modifier, zoomRange, step, background, contentColor)
+  ScaleBar(camera, modifier, units, maxWidth, color, background, textStyle), ScaleUnits
+  NorthButton(camera, modifier, alwaysVisible, background)
+  CompassTape(camera, modifier, span, onClick, color, background, textStyle)
+  CourseUp(camera, heading, enabled, deadband)
+  MapCameraState.turnTo(bearing, animationSpec)
+  Attribution(text, modifier, onClick, color, background, textStyle)
+
+:map-view-cache
+  TileStore (get, put, remove, clear), MemoryTileStore(maxBytes), FileTileStore(fileSystem, directory, maxBytes)
+  cached(store, source, mode, fetch) -> suspend (TileKey) -> ByteArray?, CacheMode
+  tileUrl(template, key, tms) -> String
 ```
 
 Tile layout, the gesture detector and the fling curve are `internal`. The projection is not: the
