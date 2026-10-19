@@ -70,4 +70,10 @@ class MapOverlayTest {
         }
         assertEquals(0, emptyList<LatLon>().toWorld().size)
     }
+
+    @Test
+    fun `the zoom is the camera's`() {
+        assertEquals(12f, overlay(zoom = 12f).zoom)
+        assertEquals(7.5f, overlay(zoom = 7.5f).zoom)
+    }
 }

@@ -216,7 +216,7 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   tileGridToLatLon(x, y, zoom) -> LatLon, MERCATOR_LATITUDE_LIMIT
   MapView(camera, modifier) { layer(state) { key -> … }; overlay { … } }
   MapScope.layer(state) { key -> … }, MapScope.overlay { … }
-  MapOverlayScope (project, unproject, trace, Modifier.at(point, anchor), Modifier.mapTap(distance, touchWidth, onClick))
+  MapOverlayScope (zoom, project, unproject, trace, Modifier.at(point, anchor), Modifier.mapTap(distance, touchWidth, onClick))
   List<LatLon>.toWorld() -> DoubleArray
   MapOverlayScope.Polyline(points, color, modifier, width, touchWidth, onClick)
   Modifier.mapGestures(camera, rotatable, onTap)
@@ -261,6 +261,14 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   TileStore (get, put, remove, clear), MemoryTileStore(maxBytes), FileTileStore(fileSystem, directory, maxBytes)
   cached(store, source, mode, fetch) -> suspend (TileKey) -> ByteArray?, CacheMode
   tileUrl(template, key, tms) -> String
+
+:map-view-geojson
+  FeatureCollection(features), Feature(geometry, properties, id)
+  Geometry (Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon, GeometryCollection)
+  parseGeoJson(json) -> FeatureCollection
+  GeoJsonStyle(fill, stroke, strokeWidth, pointColor, pointRadius)
+  MapOverlayScope.GeoJson(data, modifier, style, minZoom, touchWidth, onFeatureClick)
+  DrawScope.drawGeoJson(data, style, projection, minZoom), GeoJsonProjection (zoom, trace)
 ```
 
 Tile layout, the gesture detector and the fling curve are `internal`. The projection is not: the

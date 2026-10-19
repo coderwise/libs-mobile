@@ -33,6 +33,7 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | [`:map-view-core`](map-view-core) | `com.coderwise.libs:map-view-core` | `unreleased` | `TileKey`, the address of one tile, in a module that needs no Compose — for whatever handles tiles without drawing them, such as `:map-view-cache`. `:map-view` gives it out as its own, so nothing that imports it changes. |
 | [`:map-view-controls`](map-view-controls) | `com.coderwise.libs:map-view-controls` | `unreleased` | The parts of a map screen that are not the map: `ZoomButtons`, a `ScaleBar` (metric or imperial), `NorthButton` and `CompassTape`, `CourseUp` to keep the top of the map pointing the way you are heading, and an `Attribution` plate. Depends on nothing but Compose. |
 | [`:map-view-cache`](map-view-cache) | `com.coderwise.libs:map-view-cache` | `unreleased` | A tile cache that wraps the function a tile queue is given, so the queue never knows it is there: `cached` with four `CacheMode`s over a size-bounded `FileTileStore` (least recently used first) or a `MemoryTileStore`, and `tileUrl` for `{z}/{x}/{y}` templates. Fetches nothing itself. |
+| [`:map-view-geojson`](map-view-geojson) | `com.coderwise.libs:map-view-geojson` | `unreleased` | GeoJSON as an overlay: points, lines and polygons with holes, multi-geometries, styled per layer, gated by `minZoom`, and tappable with `onFeatureClick` (the nearest feature wins). A small model of its own and `parseGeoJson` for a JSON string; the drawing is also a `DrawScope` function, `drawGeoJson`, for a map that is not on screen. Fetches nothing. Depends on nothing but Compose. |
 | [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.8` | **Previous generation.** Dependency-free map primitives: slippy-map tile math + `TileId`. |
 | [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.8` | **Previous generation.** Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
@@ -122,7 +123,7 @@ were built against in their POMs, so a mixed release would have one asking for a
 that does not exist:
 
 ```bash
-for m in map-view-core map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector map-view-controls map-view-cache; do
+for m in map-view-core map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector map-view-controls map-view-cache map-view-geojson; do
   git tag $m-v0.1.0 && git push origin $m-v0.1.0
 done
 ```

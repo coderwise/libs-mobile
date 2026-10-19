@@ -41,6 +41,13 @@ import kotlin.math.round
  */
 @LayoutScopeMarker
 sealed interface MapOverlayScope {
+    /**
+     * The camera's zoom: fractional, and following a pinch. For a shape that comes and goes with
+     * it — read it where the shape is drawn, in a draw block, so that the shape follows the camera
+     * without being recomposed.
+     */
+    val zoom: Float
+
     /** Where [point] falls in the map, in pixels from its top left. Follows the camera. */
     fun project(point: LatLon): Offset
 
@@ -210,6 +217,8 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
     private var width = 0f
     private var height = 0f
     private var density = 1f
+
+    override val zoom: Float get() = camera.zoom
 
     /** Called from the measure pass, before anything reads the projection. */
     fun measured(width: Float, height: Float, density: Float) {

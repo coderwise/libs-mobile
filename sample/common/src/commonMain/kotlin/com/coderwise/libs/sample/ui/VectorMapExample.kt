@@ -44,6 +44,12 @@ import com.coderwise.libs.mapview.cache.cached
 import com.coderwise.libs.mapview.controls.Attribution
 import com.coderwise.libs.mapview.controls.NorthButton
 import com.coderwise.libs.mapview.controls.ScaleBar
+import com.coderwise.libs.mapview.geojson.Feature
+import com.coderwise.libs.mapview.geojson.FeatureCollection
+import com.coderwise.libs.mapview.geojson.GeoJson
+import com.coderwise.libs.mapview.geojson.GeoJsonStyle
+import com.coderwise.libs.mapview.geojson.Geometry
+import com.coderwise.libs.mapview.geojson.parseGeoJson
 import com.coderwise.libs.mapview.ZOOM_LIMITS
 import com.coderwise.libs.mapview.mapGestures
 import com.coderwise.libs.mapview.rememberMapCameraState
@@ -79,6 +85,9 @@ import kotlin.math.floor
  * - **It knows where the land stops.** The water toggle draws each tile's `water` path, which is
  *   what anything drawn over the sea — a coverage overlay, a scratch map — needs in order not to
  *   cover it.
+ *
+ * - **It carries the app's own shapes.** `GeoJson` draws a zone with a hole in it, a trail, and
+ *   landmarks that only appear from zoom 15; tapping one names it, tapping the hole is the map's.
  *
  * Buildings are outlined from zoom 15, where one is big enough for its own edge to separate it
  * from the building it abuts.
@@ -129,6 +138,12 @@ private fun VectorMapContent(
     var showWater by remember { mutableStateOf(false) }
     var found by remember { mutableStateOf<List<MapFeature>?>(null) }
     var routePicked by remember { mutableStateOf(false) }
+    var geoPicked by remember { mutableStateOf<String?>(null) }
+    // Parsed once: the text is the app's to fetch, and `GeoJson` projects the result once more.
+    val geo = remember { parseGeoJson(SAMPLE_GEOJSON) }
+    val zones = remember(geo) { geo.only<Geometry.Polygon>() }
+    val trails = remember(geo) { geo.only<Geometry.LineString>() }
+    val landmarks = remember(geo) { geo.only<Geometry.Point>() }
     // What the slots resolve widths and zoom gates against. From the camera rather than from the
     // cell, because the cell stops where the source does — OpenFreeMap's planet build stops at 14,
     // so a cell is a z14 cell at z17 too, and a road asked to grow past z14 never would. Derived,
@@ -139,6 +154,7 @@ private fun VectorMapContent(
         Modifier.fillMaxSize().mapGestures(camera) { at ->
             found = null
             routePicked = false
+            geoPicked = null
             scope.launch { found = identify(at.pressOn(camera.zoom)) }
         }
     ) {
@@ -173,11 +189,30 @@ private fun VectorMapContent(
             // A line of the app's own over the map. Tapping it picks it, and the tap goes no further:
             // the feature card only answers for taps that missed it.
             overlay {
+                // Layers go in the order they are declared. Whichever shape is nearest the tap gets
+                // it, not whichever is on top, and a tap in the hole of the zone is the map's.
+                GeoJson(
+                    zones,
+                    style = GeoJsonStyle(fill = Color(0x2243A047), stroke = Color(0xFF2E7D32), strokeWidth = 2.dp),
+                    onFeatureClick = { geoPicked = it.label(); found = null }
+                )
+                GeoJson(
+                    trails,
+                    style = GeoJsonStyle(stroke = Color(0xFF6A1B9A), strokeWidth = 4.dp),
+                    onFeatureClick = { geoPicked = it.label(); found = null }
+                )
+                // Gated by zoom: not drawn, and not tappable, until the map is zoomed in this far.
+                GeoJson(
+                    landmarks,
+                    style = GeoJsonStyle(pointColor = Color(0xFFEF6C00), pointRadius = 7.dp),
+                    minZoom = 15f,
+                    onFeatureClick = { geoPicked = it.label(); found = null }
+                )
                 Polyline(
                     points = ROUTE,
                     color = if (routePicked) ROUTE_PICKED else ROUTE_COLOR,
                     width = if (routePicked) 9.dp else 5.dp,
-                    onClick = { routePicked = true }
+                    onClick = { routePicked = true; geoPicked = null }
                 )
             }
         }
@@ -204,6 +239,18 @@ private fun VectorMapContent(
         found?.let { features ->
             FeatureCard(features, Modifier.align(Alignment.BottomStart).padding(12.dp))
         }
+        geoPicked?.let { label ->
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                    .padding(10.dp)
+            )
+        }
 
         // OpenFreeMap serves OpenStreetMap data, and asks for both to be credited.
         Attribution(
@@ -212,6 +259,12 @@ private fun VectorMapContent(
         )
     }
 }
+
+/** The features of [this] whose geometry is a [G]: one layer's worth, to be drawn in one style. */
+private inline fun <reified G : Geometry> FeatureCollection.only() =
+    FeatureCollection(features.filter { it.geometry is G })
+
+private fun Feature.label() = "${properties["kind"] ?: "feature"}: ${properties["name"] ?: id ?: "—"}"
 
 /** What a tap turned up, in the order the query ranks it: most specific thing first. */
 @Composable
@@ -314,3 +367,25 @@ private val ROUTE_PICKED = Color(0xFFE65100)
 
 /** Enough to read as water over the map, not enough to hide what is under it. */
 private val WATER_MARK = Color(0x662D6CDF)
+
+/**
+ * GeoJSON as an app would hold it: a zone round St James's Park with a hole in it, a trail along
+ * the Embankment, and three landmarks. A position is longitude first, which is GeoJSON's order and not
+ * `LatLon`'s.
+ */
+private const val SAMPLE_GEOJSON = """
+{"type":"FeatureCollection","features":[
+  {"type":"Feature","id":"zone","properties":{"kind":"zone","name":"Park zone"},
+   "geometry":{"type":"Polygon","coordinates":[
+     [[-0.1500,51.4980],[-0.1320,51.4980],[-0.1320,51.5090],[-0.1500,51.5090],[-0.1500,51.4980]],
+     [[-0.1440,51.5010],[-0.1380,51.5010],[-0.1380,51.5045],[-0.1440,51.5045],[-0.1440,51.5010]]]}},
+  {"type":"Feature","id":"embankment","properties":{"kind":"trail","name":"Embankment trail"},
+   "geometry":{"type":"LineString","coordinates":[[-0.1224,51.5073],[-0.1190,51.5085],[-0.1140,51.5098],[-0.1080,51.5103]]}},
+  {"type":"Feature","id":"big-ben","properties":{"kind":"landmark","name":"Big Ben"},
+   "geometry":{"type":"Point","coordinates":[-0.1246,51.5007]}},
+  {"type":"Feature","id":"palace","properties":{"kind":"landmark","name":"Buckingham Palace"},
+   "geometry":{"type":"Point","coordinates":[-0.1419,51.5014]}},
+  {"type":"Feature","id":"abbey","properties":{"kind":"landmark","name":"Westminster Abbey"},
+   "geometry":{"type":"Point","coordinates":[-0.1273,51.4994]}}
+]}
+"""
