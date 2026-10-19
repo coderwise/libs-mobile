@@ -19,6 +19,9 @@ import kotlin.math.ln
 import kotlin.math.round
 import kotlin.math.sin
 
+/** The length of the equator, which Web Mercator spreads over the width of the world. */
+private const val EQUATOR_METERS = 40_075_016.686
+
 /** How far the camera can be zoomed, for anyone offering a control over it. */
 val ZOOM_LIMITS = 1f..20f
 
@@ -70,6 +73,14 @@ class MapCameraState(
         private set
 
     val center: LatLon get() = LatLon(Mercator.lat(y), Mercator.lon(x))
+
+    /**
+     * How many metres of ground one dp covers at the middle of the map — what a scale bar is drawn
+     * from. It halves with every zoom level, and on a Mercator map it is only true at the latitude
+     * it was asked for: the same dp is fewer metres towards the poles.
+     */
+    val metersPerDp: Double
+        get() = EQUATOR_METERS * cos(center.lat * PI / 180.0) / Mercator.worldPixels(zoom, density = 1f)
 
     fun moveTo(center: LatLon, zoom: Float = this.zoom) {
         x = Mercator.x(center.lon)
