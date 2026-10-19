@@ -52,7 +52,7 @@ class LabelFitTest {
     }
 
     @Test
-    fun `a magnified layer measures the type smaller, so a name that fits it is not turned away`() {
+    fun `a magnified layer measures the type smaller so a name that fits it is not turned away`() {
         // The layer is drawn four times as big as the tile was measured, so the run under the name is
         // a quarter of what it ends up as — and so is the type, which is what is laid out. 11 letters
         // at 10 px need 22 px unscaled, and 5.5 px at a quarter of that; the run is 12.8.
