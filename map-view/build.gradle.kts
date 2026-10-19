@@ -16,21 +16,27 @@ kotlin {
         withHostTest {}
     }
     iosArm64(); iosSimulatorArm64()
-    js { browser() }
-    wasmJs { browser() }
+    js {
+        browser()
+        binaries.executable()
+    }
+    wasmJs {
+        browser()
+        binaries.executable()
+    }
     jvm("desktop")
 
     sourceSets {
         commonMain.dependencies {
+            // TileKey, which `:map-view-cache` and anything else that handles tiles without drawing
+            // them can name without Compose. api: it is in MapState's signature.
+            api(project(":map-view-core"))
             // api, not implementation: Modifier, Composable and Offset are all over the public
             // surface, so consumers have to see them.
             api(libs.compose.runtime)
             api(libs.compose.foundation)
             api(libs.compose.ui)
             implementation(libs.kotlinx.coroutines.core)
-            // TileKey, which `:map-view-cache` and anything else that handles tiles without drawing
-            // them can name without Compose. api: it is in MapState's signature.
-            api(project(":map-view-core"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

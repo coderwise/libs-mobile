@@ -16,8 +16,14 @@ kotlin {
         withHostTest {}
     }
     iosArm64(); iosSimulatorArm64()
-    js { browser() }
-    wasmJs { browser() }
+    js {
+        browser()
+        binaries.executable()
+    }
+    wasmJs {
+        browser()
+        binaries.executable()
+    }
     jvm("desktop")
 
     sourceSets {
