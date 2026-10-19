@@ -28,6 +28,9 @@ kotlin {
             api(libs.compose.foundation)
             api(libs.compose.ui)
             implementation(libs.kotlinx.coroutines.core)
+            // TileKey, which `:map-view-cache` and anything else that handles tiles without drawing
+            // them can name without Compose. api: it is in MapState's signature.
+            api(project(":map-view-core"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

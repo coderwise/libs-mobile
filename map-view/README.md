@@ -204,8 +204,11 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
 ## The whole public API
 
 ```
+:map-view-core
+  TileKey
+
 :map-view
-  LatLon, TileKey, TileWindow
+  LatLon, TileWindow   (and TileKey, which :map-view-core owns and :map-view gives out as its own)
   MapState (window, slot, put, filled, forget)
   MapCameraState (center, zoom, bearing, metersPerDp, isInteracting, moveTo, rotateTo), flyTo
   rememberMapCameraState, ZOOM_LIMITS

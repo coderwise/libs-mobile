@@ -9,8 +9,6 @@ import androidx.compose.runtime.setValue
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-data class TileKey(val z: Int, val x: Int, val y: Int)
-
 /** The tiles a view wants: one zoom level and the span of tiles covering the viewport. */
 @Immutable
 data class TileWindow(val z: Int, val x: IntRange, val y: IntRange) {
