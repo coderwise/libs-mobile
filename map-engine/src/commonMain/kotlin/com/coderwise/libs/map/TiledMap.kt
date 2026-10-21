@@ -89,14 +89,14 @@ class TiledMapScope internal constructor(
 /**
  * A pannable, zoomable tiled map.
  *
- * Render tiles via [tileContent] (e.g. [rememberBitmapTileContent]).
+ * Render each tile with [tileContent], which is handed the tile and the modifier that sizes and
+ * places it.
  * Overlay arbitrary composables anchored to geographic coordinates using [content]:
  *
  * ```
  * TiledMap(
- *     tiles = tiles,
  *     state = state,
- *     tileContent = rememberBitmapTileContent()
+ *     tileContent = { tile, modifier -> MyTile(tile, modifier) }
  * ) {
  *     Text("Berlin", modifier = Modifier.anchoredAt(52.5200, 13.4050))
  *     Icon(Icons.Default.LocationOn, modifier = Modifier.anchoredAt(52.5200, 13.4050))
