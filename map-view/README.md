@@ -91,7 +91,7 @@ own, so the rings of a polygon go into one `Path` and an even-odd fill makes the
 
 `camera.bearing` is what is at the top of the screen, in degrees clockwise from north: 0 is
 north-up, 90 puts east up. `rotateTo` sets it — a compass button, a heading-up mode — and two
-fingers twist it, with a slop of 7 degrees so that a pinch is not a twist until it is clearly one.
+fingers twist it, with a slop of 20 degrees so that a pinch is not a twist until it is clearly one.
 `mapGestures(camera, rotatable = false)` takes the gesture away without taking the bearing away.
 
 Tiles turn; overlays do not. A tile layer is laid out on an unturned plane — big enough that the
@@ -233,11 +233,12 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
 
 :map-view-tiles-vector
   suspend decodeVectorTile(zoom, bytes, style) -> VectorTile
-  VectorStyle(background, ink, halo, waterInk, water, waterway, park, building,
-              roadCasing, landcover, landuse, road, aeroway, boundary,
+  VectorStyle(background, ink, halo, water, waterway, park, building,
+              roadCasing, landcover, landuse, road, roadDetail, aeroway, boundary,
               place, roadName, polygonFallback, lineFallback)
   LayerStyle(fill, stroke, strokeWidth, casing, casingWidth, cap, join,
-             strokeMinZoom, casingMinZoom)
+             strokeMinZoom, casingMinZoom, coarse, dash)
+  DrawScope.drawVectorLabels(tile, src, measurer, bearing, magnification)
   ZoomWidth(far, near, farthest)
   buildRenderTile(layers, style) -> RenderTile
   DrawScope.drawRenderTile(render, background, zoom, src, magnification)
@@ -465,11 +466,11 @@ with a default for each, so a caller changes what it wants and leaves the rest:
 
 ```kotlin
 val night = VectorStyle(
-    land = Color(0xFF1B1F24),
-    water = Color(0xFF16324A),
+    background = Color(0xFF1B1F24),
+    water = LayerStyle(fill = Color(0xFF16324A)),
     ink = Color(0xFFE8E6E1),
     halo = Color(0xC0000000),
-    road = { kind -> VectorStyle().road(kind)?.copy(color = Color(0xFF4A5560)) }
+    road = { kind -> VectorStyle().road(kind)?.copy(stroke = Color(0xFF4A5560)) }
 )
 decodeVectorTile(key.z, bytes, night)
 ```

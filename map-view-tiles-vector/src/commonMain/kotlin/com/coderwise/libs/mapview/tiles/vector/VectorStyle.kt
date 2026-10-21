@@ -129,8 +129,31 @@ data class LayerStyle(
      * over the buildings under it, so this is a compromise rather than a computation: light enough
      * that the step is small, dark enough that the street is still a street.
      */
-    val coarse: Color? = null
-)
+    val coarse: Color? = null,
+    /**
+     * Alternating on and off lengths of the line, as a list of [Dp] starting with an "on" — a
+     * footway drawn as dashes, a boundary as dots. Null, the default, is a solid line.
+     *
+     * Resolved against the display when the tile is drawn, like the widths, so a dash is the same
+     * length on screen on any density. It dashes the [stroke] and the single line drawn below
+     * [casingMinZoom]; a [casing] stays solid, since a dashed edge under a dashed road reads as
+     * noise, and a dashed paint is normally a casing-less one anyway.
+     *
+     * The ends of each dash are shaped by [cap], which defaults to round: a round cap grows every
+     * dash by half the width at each end and closes up a short gap, so a dashed paint will usually
+     * want `cap = StrokeCap.Butt`.
+     *
+     * An even number of entries, at least two, all positive — the pattern repeats from the start
+     * once it runs out, and an odd list would swap on and off on every other repeat.
+     */
+    val dash: List<Dp>? = null
+) {
+    init {
+        require(dash == null || (dash.size >= 2 && dash.size % 2 == 0 && dash.all { it.value > 0f })) {
+            "dash must be null or an even number, at least two, of positive lengths: $dash"
+        }
+    }
+}
 
 /**
  * What a vector tile looks like: every colour and width the drawing uses, in one value with a
@@ -166,12 +189,6 @@ data class VectorStyle(
      */
     val ink: Color = Color(0xFF2B2B2B),
     val halo: Color = Color(0xFFFFFFFF),
-    /**
-     * Water labels (lakes, rivers) — blue by cartographic convention, but a deep one: the muted
-     * slate this replaced was barely darker than the land it was read against, and italic type has
-     * thin strokes to lose.
-     */
-    val waterInk: Color = Color(0xFF15495F),
     val water: LayerStyle? = LayerStyle(fill = WATER),
     val waterway: LayerStyle? = LayerStyle(stroke = WATER, strokeWidth = ZoomWidth(0.8.dp, 2.2.dp)),
     val park: LayerStyle? = LayerStyle(fill = PARKLAND),
@@ -220,20 +237,42 @@ data class VectorStyle(
     val roadName: Float? = 10f,
     /** What an unrecognised layer's geometry falls to. */
     val polygonFallback: LayerStyle? = LayerStyle(fill = Color(0x11000000)),
-    val lineFallback: LayerStyle? = LayerStyle(stroke = Color(0x33000000), strokeWidth = ZoomWidth(1.dp))
+    val lineFallback: LayerStyle? = LayerStyle(stroke = Color(0x33000000), strokeWidth = ZoomWidth(1.dp)),
+    /**
+     * [road], for a style that needs more than the class to tell two roads apart: a tunnel drawn
+     * faded, a bridge cased, a `subclass` of footway told from a cycleway. Null, the default, is
+     * the plain [road] lookup, and then nothing but `class` is read out of the tile.
+     *
+     * [subclass] and [brunnel] are the tile's `subclass` and `brunnel` tags as OpenMapTiles writes
+     * them — "tunnel", "bridge", "ford" for [brunnel] — and the empty string where the feature does
+     * not carry one. Answering null defers to [road] for that feature rather than leaving it to the
+     * geometry fallback, so this only has to answer for the roads it has something to say about.
+     *
+     * Setting it makes the decode resolve the two extra tags for every `transportation` feature, a
+     * small per-feature cost that a style without it does not pay.
+     */
+    val roadDetail: ((kind: String, subclass: String, brunnel: String) -> LayerStyle?)? = null,
 ) {
     /**
      * The paint for one feature: its layer's, narrowed by its class where the layer has classes.
      * Null leaves it to the geometry fallbacks.
+     *
+     * [subclass] and [brunnel] are what [roadDetail] is asked about; nothing else reads them.
      */
-    fun paint(layer: String, featureClass: String?): LayerStyle? {
+    fun paint(
+        layer: String,
+        featureClass: String?,
+        subclass: String? = null,
+        brunnel: String? = null
+    ): LayerStyle? {
         val kind = featureClass.orEmpty()
         return when (layer) {
             "water" -> water
             "waterway" -> waterway
             "park" -> park
             "building" -> building
-            "transportation" -> road(kind)
+            "transportation" ->
+                roadDetail?.invoke(kind, subclass.orEmpty(), brunnel.orEmpty()) ?: road(kind)
             "transportation_casing" -> roadCasing
             "landcover" -> landcover(kind)
             "landuse" -> landuse(kind)
@@ -256,6 +295,14 @@ data class VectorStyle(
             "landcover" to "class",
             "landuse" to "class",
             "transportation" to "class"
+        )
+
+        /**
+         * Each layer whose features carry further tags a style can read, and which — resolved only
+         * when the style asks, see [roadDetail], in the order [paint] takes them.
+         */
+        val DETAIL_LAYERS: Map<String, List<String>> = mapOf(
+            "transportation" to listOf("subclass", "brunnel")
         )
     }
 }

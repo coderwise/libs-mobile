@@ -15,6 +15,8 @@ enum class GeometryType { UNKNOWN, POINT, LINE, POLYGON }
  *   string form ("6", not "6.0").
  * - [name] — what a label says, resolved the same cheap way, because the layers that carry labels
  *   want this one tag and nothing else.
+ * - [details] — a few further tags a layer's style reads, resolved the same cheap way as
+ *   [featureClass] and only for the layers that ask. Empty unless requested.
  * - [attributes] — everything, as a map. Empty unless the layer was asked for; a string-keyed map
  *   per feature is far too expensive for a layer as dense as `transportation`, where all the style
  *   needs to know is whether this line is a motorway or a ferry.
@@ -26,7 +28,12 @@ class MvtFeature(
     val geometry: TileGeometry,
     val featureClass: String? = null,
     val name: String? = null,
-    val attributes: Map<String, Any?> = emptyMap()
+    val attributes: Map<String, Any?> = emptyMap(),
+    /**
+     * The values of the tags asked for in [decodeMvt]'s `detailLayers`, in the order they were
+     * asked for; null for one the feature does not carry. Empty when the layer asked for none.
+     */
+    val details: List<String?> = emptyList()
 )
 
 /** A layer of a vector tile. [extent] is the tile-local coordinate space its features live in. */
@@ -46,6 +53,9 @@ class MvtLayer(val name: String, val extent: Int, val features: List<MvtFeature>
  * - [classLayers] — layer name to the single tag that layer is styled by, into
  *   [MvtFeature.featureClass].
  * - [nameLayers] — the layers whose features carry a label, into [MvtFeature.name].
+ * - [detailLayers] — layer name to the further tags wanted from its features, into
+ *   [MvtFeature.details] in the same order. For a style that tells features apart by more than
+ *   [classLayers]' one tag, at the price of one more scan of each feature's tags.
  * - [attributeLayers] — the layers whose whole tag set is wanted, into [MvtFeature.attributes].
  *   The expensive one; list a layer here only when nothing narrower will do.
  *
@@ -57,5 +67,6 @@ fun decodeMvt(
     keep: Set<String>? = null,
     classLayers: Map<String, String>? = null,
     nameLayers: Set<String>? = null,
-    attributeLayers: Set<String>? = null
-): List<MvtLayer> = parseTile(bytes, keep, attributeLayers, classLayers, nameLayers)
+    attributeLayers: Set<String>? = null,
+    detailLayers: Map<String, List<String>>? = null
+): List<MvtLayer> = parseTile(bytes, keep, attributeLayers, classLayers, nameLayers, detailLayers)

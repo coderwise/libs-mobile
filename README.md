@@ -149,3 +149,7 @@ Drop it in as a top-level folder with a `build.gradle.kts` (settings.gradle.kts
 auto-includes it). Mirror `:utils`: apply the vanniktech plugin, read the version
 from `libVersion` (default `0.0.0-LOCAL`), set `coordinates("com.coderwise.libs", "<name>", …)`.
 Release it with a `<name>-v<version>` tag — no workflow changes needed.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).

@@ -25,6 +25,7 @@ internal fun parseTile(
     attributeLayers: Set<String>?,
     classLayers: Map<String, String>? = null,
     nameLayers: Set<String>? = null,
+    detailLayers: Map<String, List<String>>? = null,
 ): List<MvtLayer> {
     val reader = ProtoReader(bytes)
     val layers = ArrayList<MvtLayer>()
@@ -33,7 +34,7 @@ internal fun parseTile(
         // Tile.layers = field 3, length-delimited message.
         if (tag.field == 3 && tag.wire == WIRE_LEN) {
             val end = reader.readBound()
-            parseLayer(reader, end, keep, attributeLayers, classLayers, nameLayers)
+            parseLayer(reader, end, keep, attributeLayers, classLayers, nameLayers, detailLayers)
                 ?.let(layers::add)
             reader.pos = end
         } else {
@@ -50,6 +51,7 @@ private fun parseLayer(
     attributeLayers: Set<String>?,
     classLayers: Map<String, String>?,
     nameLayers: Set<String>?,
+    detailLayers: Map<String, List<String>>?,
 ): MvtLayer? {
     var name = ""
     var extent = 4096
@@ -97,11 +99,14 @@ private fun parseLayer(
     val nameKeys =
         if (nameLayers?.contains(name) == true) IntArray(NAME_TAGS.size) { keys.indexOf(NAME_TAGS[it]) }
         else NO_NAME_KEYS
+    // And again for the further tags a style reads: located once, then one pass per feature.
+    val detailKeys = detailLayers?.get(name)?.let { wanted -> IntArray(wanted.size) { keys.indexOf(wanted[it]) } }
+        ?: NO_NAME_KEYS
     val features = ArrayList<MvtFeature>(featureStarts.size)
     for (k in 0 until featureStarts.size) {
         reader.pos = featureStarts[k]
         features.add(
-            parseFeature(reader, featureEnds[k], keys, values, resolveAttrs, classKey, nameKeys)
+            parseFeature(reader, featureEnds[k], keys, values, resolveAttrs, classKey, nameKeys, detailKeys)
         )
     }
     return MvtLayer(name, extent, features)
@@ -115,6 +120,7 @@ private fun parseFeature(
     resolveAttrs: Boolean,
     classKey: Int,
     nameKeys: IntArray,
+    detailKeys: IntArray,
 ): MvtFeature {
     var type = GeometryType.UNKNOWN
     var tags: IntBag? = null
@@ -123,7 +129,7 @@ private fun parseFeature(
     while (reader.pos < end) {
         val tag = reader.readTag()
         when (tag.field) {
-            2 -> if (resolveAttrs || classKey >= 0 || nameKeys.isNotEmpty()) {           // tags (packed)
+            2 -> if (resolveAttrs || classKey >= 0 || nameKeys.isNotEmpty() || detailKeys.isNotEmpty()) { // tags (packed)
                 val bag = tags ?: IntBag(8).also { tags = it }
                 reader.readPackedOrSingle(bag, tag.wire)
             } else {
@@ -146,7 +152,29 @@ private fun parseFeature(
         attributes = if (resolveAttrs && tags != null) resolveAttributes(tags, keys, values) else emptyMap(),
         featureClass = if (classKey >= 0 && tags != null) classOf(tags, classKey, values) else null,
         name = if (tags != null) nameOf(tags, nameKeys, values) else null,
+        details = if (detailKeys.isNotEmpty()) detailsOf(tags, detailKeys, values) else emptyList(),
     )
+}
+
+/**
+ * The values of [detailKeys] in a feature's packed `tags`, in that order, in one scan. A key the
+ * tile does not carry has index -1 and a feature that lacks it simply stays null.
+ */
+private fun detailsOf(tags: IntBag?, detailKeys: IntArray, values: List<Any?>): List<String?> {
+    val found = arrayOfNulls<String>(detailKeys.size)
+    if (tags != null) {
+        var i = 0
+        while (i + 1 < tags.size) {
+            for (d in detailKeys.indices) {
+                if (detailKeys[d] >= 0 && tags[i] == detailKeys[d]) {
+                    found[d] = tagValueOf(values.getOrNull(tags[i + 1]))
+                    break
+                }
+            }
+            i += 2
+        }
+    }
+    return found.asList()
 }
 
 /** Collapses an MVT `Value` message into its single populated field, matching the spec's oneof order. */
