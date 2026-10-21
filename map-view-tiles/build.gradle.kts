@@ -37,6 +37,15 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        // Both are exercised by composing and drawing them for real, and one host is enough: the
+        // code under test is common.
+        getByName("desktopTest") {
+            dependencies {
+                implementation(libs.compose.ui.test)
+                implementation(libs.compose.ui.test.junit4)
+                implementation(compose.desktop.currentOs)
+            }
+        }
     }
 }
 
