@@ -38,6 +38,13 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        // Drawing needs Skia, which a plain JVM test does not have: the label drawing can only be
+        // checked by painting into a real bitmap, and one host is enough since the code is common.
+        getByName("desktopTest") {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+            }
+        }
     }
 }
 

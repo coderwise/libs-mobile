@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
@@ -440,6 +441,93 @@ class VectorStyleTest {
         assertEquals(style.water, style.paint("water", "ferry"))
         // And a layer the style says nothing about is left to the geometry fallbacks.
         assertNull(style.paint("wibble", null))
+    }
+
+    // --- roadDetail ----------------------------------------------------------------------------
+
+    private val tunnel = LayerStyle(stroke = Color.Red)
+    private val bridge = LayerStyle(stroke = Color.Blue)
+
+    private val bySurface = VectorStyle(
+        roadDetail = ::tunnelOrBridge
+    )
+
+    @Test
+    fun `without roadDetail a road is styled by its class alone`() {
+        val style = VectorStyle()
+        assertEquals(style.road("primary"), style.paint("transportation", "primary", "link", "tunnel"))
+    }
+
+    @Test
+    fun `roadDetail is asked with the class and the subclass and the brunnel`() {
+        assertEquals(tunnel, bySurface.paint("transportation", "primary", null, "tunnel"))
+        assertEquals(bridge, bySurface.paint("transportation", "primary", null, "bridge"))
+    }
+
+    @Test
+    fun `a tag the feature lacks reaches roadDetail as the empty string`() {
+        var seen: Triple<String, String, String>? = null
+        val style = VectorStyle(roadDetail = { kind, subclass, brunnel ->
+            seen = Triple(kind, subclass, brunnel)
+            null
+        })
+        style.paint("transportation", null)
+        assertEquals(Triple("", "", ""), seen)
+    }
+
+    @Test
+    fun `roadDetail answering null defers to the class lookup and not to the fallback`() {
+        assertEquals(
+            VectorStyle().road("primary"),
+            bySurface.paint("transportation", "primary", null, null)
+        )
+    }
+
+    @Test
+    fun `roadDetail is only for roads`() {
+        assertEquals(bySurface.water, bySurface.paint("water", null, null, "tunnel"))
+    }
+
+    // --- dash ----------------------------------------------------------------------------------
+
+    @Test
+    fun `a paint is solid unless it says otherwise`() {
+        assertNull(LayerStyle().dash)
+        assertNull(assertNotNull(VectorStyle().paint("transportation", "footway")).dash)
+    }
+
+    @Test
+    fun `a dash is on then off in pairs`() {
+        assertEquals(listOf(4.dp, 3.dp), LayerStyle(dash = listOf(4.dp, 3.dp)).dash)
+        listOf(
+            emptyList(),
+            listOf(4.dp),
+            listOf(4.dp, 3.dp, 2.dp),
+            listOf(4.dp, 0.dp),
+            listOf((-1).dp, 3.dp)
+        ).forEach { bad ->
+            assertFailsWith<IllegalArgumentException>("$bad") { LayerStyle(dash = bad) }
+        }
+    }
+
+    @Test
+    fun `two paints that dash alike are equal so features still share a path`() {
+        assertEquals(
+            LayerStyle(stroke = Color.Red, dash = listOf(4.dp, 3.dp)),
+            LayerStyle(stroke = Color.Red, dash = listOf(4.dp, 3.dp))
+        )
+        assertNotEquals(LayerStyle(stroke = Color.Red), LayerStyle(stroke = Color.Red, dash = listOf(4.dp, 3.dp)))
+    }
+
+    @Test
+    fun `only a style that reads the extra road tags asks the decode for them`() {
+        assertEquals(listOf("subclass", "brunnel"), VectorStyle.DETAIL_LAYERS["transportation"])
+    }
+
+    private fun tunnelOrBridge(kind: String, subclass: String, brunnel: String): LayerStyle? = when (brunnel) {
+        "tunnel" -> tunnel
+        "bridge" -> bridge
+        else -> null
     }
 }
 

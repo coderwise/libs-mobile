@@ -42,7 +42,9 @@ suspend fun decodeVectorTile(
             bytes,
             keep = DRAWN_LAYERS,
             classLayers = CLASS_LAYERS,
-            nameLayers = LABELLED_LAYERS
+            nameLayers = LABELLED_LAYERS,
+            // Only a style that reads them pays for the extra tags.
+            detailLayers = if (style.roadDetail != null) VectorStyle.DETAIL_LAYERS else null
         )
         VectorTile(
             render = buildRenderTile(layers, style),

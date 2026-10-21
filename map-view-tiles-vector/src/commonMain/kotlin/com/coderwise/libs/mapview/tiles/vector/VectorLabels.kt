@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -72,11 +73,7 @@ fun VectorLabels(
 ) {
     // Only the names this tile owns: its neighbours place their own. And only the first
     // [LABEL_BUDGET] of those — see the constant.
-    val mine = remember(tile, src) {
-        tile.labels.filter {
-            it.x >= src.left && it.x < src.right && it.y >= src.top && it.y < src.bottom
-        }.take(LABEL_BUDGET)
-    }
+    val mine = remember(tile, src) { tile.labelsIn(src) }
     val measurer = rememberTextMeasurer(cacheSize = LABEL_BUDGET)
     val density = LocalDensity.current
     val apart = with(density) { 3.dp.toPx() }
@@ -93,22 +90,61 @@ fun VectorLabels(
                 val placed = density.place(
                     mine, measurer, src, size.width / src.width, bearing, apart / scale, scale
                 )
-                onDrawBehind {
-                    placed.forEach { name ->
-                        rotate(name.angle, pivot = name.middle) {
-                            // Halo and fill off one paragraph: the same layout drawn twice, rather
-                            // than two text nodes measuring the same words.
-                            drawText(name.layout, tile.halo, name.topLeft, drawStyle = Stroke(outline / scale))
-                            // Fill named rather than left to default: a null drawStyle means "as
-                            // the layout's style says", and the paragraph's paint still carries the
-                            // Stroke from the pass above — so the fill would thicken the name into
-                            // a dark blob instead of covering the halo.
-                            drawText(name.layout, tile.ink, name.topLeft, drawStyle = Fill)
-                        }
-                    }
-                }
+                onDrawBehind { drawPlaced(placed, tile, outline / scale) }
             }
     )
+}
+
+/**
+ * Draws the place and road names of [tile] into this scope, for a map drawn without a composition:
+ * a static image, a tile rasterised on the CPU, anything with a canvas and no [VectorLabels] to
+ * put over it. The names are laid out and drawn exactly as [VectorLabels] does — the same
+ * placement, the same halo, the same collision rule — so a map drawn either way reads the same.
+ *
+ * [src] is the fraction of the tile this scope's [size] shows, as for [drawRenderTile]: the whole
+ * `0..1` square for a tile at its own zoom. Only the names whose point is inside it are placed,
+ * and a name is free to run past the scope's edge. [measurer] lays the text out. One can be built
+ * outside a composition from a font family resolver, a density and a layout direction, and one
+ * that is kept between calls caches the layouts it has made. [bearing] and [magnification] are as
+ * for [VectorLabels].
+ *
+ * Unlike [VectorLabels] nothing is remembered between calls, so every call lays the names out
+ * again; a caller that draws the same tile repeatedly is better off drawing it once into a bitmap.
+ */
+fun DrawScope.drawVectorLabels(
+    tile: VectorTile,
+    src: Rect,
+    measurer: TextMeasurer,
+    bearing: Float = 0f,
+    magnification: Float = 1f
+) {
+    if (src.width <= 0f || src.height <= 0f) return
+    val placed = place(
+        tile.labelsIn(src), measurer, src, size.width / src.width, bearing,
+        3.dp.toPx() / magnification, magnification
+    )
+    drawPlaced(placed, tile, 2.dp.toPx() / magnification)
+}
+
+/** The names [tile] owns within [src], in priority order and no more than [LABEL_BUDGET] of them. */
+private fun VectorTile.labelsIn(src: Rect): List<Label> = labels.filter {
+    it.x >= src.left && it.x < src.right && it.y >= src.top && it.y < src.bottom
+}.take(LABEL_BUDGET)
+
+/** Draws names already placed by [place]: halo under fill, each turned about its middle. */
+private fun DrawScope.drawPlaced(placed: List<PlacedName>, tile: VectorTile, outline: Float) {
+    placed.forEach { name ->
+        rotate(name.angle, pivot = name.middle) {
+            // Halo and fill off one paragraph: the same layout drawn twice, rather
+            // than two text nodes measuring the same words.
+            drawText(name.layout, tile.halo, name.topLeft, drawStyle = Stroke(outline))
+            // Fill named rather than left to default: a null drawStyle means "as
+            // the layout's style says", and the paragraph's paint still carries the
+            // Stroke from the pass above — so the fill would thicken the name into
+            // a dark blob instead of covering the halo.
+            drawText(name.layout, tile.ink, name.topLeft, drawStyle = Fill)
+        }
+    }
 }
 
 /** One name that survived the layout: what to draw, where, and how far turned. */

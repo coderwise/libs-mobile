@@ -5,12 +5,14 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.unit.Dp
 import com.coderwise.libs.mapview.tiles.vector.mvt.GeometryType
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtFeature
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtLayer
@@ -34,6 +36,8 @@ private class StrokeOp(
     val join: StrokeJoin,
     /** Zoom below which this stroke isn't drawn at all — see [LayerStyle.strokeMinZoom]. */
     val minZoom: Int,
+    /** Alternating on and off lengths, or null for a solid line — see [LayerStyle.dash]. */
+    val dash: List<Dp>?,
     /**
      * Zoom from which this stroke isn't drawn any more (exclusive). Only the coarse line a
      * casing-bearing paint draws at low zoom has one — it and the casing/stroke pair are the same
@@ -65,7 +69,10 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
         val paints = LinkedHashMap<LayerStyle, LayerPaths>()
 
         layer.features.forEach { feature ->
-            val ls = style.paint(layer.name, feature.featureClass)
+            val ls = style.paint(
+                layer.name, feature.featureClass,
+                subclass = feature.details.getOrNull(0), brunnel = feature.details.getOrNull(1)
+            )
                 ?: when (feature.type) {
                     GeometryType.POLYGON -> style.polygonFallback
                     GeometryType.LINE -> style.lineFallback
@@ -117,7 +124,10 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
             paths.strokePath?.let { path ->
                 paint.casing?.let {
                     bucket.add(
-                        StrokeOp(path, it, paint.casingWidth, paint.cap, paint.join, paint.lineMinZoom())
+                        StrokeOp(
+                            path, it, paint.casingWidth, paint.cap, paint.join, paint.lineMinZoom(),
+                            dash = null
+                        )
                     )
                 }
                 // The same road, below the zoom where a casing is worth drawing: one line in the
@@ -128,7 +138,8 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
                     bucket.add(
                         StrokeOp(
                             path, color, paint.strokeWidth, paint.cap, paint.join,
-                            minZoom = paint.strokeMinZoom, maxZoom = paint.casingMinZoom
+                            minZoom = paint.strokeMinZoom, dash = paint.dash,
+                            maxZoom = paint.casingMinZoom
                         )
                     )
                 }
@@ -137,7 +148,10 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
         ordered.forEach { (paint, paths) ->
             paint.stroke?.let { color ->
                 fun stroke(path: Path) = bucket.add(
-                    StrokeOp(path, color, paint.strokeWidth, paint.cap, paint.join, paint.lineMinZoom())
+                    StrokeOp(
+                        path, color, paint.strokeWidth, paint.cap, paint.join, paint.lineMinZoom(),
+                        paint.dash
+                    )
                 )
                 // The lines, and then the outline of anything filled — which shares the fill's path.
                 paths.strokePath?.let(::stroke)
@@ -265,7 +279,14 @@ fun DrawScope.drawRenderTile(
                         style = Stroke(
                             width = op.width.at(zoom).toPx() / widthScale,
                             cap = op.cap,
-                            join = op.join
+                            join = op.join,
+                            // Divided by the same scale, for the same reason: a dash is a length
+                            // on screen, not in the normalised tile it is drawn inside.
+                            pathEffect = op.dash?.let { dash ->
+                                PathEffect.dashPathEffect(
+                                    FloatArray(dash.size) { dash[it].toPx() / widthScale }
+                                )
+                            }
                         )
                     )
                 }
