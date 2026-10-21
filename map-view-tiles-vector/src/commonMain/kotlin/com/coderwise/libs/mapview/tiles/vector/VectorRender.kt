@@ -60,7 +60,7 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
     // `Pair` + `sortedBy` allocation an explicit sort would add to every tile decode.
     val buckets = arrayOfNulls<ArrayList<TileDrawOp>>(PAINT_RANK_COUNT)
     layers.forEach { layer ->
-        if (layer.extent <= 0) return@forEach
+        if (layer.extent <= 0 || layer.name in NAME_ONLY_LAYERS) return@forEach
         val inv = 1f / layer.extent
 
         // One merged path pair per distinct paint used in this layer. Usually that is exactly one —
@@ -164,6 +164,13 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
     for (bucket in buckets) bucket?.let { ops.addAll(it) }
     return RenderTile(ops)
 }
+
+/**
+ * Layers that exist to carry names and are never drawn. `water_name` holds stream lines that
+ * `waterway` already draws, and a layer with no paint of its own falls to the geometry fallbacks,
+ * which would draw them a second time in grey.
+ */
+private val NAME_ONLY_LAYERS = setOf("poi", "water_name", "mountain_peak")
 
 /**
  * Zoom from which this paint's casing-and-stroke pair draws — its own gate, or the zoom below which

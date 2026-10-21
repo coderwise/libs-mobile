@@ -18,6 +18,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
@@ -142,7 +143,7 @@ private fun DrawScope.drawPlaced(placed: List<PlacedName>, tile: VectorTile, out
             // the layout's style says", and the paragraph's paint still carries the
             // Stroke from the pass above — so the fill would thicken the name into
             // a dark blob instead of covering the halo.
-            drawText(name.layout, tile.ink, name.topLeft, drawStyle = Fill)
+            drawText(name.layout, if (name.water) tile.waterInk else tile.ink, name.topLeft, drawStyle = Fill)
         }
     }
 }
@@ -152,7 +153,9 @@ private class PlacedName(
     val layout: TextLayoutResult,
     val topLeft: Offset,
     val middle: Offset,
-    val angle: Float
+    val angle: Float,
+    /** Water names are drawn in the water ink. */
+    val water: Boolean
 )
 
 /**
@@ -177,7 +180,12 @@ private fun Density.place(
         if (!couldFit(label, side, magnification)) return@forEach
         val layout = measurer.measure(
             label.text,
-            TextStyle(fontSize = (label.size / magnification).sp, fontWeight = FontWeight.Medium),
+            TextStyle(
+                fontSize = (label.size / magnification).sp,
+                fontWeight = FontWeight.Medium,
+                // Water names are italic by cartographic convention.
+                fontStyle = if (label.water) FontStyle.Italic else FontStyle.Normal
+            ),
             softWrap = false
         )
         val width = layout.size.width.toFloat()
@@ -194,7 +202,7 @@ private fun Density.place(
         // Biggest place first, so the name that gives way is the lesser one.
         if (taken.any { it.overlaps(box) }) return@forEach
         taken += box.inflate(apart)
-        placed += PlacedName(layout, Offset(left, top), middle, angle)
+        placed += PlacedName(layout, Offset(left, top), middle, angle, label.water)
     }
     return placed
 }
@@ -257,5 +265,7 @@ internal class Label(
     val size: Float,
     val turn: Float = 0f,
     val room: Float = Float.POSITIVE_INFINITY,
-    val upright: Boolean = true
+    val upright: Boolean = true,
+    /** Whether it names water, which is set in the water ink and in italic. */
+    val water: Boolean = false
 )
