@@ -34,6 +34,7 @@ class DrawVectorLabelsTest {
         background = Color.Transparent,
         ink = Color.Black,
         halo = Color.White,
+        waterInk = Color.Blue,
         water = null,
         zoom = 14
     )
@@ -57,6 +58,24 @@ class DrawVectorLabelsTest {
     fun `a name inside the source is drawn`() {
         val tile = tileWith(Label(0.5f, 0.5f, "Reykjavik", 20f))
         assertTrue(draw(tile, whole).inked() > 0, "nothing was drawn")
+    }
+
+    @Test
+    fun `a water name is drawn in the water ink and a place name in the ink`() {
+        fun fillColours(label: Label): Set<Color> {
+            val pixels = draw(tileWith(label), whole).toPixelMap()
+            val seen = mutableSetOf<Color>()
+            for (y in 0 until side) for (x in 0 until side) {
+                val pixel = pixels[x, y]
+                if (pixel.alpha == 1f) seen += pixel
+            }
+            return seen
+        }
+        // Fully opaque pixels are the fill; the halo is white and the edges are blends.
+        val place = fillColours(Label(0.5f, 0.5f, "Reykjavik", 20f))
+        val water = fillColours(Label(0.5f, 0.5f, "Reykjavik", 20f, water = true))
+        assertTrue(Color.Black in place && Color.Blue !in place, "place: $place")
+        assertTrue(Color.Blue in water && Color.Black !in water, "water: $water")
     }
 
     @Test

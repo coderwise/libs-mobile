@@ -212,6 +212,9 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   MapState (window, slot, put, filled, forget)
   MapCameraState (center, zoom, bearing, metersPerDp, isInteracting, moveTo, rotateTo), flyTo
   rememberMapCameraState, ZOOM_LIMITS
+  fitCamera(points, size, density, padding, bearing, maxZoom) -> CameraFit(center, zoom)?
+  MapCameraState.screenPosition(point, width, height, density) -> Offset
+  MapCameraState.isOnScreen(point, width, height, density, margin) -> Boolean
   LatLon.onTileGrid(zoom) -> TilePoint, TilePoint.tile(zoom) -> TileKey
   tileGridToLatLon(x, y, zoom) -> LatLon, MERCATOR_LATITUDE_LIMIT
   MapView(camera, modifier) { layer(state) { key -> … }; overlay { … } }
@@ -223,7 +226,7 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   LocalTileMagnification: () -> Float
 
 :map-view-tiles
-  TileQueue(scope, state, workers, capacity) { key -> … }
+  TileQueue(scope, state, workers, capacity) { key -> … }   (evicts the least recently shown tile)
   tileState(scope, zoomRange, capacity) { key -> … } -> MapState<T>
   rememberTileState(key, zoomRange, capacity) { key -> … } -> MapState<T>
   MapState<T>.shown(key, levels) -> Shown(key, content, src)
@@ -233,9 +236,11 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
 
 :map-view-tiles-vector
   suspend decodeVectorTile(zoom, bytes, style) -> VectorTile
-  VectorStyle(background, ink, halo, water, waterway, park, building,
-              roadCasing, landcover, landuse, road, roadDetail, aeroway, boundary,
-              place, roadName, polygonFallback, lineFallback)
+  VectorStyle(background, ink, halo, waterInk, water, waterway, park, building,
+              roadCasing, landcover, landuse, road, aeroway, boundary,
+              place, roadName, polygonFallback, lineFallback, roadDetail,
+              poiName, waterName, riverName, peakName)
+  NameStyle(size, enabled)
   LayerStyle(fill, stroke, strokeWidth, casing, casingWidth, cap, join,
              strokeMinZoom, casingMinZoom, coarse, dash)
   DrawScope.drawVectorLabels(tile, src, measurer, bearing, magnification)
@@ -443,8 +448,10 @@ nothing else, so anything the style gates away at that level comes off it in pro
   the road, so a name on a curve sits at an angle that only approximates it. Bending it means
   placing each glyph along the line by arc length, which stops being a text composable and goes
   back to being a drawing.
-- **The vector style is five layers deep** — land use, water, roads, place names and road names; no
-  buildings, no boundaries, and no points of interest.
+- **The vector style is flat** — fills and zoom-ramped strokes, with no data-driven expressions
+  beyond a feature's class. Names are drawn for places, roads, lakes, rivers, peaks and points of
+  interest; each of the last four is one `NameStyle(enabled = false)` away from off, and a kind
+  that is off is not decoded.
 - **Raster ceiling** — no styling, no dark map, no @2x tiles. This is the argument for vector
   tiles, and the reason to compare against MapLibre.
 - **Attribution** — nothing renders it. OSM requires the "© OpenStreetMap contributors" credit on
@@ -567,7 +574,7 @@ disk cache.
 
 :map-view-tiles-vector      commonMain only
   VectorSlot.kt      decodeVectorTile, and drawing land use, water and roads
-  VectorLabels.kt    place names, as text composables, over every tile
+  VectorLabels.kt    names, drawn over every tile, and drawVectorLabels for a canvas with no composition
   mvt/Mvt.kt         a hand-rolled MVT decoder (~180 lines, no protobuf library)
 
 ```

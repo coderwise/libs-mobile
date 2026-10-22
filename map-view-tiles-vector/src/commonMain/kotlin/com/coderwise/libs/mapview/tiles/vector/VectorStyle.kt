@@ -145,6 +145,10 @@ data class LayerStyle(
      *
      * An even number of entries, at least two, all positive — the pattern repeats from the start
      * once it runs out, and an odd list would swap on and off on every other repeat.
+     *
+     * The pattern starts afresh for every path in every tile, so a dashed line changes phase at the
+     * borders between tiles and wherever the source splits the line in two. That is fine for a
+     * footway and would show on a dashed border, where the join is the whole point.
      */
     val dash: List<Dp>? = null
 ) {
@@ -154,6 +158,16 @@ data class LayerStyle(
         }
     }
 }
+
+/**
+ * One kind of name on the map: [enabled] is the switch, [size] the type size in sp.
+ *
+ * A plain on/off rather than a size lookup that returns null, so turning a kind off is one flag
+ * and does not mean writing a lambda — which, as a lambda literal inside a composition, would also
+ * make the style compare unequal on every frame (see [VectorStyle]). A kind that is off is not
+ * decoded at all, so it costs nothing as well as showing nothing.
+ */
+data class NameStyle(val size: Float, val enabled: Boolean = true)
 
 /**
  * What a vector tile looks like: every colour and width the drawing uses, in one value with a
@@ -189,6 +203,12 @@ data class VectorStyle(
      */
     val ink: Color = Color(0xFF2B2B2B),
     val halo: Color = Color(0xFFFFFFFF),
+    /**
+     * Water names (lakes, seas, rivers) — blue by cartographic convention, but a deep one: the
+     * muted slate this replaced was barely darker than the land it was read against, and the
+     * italic type water names are set in has thin strokes to lose.
+     */
+    val waterInk: Color = Color(0xFF15495F),
     val water: LayerStyle? = LayerStyle(fill = WATER),
     val waterway: LayerStyle? = LayerStyle(stroke = WATER, strokeWidth = ZoomWidth(0.8.dp, 2.2.dp)),
     val park: LayerStyle? = LayerStyle(fill = PARKLAND),
@@ -252,6 +272,19 @@ data class VectorStyle(
      * small per-feature cost that a style without it does not pay.
      */
     val roadDetail: ((kind: String, subclass: String, brunnel: String) -> LayerStyle?)? = null,
+    /**
+     * Points of interest — parks, museums, attractions, hospitals. In OpenMapTiles a park's name
+     * usually arrives as a `poi` of class `park` rather than on the park polygon, so without this
+     * a zoomed-in park is the one thing on the map with no name. Lower `rank` is more important
+     * and wins a collision.
+     */
+    val poiName: NameStyle = NameStyle(9.5f),
+    /** Lakes, seas and oceans, set level in [waterInk] and italic. */
+    val waterName: NameStyle = NameStyle(10.5f),
+    /** Rivers, canals and streams, set along their line in [waterInk] and italic. */
+    val riverName: NameStyle = NameStyle(10f),
+    /** Mountain peaks. Lower `rank` is more important and wins a collision. */
+    val peakName: NameStyle = NameStyle(9.5f)
 ) {
     /**
      * The paint for one feature: its layer's, narrowed by its class where the layer has classes.

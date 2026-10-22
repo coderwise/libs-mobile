@@ -45,7 +45,26 @@ private class StrokeOp(
      * See [LayerStyle.casingMinZoom].
      */
     val maxZoom: Int = Int.MAX_VALUE
-) : TileDrawOp
+) : TileDrawOp {
+    // The dash as Skia wants it, kept from one draw to the next: it depends on the dash, the density
+    // and the scale the path is drawn through, and none of those change from frame to frame of a
+    // pan. One immutable holder swapped in whole, so a draw that races another at worst builds the
+    // same effect twice.
+    private var effect: DashEffect? = null
+
+    /** The dash for a draw at [density] and [widthScale], or null for a solid line. */
+    fun dashEffect(density: Float, widthScale: Float, toPx: (Dp) -> Float): PathEffect? {
+        val dash = dash ?: return null
+        effect?.takeIf { it.density == density && it.widthScale == widthScale }?.let { return it.effect }
+        return DashEffect(
+            density,
+            widthScale,
+            PathEffect.dashPathEffect(FloatArray(dash.size) { toPx(dash[it]) / widthScale })
+        ).also { effect = it }.effect
+    }
+}
+
+private class DashEffect(val density: Float, val widthScale: Float, val effect: PathEffect)
 
 /**
  * Flattens decoded [MvtLayer]s into merged [Path]s in normalised 0..1 tile coordinates,
@@ -60,7 +79,7 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
     // `Pair` + `sortedBy` allocation an explicit sort would add to every tile decode.
     val buckets = arrayOfNulls<ArrayList<TileDrawOp>>(PAINT_RANK_COUNT)
     layers.forEach { layer ->
-        if (layer.extent <= 0) return@forEach
+        if (layer.extent <= 0 || layer.name in NAME_ONLY_LAYERS) return@forEach
         val inv = 1f / layer.extent
 
         // One merged path pair per distinct paint used in this layer. Usually that is exactly one —
@@ -71,7 +90,7 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
         layer.features.forEach { feature ->
             val ls = style.paint(
                 layer.name, feature.featureClass,
-                subclass = feature.details.getOrNull(0), brunnel = feature.details.getOrNull(1)
+                subclass = layer.detail(feature, "subclass"), brunnel = layer.detail(feature, "brunnel")
             )
                 ?: when (feature.type) {
                     GeometryType.POLYGON -> style.polygonFallback
@@ -164,6 +183,13 @@ fun buildRenderTile(layers: List<MvtLayer>, style: VectorStyle): RenderTile {
     for (bucket in buckets) bucket?.let { ops.addAll(it) }
     return RenderTile(ops)
 }
+
+/**
+ * Layers that exist to carry names and are never drawn. `water_name` holds stream lines that
+ * `waterway` already draws, and a layer with no paint of its own falls to the geometry fallbacks,
+ * which would draw them a second time in grey.
+ */
+private val NAME_ONLY_LAYERS = setOf("poi", "water_name", "mountain_peak")
 
 /**
  * Zoom from which this paint's casing-and-stroke pair draws — its own gate, or the zoom below which
@@ -282,11 +308,7 @@ fun DrawScope.drawRenderTile(
                             join = op.join,
                             // Divided by the same scale, for the same reason: a dash is a length
                             // on screen, not in the normalised tile it is drawn inside.
-                            pathEffect = op.dash?.let { dash ->
-                                PathEffect.dashPathEffect(
-                                    FloatArray(dash.size) { dash[it].toPx() / widthScale }
-                                )
-                            }
+                            pathEffect = op.dashEffect(density, widthScale) { it.toPx() }
                         )
                     )
                 }

@@ -14,10 +14,10 @@ import kotlinx.coroutines.awaitCancellation
  *
  * There is nothing for a layer object to wrap: the slots are the cache — they hold whatever [load]
  * returns, so a tile is made once on the way in — and the queue is the only thing that fetches. It
- * keeps [capacity] of them, evicts the oldest off-screen tile, and decides what to fetch next
- * itself, nearest the middle of the screen first, reaching for the neighbouring zoom levels only
- * once the map has settled. So a caller needs no cache, no fallback resolver and no prefetching of
- * its own.
+ * keeps [capacity] of them, evicts the least recently shown off-screen tile, and decides what to
+ * fetch next itself, nearest the middle of the screen first, reaching for the neighbouring zoom
+ * levels only once the map has settled. So a caller needs no cache, no fallback resolver and no
+ * prefetching of its own.
  *
  * Nor is there any cropping. A cell with no tile of its own draws the nearest filled ancestor
  * magnified — [shown] gives the tile and the fraction of it to draw — and a source that stops
@@ -65,5 +65,8 @@ fun <T> rememberTileState(
 /** Every level the grid lays out — a source that stops earlier says so with its own range. */
 val DEFAULT_ZOOM_RANGE = 0..19
 
-/** Tiles held before the oldest off-screen one is evicted: several screens of panning back. */
+/**
+ * Tiles held before the least recently shown off-screen one is evicted: several screens of
+ * panning back.
+ */
 const val DEFAULT_CAPACITY = 96

@@ -181,6 +181,74 @@ class TileQueueTest {
     }
 
     @Test
+    fun `a tile fetched ahead of the screen goes before one that was shown`() = runComposeUiTest {
+        val state = MapState<String>()
+        val camera = MapCameraState(zoom = 6f)
+        show(camera, state)
+        await("a window") { state.windowKeys().isNotEmpty() }
+        val a = state.windowKeys()
+        // Room for exactly the first window, so that holding anything else means giving some up.
+        TileQueue(scope, state, capacity = a.size) { "$it" }
+        await("the first window to fill") { a.all { state.peek(it) != null } }
+
+        runOnIdle { camera.moveTo(LatLon(0.0, 40.0), 6f) }
+        await("the second window to fill") {
+            state.windowKeys().none { it in a } && state.windowKeys().all { state.peek(it) != null }
+        }
+        val b = state.windowKeys()
+        Thread.sleep(200)
+
+        // Back over the first, which is all still held, so nothing is fetched: it is only shown.
+        runOnIdle { camera.moveTo(LatLon(0.0, 0.0), 6f) }
+        await("the first window to be back") { state.windowKeys().toSet() == a.toSet() }
+        Thread.sleep(300)
+
+        // And away to a third. Fetched first but shown last, the first window outranks the second.
+        runOnIdle { camera.moveTo(LatLon(0.0, 80.0), 6f) }
+        await("the third window to fill") {
+            state.windowKeys().none { it in a || it in b } && state.windowKeys().all { state.peek(it) != null }
+        }
+
+        assertTrue(a.all { state.peek(it) != null }, "the window shown last was let go")
+        assertTrue(b.none { state.peek(it) != null }, "the window shown before it was kept")
+    }
+
+    @Test
+    fun `tiles shown again are kept over tiles that were only fetched earlier`() = runComposeUiTest {
+        val state = MapState<String>()
+        val camera = MapCameraState(zoom = 6f)
+        show(camera, state)
+        await("a window") { state.windowKeys().isNotEmpty() }
+        val y = state.windowKeys()
+        // One worker, so the tiles of a window land in the order they are taken in.
+        TileQueue(scope, state, workers = 1, capacity = y.size) { "$it" }
+        await("the first window to fill") { y.all { state.peek(it) != null } }
+        Thread.sleep(200)
+
+        // One tile west: half the same ground and a column of it new. The columns the queue
+        // fetched first are the western ones, so ground the screen still shows is the ground
+        // that was fetched earliest. 360 degrees over 64 tiles.
+        runOnIdle { camera.moveTo(LatLon(0.0, -360.0 / 64), 6f) }
+        await("the shifted window to fill") {
+            state.windowKeys().toSet() != y.toSet() && state.windowKeys().all { state.peek(it) != null }
+        }
+        val x = state.windowKeys()
+        assertEquals(y.size, x.size, "the test needs two windows of one size")
+        assertTrue(x.any { it in y } && y.any { it !in x }, "the windows should overlap, not match")
+        Thread.sleep(200)
+
+        // Far away: everything held is now off screen, and only the capacity of it can stay.
+        runOnIdle { camera.moveTo(LatLon(0.0, 80.0), 6f) }
+        await("the far window") { state.windowKeys().none { it in x || it in y } }
+        Thread.sleep(300)
+
+        // What the last window showed stays, including the part it shared with the first, which
+        // was fetched long before the part that is new. Only what it stopped showing goes.
+        assertTrue(x.all { state.peek(it) != null }, "tiles shown last were let go: ${x.filter { state.peek(it) == null }}")
+        assertTrue((y - x.toSet()).none { state.peek(it) != null }, "tiles no longer shown were kept")
+    }
+
+    @Test
     fun `nothing on screen is let go however small the capacity`() = runComposeUiTest {
         val state = MapState<String>()
         TileQueue(scope, state, capacity = 1) { "$it" }

@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import com.coderwise.libs.mapview.tiles.vector.mvt.GeometryType
+import com.coderwise.libs.mapview.tiles.vector.mvt.MvtFeature
 import com.coderwise.libs.mapview.tiles.vector.mvt.MvtLayer
 import com.coderwise.libs.mapview.tiles.vector.mvt.decodeMvt
 import kotlin.math.PI
@@ -40,11 +42,11 @@ suspend fun decodeVectorTile(
     runCatching {
         val layers = decodeMvt(
             bytes,
-            keep = DRAWN_LAYERS,
+            keep = style.decodedLayers(),
             classLayers = CLASS_LAYERS,
             nameLayers = LABELLED_LAYERS,
             // Only a style that reads them pays for the extra tags.
-            detailLayers = if (style.roadDetail != null) VectorStyle.DETAIL_LAYERS else null
+            detailLayers = style.detailLayers()
         )
         VectorTile(
             render = buildRenderTile(layers, style),
@@ -52,6 +54,7 @@ suspend fun decodeVectorTile(
             background = style.background,
             ink = style.ink,
             halo = style.halo,
+            waterInk = style.waterInk,
             water = waterPath(layers),
             zoom = zoom
         )
@@ -168,8 +171,37 @@ private val DRAWN_LAYERS = setOf(
     "transportation", "transportation_casing", "place", "transportation_name"
 )
 
+/**
+ * The layers a style asks for on top of [DRAWN_LAYERS]: each kind of name that is switched on
+ * brings its layer, and one that is off leaves it undecoded — `poi` is far and away the densest
+ * layer a tile has to offer, and nobody pays for it who does not want the names.
+ */
+private fun VectorStyle.decodedLayers(): Set<String> = buildSet {
+    addAll(DRAWN_LAYERS)
+    if (poiName.enabled) add(POI)
+    if (waterName.enabled || riverName.enabled) add(WATER_NAME)
+    if (peakName.enabled) add(MOUNTAIN_PEAK)
+}
+
+/**
+ * The extra tags to resolve, by layer: `rank` for the two layers names are ordered by, and the
+ * road tags for a style that reads them (see [VectorStyle.roadDetail]). Null when none are wanted.
+ */
+private fun VectorStyle.detailLayers(): Map<String, List<String>>? = buildMap {
+    if (roadDetail != null) putAll(VectorStyle.DETAIL_LAYERS)
+    if (poiName.enabled) put(POI, listOf(RANK_TAG))
+    if (peakName.enabled) put(MOUNTAIN_PEAK, listOf(RANK_TAG))
+}.ifEmpty { null }
+
 /** The layers whose features carry a name worth drawing. */
-private val LABELLED_LAYERS = setOf("place", "transportation_name")
+private val LABELLED_LAYERS = setOf(
+    "place", "transportation_name", "waterway", WATER_NAME, POI, MOUNTAIN_PEAK
+)
+
+private const val POI = "poi"
+private const val WATER_NAME = "water_name"
+private const val MOUNTAIN_PEAK = "mountain_peak"
+private const val RANK_TAG = "rank"
 
 /** What each layer is styled by — `class` for most, `admin_level` for boundaries. */
 private val CLASS_LAYERS = VectorStyle.CLASS_AWARE_LAYERS + mapOf("place" to "class")
@@ -188,6 +220,7 @@ class VectorTile internal constructor(
     internal val background: Color,
     internal val ink: Color,
     internal val halo: Color,
+    internal val waterInk: Color,
     /**
      * The tile's water as one path in `0..1` tile coordinates, or null where the tile is dry.
      *
@@ -202,29 +235,76 @@ class VectorTile internal constructor(
 )
 
 /**
- * What the tile has to say: places first, biggest first, then road names. That order is the whole
- * of the priority scheme, because a label that collides with one already placed is dropped.
+ * What the tile has to say, in priority order, because a label that collides with one already
+ * placed is dropped: places first, biggest first; then water bodies; then peaks and points of
+ * interest, most important (lowest `rank`) first; then road names; then rivers.
  */
 private fun labelsOf(layers: List<MvtLayer>, style: VectorStyle): List<Label> =
     placeLabels(layers, style).sortedByDescending { it.size } +
-        (style.roadName?.let { roadLabels(layers, it) } ?: emptyList())
+        (if (style.waterName.enabled) waterBodyLabels(layers, style.waterName.size) else emptyList()) +
+        rankedLabels(layers, style) +
+        (style.roadName?.let { lineLabels(layers, setOf("transportation_name"), it, water = false) }
+            ?: emptyList()) +
+        (if (style.riverName.enabled) {
+            lineLabels(layers, setOf("waterway", WATER_NAME), style.riverName.size, water = true)
+        } else {
+            emptyList()
+        })
 
 private fun placeLabels(layers: List<MvtLayer>, style: VectorStyle): List<Label> = layers
     .filter { it.name == "place" }
     .flatMap { layer ->
         layer.features.mapNotNull { feature ->
-            val anchor = feature.geometry.anchorVertex() ?: return@mapNotNull null
             val size = style.place(feature.featureClass.orEmpty()) ?: return@mapNotNull null
-            val text = feature.name?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
-            // As a fraction of the tile, so drawing them needs nothing but the tile's own box.
-            Label(
-                feature.geometry.coords[2 * anchor].toFloat() / layer.extent,
-                feature.geometry.coords[2 * anchor + 1].toFloat() / layer.extent,
-                text,
-                size
-            )
+            pointLabel(layer, feature, size, water = false)
         }
     }
+
+/** A lake, sea or ocean: a name on a point, level however the map is turned. */
+private fun waterBodyLabels(layers: List<MvtLayer>, size: Float): List<Label> = layers
+    .filter { it.name == WATER_NAME }
+    .flatMap { layer ->
+        // Points only: `water_name` also carries river lines, which are named along their line.
+        layer.features.filter { it.type == GeometryType.POINT }
+            .mapNotNull { feature -> pointLabel(layer, feature, size, water = true) }
+    }
+
+/**
+ * Peaks and points of interest together, most important first. `rank` is the tile's own ordering of
+ * what it holds, lower being more important; a feature without one goes last. Capped, because a
+ * city tile has thousands of points of interest and a tile only has room for a handful of names:
+ * without the cap they would fill the label budget ahead of every road name.
+ */
+private fun rankedLabels(layers: List<MvtLayer>, style: VectorStyle): List<Label> {
+    val ranked = ArrayList<Pair<Int, Label>>()
+    for ((layerName, kind) in listOf(MOUNTAIN_PEAK to style.peakName, POI to style.poiName)) {
+        if (!kind.enabled) continue
+        layers.filter { it.name == layerName }.forEach { layer ->
+            layer.features.filter { it.type == GeometryType.POINT }.forEach { feature ->
+                val label = pointLabel(layer, feature, kind.size, water = false) ?: return@forEach
+                ranked += (layer.detail(feature, RANK_TAG)?.toIntOrNull() ?: Int.MAX_VALUE) to label
+            }
+        }
+    }
+    return ranked.sortedBy { it.first }.take(RANKED_CAP).map { it.second }
+}
+
+/** A name on a feature's anchor point, as a fraction of its tile; null if it has no name or no point. */
+private fun pointLabel(layer: MvtLayer, feature: MvtFeature, size: Float, water: Boolean): Label? {
+    val anchor = feature.geometry.anchorVertex() ?: return null
+    val text = feature.name?.takeIf { it.isNotEmpty() } ?: return null
+    // As a fraction of the tile, so drawing them needs nothing but the tile's own box.
+    return Label(
+        feature.geometry.coords[2 * anchor].toFloat() / layer.extent,
+        feature.geometry.coords[2 * anchor + 1].toFloat() / layer.extent,
+        text,
+        size,
+        water = water
+    )
+}
+
+/** How many peaks and points of interest one tile offers for placement. */
+private const val RANKED_CAP = 32
 
 /**
  * A road name sits along its road, so each one is given the straightest run of it in this tile:
@@ -234,11 +314,16 @@ private fun placeLabels(layers: List<MvtLayer>, style: VectorStyle): List<Label>
  *
  * Longest run first, so where two names compete the one with more road to stand on wins.
  */
-private fun roadLabels(layers: List<MvtLayer>, size: Float): List<Label> = layers
-    .filter { it.name == "transportation_name" }
+private fun lineLabels(
+    layers: List<MvtLayer>,
+    layerNames: Set<String>,
+    size: Float,
+    water: Boolean
+): List<Label> = layers
+    .filter { it.name in layerNames }
     .flatMap { layer ->
         layer.features
-            .filter { !it.name.isNullOrEmpty() }
+            .filter { it.type == GeometryType.LINE && !it.name.isNullOrEmpty() }
             .groupBy { it.name!! }
             .mapNotNull { (name, pieces) ->
                 val run = pieces.flatMap { it.geometry.parts() }.mapNotNull(::straightRun)
@@ -251,7 +336,8 @@ private fun roadLabels(layers: List<MvtLayer>, size: Float): List<Label> = layer
                     size = size,
                     turn = run.turn,
                     upright = false,
-                    room = run.length / layer.extent
+                    room = run.length / layer.extent,
+                    water = water
                 )
             }
     }

@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import kotlin.math.floor
 import kotlin.math.round
 
 /**
@@ -227,16 +226,7 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
         this.density = density
     }
 
-    override fun project(point: LatLon): Offset {
-        val world = Mercator.worldPixels(camera.zoom, density)
-        val dx = (Mercator.x(point.lon) - camera.x).nearest
-        val dy = Mercator.y(point.lat) - camera.y
-        // An overlay is laid out on the upright viewport, so the bearing is applied here rather
-        // than by turning the layer: what follows the map does so through this, and what should
-        // stay upright — a pin, a label — simply does.
-        val on = camera.toScreen(dx * world, dy * world)
-        return Offset(on.x + width / 2, on.y + height / 2)
-    }
+    override fun project(point: LatLon): Offset = camera.screenPosition(point, width, height, density)
 
     override fun unproject(offset: Offset): LatLon =
         camera.pointAt(offset.x, offset.y, width, height, density)
@@ -309,7 +299,7 @@ internal class MapOverlayState(private val camera: MapCameraState) : MapOverlayS
     }
 
     /** The world repeats east and west; a point is drawn on the copy nearest the camera. */
-    private val Double.nearest get() = this - floor(this + 0.5)
+    private val Double.nearest get() = Mercator.nearest(this)
 }
 
 /** How far [point] is from the segment [from]-[to], which is what a tap on a line comes down to. */
