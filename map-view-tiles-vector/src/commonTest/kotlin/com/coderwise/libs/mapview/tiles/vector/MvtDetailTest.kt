@@ -32,6 +32,35 @@ class MvtDetailTest {
     }
 
     @Test
+    fun `a layer says which tags its details are and hands them out by name`() {
+        val layer = decode(tile("class" to "primary", "subclass" to "link", "brunnel" to "tunnel"))
+        assertEquals(listOf("subclass", "brunnel"), layer.detailTags)
+        val feature = layer.features.single()
+        assertEquals("tunnel", layer.detail(feature, "brunnel"))
+        assertEquals("link", layer.detail(feature, "subclass"))
+        // A tag that was not asked for is not there, rather than being some other tag.
+        assertNull(layer.detail(feature, "class"))
+    }
+
+    @Test
+    fun `the order tags were asked for in is the order of details`() {
+        val layer = decodeMvt(
+            tile("class" to "primary", "subclass" to "link", "brunnel" to "tunnel"),
+            detailLayers = mapOf(LAYER to listOf("brunnel", "subclass"))
+        ).single()
+        assertEquals(listOf("brunnel", "subclass"), layer.detailTags)
+        assertEquals(listOf("tunnel", "link"), layer.features.single().details)
+        assertEquals("link", layer.detail(layer.features.single(), "subclass"))
+    }
+
+    @Test
+    fun `a layer that was not asked has no detail tags`() {
+        val layer = decodeMvt(tile("class" to "primary")).single()
+        assertTrue(layer.detailTags.isEmpty())
+        assertNull(layer.detail(layer.features.single(), "subclass"))
+    }
+
+    @Test
     fun `the class is still resolved alongside`() {
         val feature = decoded(tile("class" to "primary", "brunnel" to "bridge"))
         assertEquals("primary", feature.featureClass)
@@ -54,11 +83,13 @@ class MvtDetailTest {
         assertNull(layers.single().features.single().featureClass)
     }
 
-    private fun decoded(bytes: ByteArray) = decodeMvt(
+    private fun decode(bytes: ByteArray) = decodeMvt(
         bytes,
         classLayers = mapOf(LAYER to "class"),
         detailLayers = wanted
-    ).single().features.single()
+    ).single()
+
+    private fun decoded(bytes: ByteArray) = decode(bytes).features.single()
 
     /** One layer, one point feature tagged with [tags]. */
     private fun tile(vararg tags: Pair<String, String>): ByteArray {

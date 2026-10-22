@@ -97,10 +97,15 @@ fun VectorLabels(
 }
 
 /**
- * Draws the place and road names of [tile] into this scope, for a map drawn without a composition:
- * a static image, a tile rasterised on the CPU, anything with a canvas and no [VectorLabels] to
- * put over it. The names are laid out and drawn exactly as [VectorLabels] does — the same
- * placement, the same halo, the same collision rule — so a map drawn either way reads the same.
+ * Draws the names of [tile] into this scope, for a map drawn without a composition: a static map
+ * image, the sort of thing rendered on a server or exported. The names are laid out and drawn
+ * exactly as [VectorLabels] does — the same placement, the same halo, the same collision rule — so
+ * a map drawn either way reads the same.
+ *
+ * It is for pictures, not for an interactive map. Names drawn into a per-tile image are clipped at
+ * the edge of that image, blur when the image is magnified, and stop staying level when the map is
+ * turned, because the picture turns and the text with it. A map the user pans, zooms and turns is
+ * better served by drawing its names live over the image, which is what [VectorLabels] does.
  *
  * [src] is the fraction of the tile this scope's [size] shows, as for [drawRenderTile]: the whole
  * `0..1` square for a tile at its own zoom. Only the names whose point is inside it are placed,

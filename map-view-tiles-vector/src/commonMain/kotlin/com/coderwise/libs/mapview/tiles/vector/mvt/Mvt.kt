@@ -32,12 +32,28 @@ class MvtFeature(
     /**
      * The values of the tags asked for in [decodeMvt]'s `detailLayers`, in the order they were
      * asked for; null for one the feature does not carry. Empty when the layer asked for none.
+     * Which tag is which is [MvtLayer.detailTags]: read these through [MvtLayer.detail].
      */
     val details: List<String?> = emptyList()
 )
 
-/** A layer of a vector tile. [extent] is the tile-local coordinate space its features live in. */
-class MvtLayer(val name: String, val extent: Int, val features: List<MvtFeature>)
+/**
+ * A layer of a vector tile. [extent] is the tile-local coordinate space its features live in.
+ *
+ * [detailTags] are the tags [decodeMvt] was asked to resolve into each feature's
+ * [MvtFeature.details], in that order; empty for a layer that asked for none. Read a detail through
+ * [detail] rather than by position, so what it means does not depend on the order it was asked for.
+ */
+class MvtLayer(
+    val name: String,
+    val extent: Int,
+    val features: List<MvtFeature>,
+    val detailTags: List<String> = emptyList()
+) {
+    /** The value of [tag] on [feature], or null if the layer did not resolve it or the feature lacks it. */
+    fun detail(feature: MvtFeature, tag: String): String? =
+        feature.details.getOrNull(detailTags.indexOf(tag))
+}
 
 /**
  * Decodes the [keep] layers of a vector tile. Hand-rolled protobuf: MVT uses a handful of fields,

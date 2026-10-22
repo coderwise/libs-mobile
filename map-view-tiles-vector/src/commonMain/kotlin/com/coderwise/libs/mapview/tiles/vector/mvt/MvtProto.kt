@@ -109,7 +109,7 @@ private fun parseLayer(
             parseFeature(reader, featureEnds[k], keys, values, resolveAttrs, classKey, nameKeys, detailKeys)
         )
     }
-    return MvtLayer(name, extent, features)
+    return MvtLayer(name, extent, features, detailLayers?.get(name) ?: emptyList())
 }
 
 private fun parseFeature(

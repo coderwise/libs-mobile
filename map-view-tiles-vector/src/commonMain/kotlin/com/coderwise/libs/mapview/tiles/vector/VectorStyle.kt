@@ -145,6 +145,10 @@ data class LayerStyle(
      *
      * An even number of entries, at least two, all positive — the pattern repeats from the start
      * once it runs out, and an odd list would swap on and off on every other repeat.
+     *
+     * The pattern starts afresh for every path in every tile, so a dashed line changes phase at the
+     * borders between tiles and wherever the source splits the line in two. That is fine for a
+     * footway and would show on a dashed border, where the join is the whole point.
      */
     val dash: List<Dp>? = null
 ) {

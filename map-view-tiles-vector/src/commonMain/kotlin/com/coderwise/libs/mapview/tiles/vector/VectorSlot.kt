@@ -282,7 +282,7 @@ private fun rankedLabels(layers: List<MvtLayer>, style: VectorStyle): List<Label
         layers.filter { it.name == layerName }.forEach { layer ->
             layer.features.filter { it.type == GeometryType.POINT }.forEach { feature ->
                 val label = pointLabel(layer, feature, kind.size, water = false) ?: return@forEach
-                ranked += (feature.details.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE) to label
+                ranked += (layer.detail(feature, RANK_TAG)?.toIntOrNull() ?: Int.MAX_VALUE) to label
             }
         }
     }
