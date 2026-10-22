@@ -55,7 +55,10 @@ class TileQueue<T>(
     private val loading = mutableSetOf<TileKey>()
     private val loadingSoon = mutableSetOf<TileKey>()
     private val failedAt = mutableMapOf<TileKey, TimeMark>()
-    private val held = LinkedHashSet<TileKey>() // insertion order = eviction order
+    // Tile -> when it was last shown, as a count: the lowest goes first. A tile fetched ahead of
+    // the screen has not been shown yet, so it is 0 and goes before anything that has been.
+    private val held = LinkedHashMap<TileKey, Long>()
+    private var shown = 0L
     private val work = Channel<Unit>(Channel.CONFLATED)
     private var moved: TimeMark = TimeSource.Monotonic.markNow()
     private var lastZ = -1
@@ -86,6 +89,10 @@ class TileQueue<T>(
         val count = 1 shl window.z
 
         lock.withLock {
+            // Whatever is on screen has just been shown. Panning back and forth over the same
+            // ground then keeps that ground, instead of evicting the tiles that were fetched first
+            // however recently they were looked at.
+            keys.forEach { key -> if (key in held) held[key] = ++shown }
             wanted.clear()
             keys.forEach { key ->
                 if (worth(key)) {
@@ -148,7 +155,9 @@ class TileQueue<T>(
                 continue
             }
             val tile = runCatching { fetch(key) }.getOrNull()
+            var ahead = false
             lock.withLock {
+                ahead = key in loadingSoon
                 loading -= key
                 loadingSoon -= key
                 if (tile == null) failedAt[key] = TimeSource.Monotonic.markNow() else loaded++
@@ -156,7 +165,7 @@ class TileQueue<T>(
             }
             if (tile != null) {
                 state.put(key, tile)
-                lock.withLock { held += key }
+                lock.withLock { held[key] = if (ahead) 0L else ++shown }
             }
             work.trySend(Unit)
         }
@@ -167,12 +176,13 @@ class TileQueue<T>(
 
     /**
      * Slots are kept well past the window — panning back should not refetch — but not forever.
-     * Oldest first, and never anything on screen. [capacity] is worth lowering when [T] is a
-     * decoded tile rather than its bytes, because a decoded tile is far bigger.
+     * Least recently on screen first — a tile fetched ahead and never shown before any that was —
+     * and never anything on screen. [capacity] is worth lowering when [T] is a decoded tile rather
+     * than its bytes, because a decoded tile is far bigger.
      */
     private suspend fun evict(visible: Set<TileKey>) = lock.withLock {
         while (held.size > capacity) {
-            val oldest = held.firstOrNull { it !in visible } ?: break
+            val oldest = held.entries.filter { it.key !in visible }.minByOrNull { it.value }?.key ?: break
             held -= oldest
             state.forget(oldest)
         }

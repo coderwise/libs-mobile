@@ -2,6 +2,7 @@ package com.coderwise.libs.mapview
 
 import kotlin.math.PI
 import kotlin.math.atan
+import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.sinh
@@ -23,4 +24,7 @@ internal object Mercator {
     fun lon(x: Double) = x.mod(1.0) * 360.0 - 180.0
     fun lat(y: Double) = atan(sinh(PI * (1 - 2 * y.coerceIn(0.0, 1.0)))).degrees
     fun worldPixels(zoom: Float, density: Float) = WORLD_TILE * density * 2.0.pow(zoom.toDouble())
+
+    /** A difference in x taken the short way round the world: in `[-0.5, 0.5)`. */
+    fun nearest(dx: Double) = dx - floor(dx + 0.5)
 }

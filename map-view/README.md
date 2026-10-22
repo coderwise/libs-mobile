@@ -212,6 +212,9 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   MapState (window, slot, put, filled, forget)
   MapCameraState (center, zoom, bearing, metersPerDp, isInteracting, moveTo, rotateTo), flyTo
   rememberMapCameraState, ZOOM_LIMITS
+  fitCamera(points, size, density, padding, bearing, maxZoom) -> CameraFit(center, zoom)?
+  MapCameraState.screenPosition(point, width, height, density) -> Offset
+  MapCameraState.isOnScreen(point, width, height, density, margin) -> Boolean
   LatLon.onTileGrid(zoom) -> TilePoint, TilePoint.tile(zoom) -> TileKey
   tileGridToLatLon(x, y, zoom) -> LatLon, MERCATOR_LATITUDE_LIMIT
   MapView(camera, modifier) { layer(state) { key -> … }; overlay { … } }
@@ -223,7 +226,7 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   LocalTileMagnification: () -> Float
 
 :map-view-tiles
-  TileQueue(scope, state, workers, capacity) { key -> … }
+  TileQueue(scope, state, workers, capacity) { key -> … }   (evicts the least recently shown tile)
   tileState(scope, zoomRange, capacity) { key -> … } -> MapState<T>
   rememberTileState(key, zoomRange, capacity) { key -> … } -> MapState<T>
   MapState<T>.shown(key, levels) -> Shown(key, content, src)
