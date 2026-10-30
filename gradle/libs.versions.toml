@@ -4,8 +4,8 @@ compileSdk = "37"
 minSdk = "26"
 
 # Build / plugins
-agp = "9.4.1"
-compose-multiplatform = "1.12.1"
+agp = "9.5.0"
+compose-multiplatform = "1.12.2"
 kotlin = "2.4.21"
 mavenPublish = "0.37.0"
 
@@ -16,17 +16,17 @@ androidx-core-ktx = "1.19.1"
 compose-material3 = "1.9.0"
 coroutines = "1.11.0"
 datetime = "0.8.0"
-datastore = "1.2.1"
+datastore = "1.3.0"
 kermit = "2.2.0"
 koin = "4.2.2"
 kotlinx-browser = "0.5.0"
 # Sample only: the map engine experiment fetches nothing of its own, so the example that
 # points it at OpenStreetMap needs a client.
-ktor = "3.6.0"
+ktor = "3.6.1"
 lifecycle = "2.11.0"
 okio = "3.18.2"
 play-billing = "9.1.0"
-serialization = "1.11.0"
+serialization = "1.12.0"
 sqldelight = "2.4.1"
 
 [libraries]
@@ -44,7 +44,7 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-multiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 compose-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose-multiplatform" }
-compose-runtime-annotation = { module = "androidx.compose.runtime:runtime-annotation", version.ref = "compose-multiplatform" }
+compose-runtime-annotation = { module = "androidx.compose.runtime:runtime-annotation", version = "1.12.1" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }
 compose-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "compose-multiplatform" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-multiplatform" }
