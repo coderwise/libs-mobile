@@ -2,6 +2,7 @@
 # SDK
 compileSdk = "37"
 minSdk = "26"
+minSdkCompat = "23"
 
 # Build / plugins
 agp = "9.5.0"
