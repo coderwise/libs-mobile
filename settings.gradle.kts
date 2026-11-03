@@ -26,6 +26,14 @@ rootDir.listFiles()?.filter { it.isDirectory && File(it, "build.gradle.kts").exi
     include(":${it.name}")
 }
 
+// The :map-view family lives in map/. Each module keeps its top-level project name — `:map-view-core`,
+// not `:map:map-view-core` — which is what the release tags, the publish workflow and the
+// dependencies between the modules all use; only where one sits on disk changes.
+file("map").listFiles()?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }?.forEach {
+    include(":${it.name}")
+    project(":${it.name}").projectDir = it
+}
+
 // Sample app modules live one level down (sample/<platform>); the sample dir
 // itself has no build file, so the top-level loop above skips it.
 file("sample").listFiles()?.filter { it.isDirectory && File(it, "build.gradle.kts").exists() }?.forEach {
