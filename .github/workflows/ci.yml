@@ -78,11 +78,10 @@ jobs:
       # Only the map modules. The others do not declare an executable js and wasmJs binary, which
       # the Compose plugin requires before it will run UI tests there
       # (https://youtrack.jetbrains.com/issue/CMP-4906), so their browser tests cannot run until
-      # they do. :map-engine is one of them.
+      # they do.
       - name: Test in the browser
         run: >-
           ./gradlew --continue --stacktrace
-          :map-core:jsBrowserTest :map-core:wasmJsBrowserTest
           :map-view:jsBrowserTest :map-view:wasmJsBrowserTest
           :map-view-cache:jsBrowserTest :map-view-cache:wasmJsBrowserTest
           :map-view-controls:jsBrowserTest :map-view-controls:wasmJsBrowserTest

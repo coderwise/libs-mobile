@@ -9,9 +9,8 @@ credentials.
 All modules target **Android · iOS (arm64, sim-arm64) · JS · Wasm/JS · Desktop** and
 publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Central.
 
-> The Wasm/JS variants are new: only `:map-core`, `:map-engine` and the `:map-view*`
-> modules publish them at the versions below. For every other module they ship with its
-> next release.
+> The Wasm/JS variants are new: only the `:map-view*` modules publish them at the versions
+> below. For every other module they ship with its next release.
 
 | Module | Coordinates | Latest | Summary |
 |---|---|---|---|
@@ -34,13 +33,14 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | [`:map-view-controls`](map-view-controls) | `com.coderwise.libs:map-view-controls` | `0.3.0` | The parts of a map screen that are not the map: `ZoomButtons`, a `ScaleBar` (metric or imperial), `NorthButton` and `CompassTape`, `CourseUp` to keep the top of the map pointing the way you are heading, and an `Attribution` plate. Depends on nothing but Compose. |
 | [`:map-view-cache`](map-view-cache) | `com.coderwise.libs:map-view-cache` | `0.3.0` | A tile cache that wraps the function a tile queue is given, so the queue never knows it is there: `cached` with four `CacheMode`s over a size-bounded `FileTileStore` (least recently used first) or a `MemoryTileStore`, and `tileUrl` for `{z}/{x}/{y}` templates. Fetches nothing itself. |
 | [`:map-view-geojson`](map-view-geojson) | `com.coderwise.libs:map-view-geojson` | `0.3.0` | GeoJSON as an overlay: points, lines and polygons with holes, multi-geometries, styled per layer, gated by `minZoom`, and tappable with `onFeatureClick` (the nearest feature wins). A small model of its own and `parseGeoJson` for a JSON string; the drawing is also a `DrawScope` function, `drawGeoJson`, for a map that is not on screen. Fetches nothing. Depends on nothing but Compose. |
-| [`:map-core`](map-core) | `com.coderwise.libs:map-core` | `0.1.8` | **Previous generation.** Dependency-free map primitives: slippy-map tile math + `TileId`. |
-| [`:map-engine`](map-engine) | `com.coderwise.libs:map-engine` | `0.1.8` | **Previous generation.** Compose tiled-map engine (pannable/zoomable `TiledMap`), built on `:map-core`. |
 
-`:map-core` and `:map-engine` are the map these replace. They are kept as they are —
-maintained, no new features — so that an app can move to `:map-view` at its own pace, or
-carry both at once behind a flag: the coordinates and packages are different, so nothing
-stops them sharing a build.
+### Archived: `:map-core` and `:map-engine`
+
+`:map-core` and `:map-engine` are the previous generation of the map, and `:map-view` replaces
+them. They are no longer built, tested or released from this repository: the source is kept under
+[`archive/`](archive) for reference, and the last releases, `0.1.8` of each, stay on Maven Central
+for the apps still on them. The coordinates and the packages differ from `:map-view`'s, so an app
+can carry both while it moves.
 
 An app finishing that move should not need `:map-core` either. It held two things a
 `:map-view` consumer still wanted — the tile maths, and `TileId` — and the maths is now
@@ -114,7 +114,7 @@ workflow parses it, passes `-PlibVersion`, and publishes **only that module**:
 
 ```bash
 git tag utils-v0.4.0    && git push origin utils-v0.4.0     # → com.coderwise.libs:utils:0.4.0
-git tag map-core-v0.1.8 && git push origin map-core-v0.1.8  # → com.coderwise.libs:map-core:0.1.8
+git tag settings-v0.3.0 && git push origin settings-v0.3.0  # → com.coderwise.libs:settings:0.3.0
 ```
 
 **The `:map-view*` modules are the exception: release them in lockstep**, at one

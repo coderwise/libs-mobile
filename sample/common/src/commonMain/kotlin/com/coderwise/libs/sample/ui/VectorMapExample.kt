@@ -30,7 +30,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
-import com.coderwise.libs.mapcore.MapMath
 import com.coderwise.libs.mapview.LatLon
 import com.coderwise.libs.mapview.LocalTileMagnification
 import com.coderwise.libs.mapview.MapCameraState
@@ -52,6 +51,7 @@ import com.coderwise.libs.mapview.geojson.Geometry
 import com.coderwise.libs.mapview.geojson.parseGeoJson
 import com.coderwise.libs.mapview.ZOOM_LIMITS
 import com.coderwise.libs.mapview.mapGestures
+import com.coderwise.libs.mapview.onTileGrid
 import com.coderwise.libs.mapview.rememberMapCameraState
 import com.coderwise.libs.mapview.tiles.rememberTileState
 import com.coderwise.libs.mapview.tiles.shown
@@ -316,7 +316,7 @@ private class Press(val tile: TileKey, val x: Float, val y: Float)
  */
 private fun LatLon.pressOn(zoom: Float): Press {
     val z = floor(zoom).toInt().coerceIn(0, 14)
-    val (x, y) = MapMath.latLonToTileFractional(lat, lon, z.toDouble())
+    val (x, y) = onTileGrid(z.toDouble())
     val count = 1 shl z
     return Press(
         tile = TileKey(z, x.toInt().mod(count), y.toInt().coerceIn(0, count - 1)),

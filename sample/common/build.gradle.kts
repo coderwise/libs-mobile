@@ -30,8 +30,6 @@ kotlin {
             implementation(project(":filepicker"))
             implementation(project(":imagepicker"))
             implementation(project(":logger"))
-            implementation(project(":map-core"))
-            implementation(project(":map-engine"))
             implementation(project(":map-view"))
             implementation(project(":map-view-cache"))
             implementation(project(":map-view-controls"))

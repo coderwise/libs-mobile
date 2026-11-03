@@ -4,7 +4,7 @@ A hand-rolled tiled map for Compose Multiplatform — no map library (no MapLibr
 Maps SDK). Four modules, written to find out how much of a map engine you actually have to write,
 and kept because the answer turned out to be: not much.
 
-It replaces `:map-engine`, which stays published and unchanged for the apps still on it. The
+It replaces `:map-engine`, which is archived: its last release, `0.1.8`, stays on Maven Central for the apps still on it, and its source is kept under `archive/`. The
 coordinates and the packages differ, so an app can carry both and choose between them at runtime.
 
 - **`:map-view`** — the component. Which tiles are wanted, and where they go on screen.

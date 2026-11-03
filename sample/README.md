@@ -16,8 +16,6 @@ the library it demonstrates.
 |---|---|---|
 | Vector map | `:map-view-tiles-vector` | The same `MapView` and queue with a slot that draws decoded geometry instead of a bitmap: tap the map and the tile says what is under your finger, and the water toggle shows the coastline a tile carries. Wires its slots with `rememberTileState`, where the raster example wires the same two by hand. On live OpenFreeMap vector tiles. |
 | Map view | `:map-view` | Layered tile slots in one `MapView`, a `TileQueue` filling the state, and a magnified ancestor standing in until a tile lands — plus routes, search-result pins and a tap that drops one. On live OpenStreetMap tiles, fetched by the example with Ktor: the engine fetches nothing itself. |
-| Tiled map (previous) | `:map-engine` | Pan/zoom/rotate, markers anchored to coordinates, and `animateLocationTo` driven from the app's own UI. Tiles are a locally generated checkerboard — no network, tile server or API key. |
-| Tile math | `:map-core` | `MapMath` conversions both ways, and the packed `TileId` that keys every cache. No Compose involved. |
 | Text file picker | `:filepicker` | `rememberTextFilePicker`, with the picked file's contents shown. |
 | Image picker | `:imagepicker` | `rememberImagePicker`, with the downscaled bytes decoded and drawn. |
 | Permissions | `:permissions` | Camera and notification status, and the refusal the OS stops prompting for — the case `rememberAppSettingsLauncher` exists for. |
