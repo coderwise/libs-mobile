@@ -43,13 +43,13 @@ import com.coderwise.libs.mapview.cache.cached
 import com.coderwise.libs.mapview.controls.Attribution
 import com.coderwise.libs.mapview.controls.NorthButton
 import com.coderwise.libs.mapview.controls.ScaleBar
+import com.coderwise.libs.mapview.controls.ZoomButtons
 import com.coderwise.libs.mapview.geojson.Feature
 import com.coderwise.libs.mapview.geojson.FeatureCollection
 import com.coderwise.libs.mapview.geojson.GeoJson
 import com.coderwise.libs.mapview.geojson.GeoJsonStyle
 import com.coderwise.libs.mapview.geojson.Geometry
 import com.coderwise.libs.mapview.geojson.parseGeoJson
-import com.coderwise.libs.mapview.ZOOM_LIMITS
 import com.coderwise.libs.mapview.mapGestures
 import com.coderwise.libs.mapview.onTileGrid
 import com.coderwise.libs.mapview.rememberMapCameraState
@@ -217,11 +217,10 @@ private fun VectorMapContent(
             }
         }
 
-        ZoomControls(
-            modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp),
-            zoom = camera.zoom,
-            onZoomIn = { camera.moveTo(camera.center, (camera.zoom + 1f).coerceIn(ZOOM_LIMITS)) },
-            onZoomOut = { camera.moveTo(camera.center, (camera.zoom - 1f).coerceIn(ZOOM_LIMITS)) }
+        ZoomButtons(
+            camera,
+            Modifier.align(Alignment.CenterEnd).padding(12.dp),
+            zoomRange = 0f..20f
         )
 
         // What `:map-view-controls` adds: a north button that is only there while the map is turned
