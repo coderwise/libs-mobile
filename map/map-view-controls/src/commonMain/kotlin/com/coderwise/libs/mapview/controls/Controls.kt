@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +26,7 @@ import com.coderwise.libs.mapview.ZOOM_LIMITS
 import com.coderwise.libs.mapview.flyTo
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import androidx.compose.ui.tooling.preview.Preview
 
 /**
  * Zoom in and zoom out, one [step] a press, animated.
@@ -122,4 +122,30 @@ fun Attribution(
         modifier = (if (onClick == null) plate else plate.clickable(role = Role.Button, onClick = onClick))
             .padding(horizontal = 6.dp, vertical = 2.dp)
     )
+}
+
+@Preview(name = "Light")
+@Composable
+private fun ZoomButtonsLightPreview() {
+    val camera = remember { MapCameraState() }
+    ZoomButtons(camera = camera, background = Color.White, contentColor = Color.Black)
+}
+
+@Preview(name = "Dark", uiMode = 0x20)
+@Composable
+private fun ZoomButtonsDarkPreview() {
+    val camera = remember { MapCameraState() }
+    ZoomButtons(camera = camera, background = Color(0xFF1E1E1E), contentColor = Color.White)
+}
+
+@Preview(name = "Light")
+@Composable
+private fun AttributionLightPreview() {
+    Attribution(text = "© OpenStreetMap contributors", color = Color.Black, background = Color.White.copy(alpha = 0.75f))
+}
+
+@Preview(name = "Dark", uiMode = 0x20)
+@Composable
+private fun AttributionDarkPreview() {
+    Attribution(text = "© OpenStreetMap contributors", color = Color.White, background = Color(0xFF1E1E1E).copy(alpha = 0.75f))
 }

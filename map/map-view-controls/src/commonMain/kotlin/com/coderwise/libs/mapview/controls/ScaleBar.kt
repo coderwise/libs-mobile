@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -119,3 +120,18 @@ private fun Double.shown(): String = if (this >= 1.0 && this == floor(this)) toL
 private const val METERS_PER_KM = 1000.0
 private const val METERS_PER_FOOT = 0.3048
 private const val FEET_PER_MILE = 5280.0
+
+@Preview(name = "Light")
+@Composable
+private fun ScaleBarLightPreview() {
+    val camera = remember { MapCameraState() }
+    ScaleBar(camera = camera, color = Color.Black, background = Color.White.copy(alpha = 0.75f))
+}
+
+@Preview(name = "Dark", uiMode = 0x20)
+@Composable
+private fun ScaleBarDarkPreview() {
+    val camera = remember { MapCameraState() }
+    ScaleBar(camera = camera, color = Color.White, background = Color(0xFF1E1E1E).copy(alpha = 0.75f))
+}
+

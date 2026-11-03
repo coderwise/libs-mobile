@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +23,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.coderwise.libs.mapview.MapCameraState
@@ -175,3 +177,31 @@ internal fun compassTicks(bearing: Float, span: Float, step: Int = 5): List<Comp
 }
 
 private val POINTS = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+
+@Preview(name = "Light")
+@Composable
+private fun NorthButtonLightPreview() {
+    val camera = remember { MapCameraState(bearing = 45f) }
+    NorthButton(camera = camera, background = Color.White)
+}
+
+@Preview(name = "Dark", uiMode = 0x20)
+@Composable
+private fun NorthButtonDarkPreview() {
+    val camera = remember { MapCameraState(bearing = 45f) }
+    NorthButton(camera = camera, background = Color(0xFF1E1E1E))
+}
+
+@Preview(name = "Light")
+@Composable
+private fun CompassTapeLightPreview() {
+    val camera = remember { MapCameraState(bearing = 45f) }
+    CompassTape(camera = camera, color = Color.Black, background = Color.White.copy(alpha = 0.85f))
+}
+
+@Preview(name = "Dark", uiMode = 0x20)
+@Composable
+private fun CompassTapeDarkPreview() {
+    val camera = remember { MapCameraState(bearing = 45f) }
+    CompassTape(camera = camera, color = Color.White, background = Color(0xFF1E1E1E).copy(alpha = 0.85f))
+}

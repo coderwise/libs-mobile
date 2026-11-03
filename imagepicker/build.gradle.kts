@@ -15,6 +15,7 @@ kotlin {
         namespace = "com.coderwise.libs.imagepicker"
         compileSdk = libs.versions.compileSdk.get().toInt()
         minSdk = libs.versions.minSdk.get().toInt()
+        withHostTest {}
     }
     iosArm64(); iosSimulatorArm64()
     js { browser() }

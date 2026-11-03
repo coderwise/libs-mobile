@@ -35,6 +35,7 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.ui)
+            implementation(libs.compose.preview)
             implementation(libs.kotlinx.coroutines.core)
         }
         commonTest.dependencies {
@@ -50,6 +51,10 @@ kotlin {
             }
         }
     }
+}
+
+dependencies {
+    "androidRuntimeClasspath"(libs.compose.tooling)
 }
 
 // See :utils for publishing notes. Version from the release tag (-PlibVersion, set by the publish
