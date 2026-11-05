@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.coderwise.libs.mapview.controls
 
 import androidx.compose.animation.core.AnimationSpec
@@ -40,6 +42,9 @@ suspend fun MapCameraState.turnTo(bearing: Float, animationSpec: AnimationSpec<F
  * Pair it with `Modifier.mapGestures(camera, rotatable = !courseUp)`: a map that follows the
  * heading has no use for a twist that fights it.
  */
+@Deprecated(
+    "map-view-controls is deprecated: it is frozen and will leave the :map-view family after 0.4.x. Copy the components from the sample (sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead."
+)
 @Composable
 fun CourseUp(
     camera: MapCameraState,

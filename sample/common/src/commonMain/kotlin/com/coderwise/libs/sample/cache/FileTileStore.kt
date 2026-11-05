@@ -1,4 +1,4 @@
-package com.coderwise.libs.mapview.cache
+package com.coderwise.libs.sample.cache
 
 import com.coderwise.libs.mapview.TileKey
 import kotlinx.coroutines.Dispatchers

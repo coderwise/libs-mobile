@@ -31,14 +31,16 @@ kotlin {
             implementation(project(":imagepicker"))
             implementation(project(":logger"))
             implementation(project(":map-view"))
-            implementation(project(":map-view-cache"))
-            implementation(project(":map-view-controls"))
             implementation(project(":map-view-geojson"))
             implementation(project(":map-view-tiles"))
             implementation(project(":map-view-tiles-raster"))
             implementation(project(":map-view-tiles-vector"))
             implementation(project(":permissions"))
             implementation(project(":utils"))
+            // The tile cache and the controls are the sample's own code (sample/cache and
+            // sample/controls): copy them if you want them. okio is what FileTileStore is made from.
+            implementation(libs.okio)
+            implementation(libs.kotlinx.coroutines.core)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
@@ -53,6 +55,11 @@ kotlin {
             // Only for the map engine example: the engine fetches nothing itself, so pointing it
             // at a real tile server is the sample's job.
             implementation(libs.ktor.client.core)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.okio.fakefilesystem)
         }
         androidMain.dependencies { implementation(libs.ktor.client.okhttp) }
         iosMain.dependencies { implementation(libs.ktor.client.darwin) }

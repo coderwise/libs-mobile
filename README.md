@@ -29,9 +29,8 @@ publish under `com.coderwise.libs`. "Latest" is the newest version on Maven Cent
 | `:map-view-tiles` | `com.coderwise.libs:map-view-tiles` | `0.3.0` | Loading for the above: `tileState` joins slots to a queue that fills them nearest-the-centre first, and `shown` says what a slot draws until its own tile lands. |
 | `:map-view-tiles-raster` | `com.coderwise.libs:map-view-tiles-raster` | `0.3.0` | Image tiles. |
 | `:map-view-tiles-vector` | `com.coderwise.libs:map-view-tiles-vector` | `0.3.0` | MVT tiles: a hand-rolled decoder that reads only what you ask for, a redefinable style whose widths ramp with zoom and whose expensive passes can be gated by it, a renderer that paints in a canonical order whatever order the source emits, and labels drawn straight to the canvas. Also what a tile knows besides its picture: `featuresAt` for "what did I just press on", and `waterPath` for anything drawn over the sea. |
-| [`:map-view-core`](map/map-view-core) | `com.coderwise.libs:map-view-core` | `0.3.0` | `TileKey`, the address of one tile, in a module that needs no Compose — for whatever handles tiles without drawing them, such as `:map-view-cache`. `:map-view` gives it out as its own, so nothing that imports it changes. |
-| [`:map-view-controls`](map/map-view-controls) | `com.coderwise.libs:map-view-controls` | `0.3.0` | The parts of a map screen that are not the map: `ZoomButtons`, a `ScaleBar` (metric or imperial), `NorthButton` and `CompassTape`, `CourseUp` to keep the top of the map pointing the way you are heading, and an `Attribution` plate. Depends on nothing but Compose. |
-| [`:map-view-cache`](map/map-view-cache) | `com.coderwise.libs:map-view-cache` | `0.3.0` | A tile cache that wraps the function a tile queue is given, so the queue never knows it is there: `cached` with four `CacheMode`s over a size-bounded `FileTileStore` (least recently used first) or a `MemoryTileStore`, and `tileUrl` for `{z}/{x}/{y}` templates. Fetches nothing itself. |
+| [`:map-view-core`](map/map-view-core) | `com.coderwise.libs:map-view-core` | `0.3.0` | `TileKey`, the address of one tile, in a module that needs no Compose — for whatever handles tiles without drawing them, such as a tile cache. `:map-view` gives it out as its own, so nothing that imports it changes. |
+| [`:map-view-controls`](map/map-view-controls) | `com.coderwise.libs:map-view-controls` | `0.3.0` | **Deprecated, frozen: copy it from the [sample](sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls).** The parts of a map screen that are not the map: `ZoomButtons`, a `ScaleBar` (metric or imperial), `NorthButton` and `CompassTape`, `CourseUp` to keep the top of the map pointing the way you are heading, and an `Attribution` plate. Depends on nothing but Compose. |
 | [`:map-view-geojson`](map/map-view-geojson) | `com.coderwise.libs:map-view-geojson` | `0.3.0` | GeoJSON as an overlay: points, lines and polygons with holes, multi-geometries, styled per layer, gated by `minZoom`, and tappable with `onFeatureClick` (the nearest feature wins). A small model of its own and `parseGeoJson` for a JSON string; the drawing is also a `DrawScope` function, `drawGeoJson`, for a map that is not on screen. Fetches nothing. Depends on nothing but Compose. |
 
 The `:map-view*` modules live together in [`map/`](map). Where a module sits on disk does not
@@ -127,7 +126,7 @@ were built against in their POMs, so a mixed release would have one asking for a
 that does not exist:
 
 ```bash
-for m in map-view-core map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector map-view-controls map-view-cache map-view-geojson; do
+for m in map-view-core map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector map-view-controls map-view-geojson; do
   git tag $m-v0.1.0 && git push origin $m-v0.1.0
 done
 ```

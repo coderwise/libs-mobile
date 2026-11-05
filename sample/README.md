@@ -89,3 +89,16 @@ pre-build Gradle step (`embedAndSignAppleFrameworkForXcode`).
 1. Write the demo as an `@Composable` in `common/src/commonMain`.
 2. Add an `Example(...)` for it to `mapExamples()` or `libraryExamples()`. The gallery
    picks it up from there — nothing else to register.
+
+## Code to copy
+
+Two things used to be published modules and are now the sample's own code, because they are app code
+rather than library code. Copy what you want; it is Apache-2.0, and each file is self-contained.
+
+- **`sample/cache`** (was `:map-view-cache`, last published as 0.3.0): a cache for tile bytes that wraps the
+  function a tile queue is given. `TileStore`, `MemoryTileStore`, `FileTileStore` (okio), `cached` with its four
+  `CacheMode`s, and `tileUrl`. It needs `:map-view` for `TileKey` and okio, and has its tests beside it. The
+  function you pass to `cached` does the fetching: client, headers, retries and the tile policy are yours.
+- **`sample/controls`** (still published as `:map-view-controls`, deprecated and frozen): `ZoomButtons`,
+  `ScaleBar`, `NorthButton`, `CompassTape`, `CourseUp` and `Attribution`, each taking the `MapCameraState`.
+  The published module leaves the `:map-view` family after 0.4.x; this copy is the maintained one.

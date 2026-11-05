@@ -254,7 +254,7 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   waterPath(bytes) -> Path?
   decodeMvt(bytes, keep, classLayers, nameLayers, attributeLayers) -> List<MvtLayer>
 
-:map-view-controls
+:map-view-controls   (deprecated; copy from the sample)
   ZoomButtons(camera, modifier, zoomRange, step, background, contentColor)
   ScaleBar(camera, modifier, units, maxWidth, color, background, textStyle), ScaleUnits
   NorthButton(camera, modifier, alwaysVisible, background)
@@ -262,11 +262,6 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
   CourseUp(camera, heading, enabled, deadband)
   MapCameraState.turnTo(bearing, animationSpec)
   Attribution(text, modifier, onClick, color, background, textStyle)
-
-:map-view-cache
-  TileStore (get, put, remove, clear), MemoryTileStore(maxBytes), FileTileStore(fileSystem, directory, maxBytes)
-  cached(store, source, mode, fetch) -> suspend (TileKey) -> ByteArray?, CacheMode
-  tileUrl(template, key, tms) -> String
 
 :map-view-geojson
   FeatureCollection(features), Feature(geometry, properties, id)

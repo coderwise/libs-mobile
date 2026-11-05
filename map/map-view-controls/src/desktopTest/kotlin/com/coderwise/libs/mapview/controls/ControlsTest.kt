@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.coderwise.libs.mapview.controls
 
 import androidx.compose.runtime.LaunchedEffect

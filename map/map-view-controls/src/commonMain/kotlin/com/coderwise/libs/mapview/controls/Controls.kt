@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.coderwise.libs.mapview.controls
 
 import androidx.compose.foundation.background
@@ -35,6 +37,9 @@ import androidx.compose.ui.tooling.preview.Preview
  * pressing twice is two levels rather than one. A button turns itself off at the end of
  * [zoomRange] — pass the source's own, for a map that should stop where its tiles do.
  */
+@Deprecated(
+    "map-view-controls is deprecated: it is frozen and will leave the :map-view family after 0.4.x. Copy the components from the sample (sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead."
+)
 @Composable
 fun ZoomButtons(
     camera: MapCameraState,
@@ -106,6 +111,9 @@ private fun ControlButton(
  * Give it an [onClick] to open the page behind the credit; what opens it is the app's, because
  * this does not know what a browser is.
  */
+@Deprecated(
+    "map-view-controls is deprecated: it is frozen and will leave the :map-view family after 0.4.x. Copy the components from the sample (sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead."
+)
 @Composable
 fun Attribution(
     text: String,

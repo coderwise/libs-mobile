@@ -71,7 +71,7 @@ live map use `GeoJson`.
 
 ## Not here
 
-Fetching, caching or watching a file: the text is the app's, through `:map-view-cache` if it likes.
+Fetching, caching or watching a file: the text is the app's, through a cache such as the one in the sample (`sample/common/.../sample/cache`) if it likes.
 Styling by a feature's own properties — a layer has one style; split the data for two. A ring wider
 than half the world, or one that winds round a pole, which GeoJSON itself asks to be cut at the
 antimeridian.

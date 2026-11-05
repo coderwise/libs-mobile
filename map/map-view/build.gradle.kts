@@ -28,7 +28,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            // TileKey, which `:map-view-cache` and anything else that handles tiles without drawing
+            // TileKey, which a tile cache and anything else that handles tiles without drawing
             // them can name without Compose. api: it is in MapState's signature.
             api(project(":map-view-core"))
             // api, not implementation: Modifier, Composable and Offset are all over the public

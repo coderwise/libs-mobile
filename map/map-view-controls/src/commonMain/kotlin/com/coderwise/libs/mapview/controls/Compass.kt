@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.coderwise.libs.mapview.controls
 
 import androidx.compose.foundation.Canvas
@@ -37,6 +39,9 @@ import kotlin.math.ceil
  * Only there while the map is turned: a map that is north-up has nothing to say about north. Pass
  * [alwaysVisible] for one that should stay put.
  */
+@Deprecated(
+    "map-view-controls is deprecated: it is frozen and will leave the :map-view family after 0.4.x. Copy the components from the sample (sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead."
+)
 @Composable
 fun NorthButton(
     camera: MapCameraState,
@@ -93,6 +98,9 @@ private const val NORTH_TOLERANCE = 0.5f
  * [span] is how many degrees the strip shows. Give it an [onClick] for the usual thing — back to
  * north — which is `camera.turnTo(0f)`.
  */
+@Deprecated(
+    "map-view-controls is deprecated: it is frozen and will leave the :map-view family after 0.4.x. Copy the components from the sample (sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead."
+)
 @Composable
 fun CompassTape(
     camera: MapCameraState,

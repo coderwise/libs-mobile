@@ -1,5 +1,10 @@
 # :map-view-controls
 
+> **Deprecated.** `:map-view-controls` is frozen and will leave the `:map-view` family after 0.4.x. These are
+> app UI, so the maintained copy lives in the sample app: `sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls`.
+> Copy what you use from there (Apache-2.0). Published versions, 0.3.0 and the 0.4.x that follows, stay on
+> Maven Central and keep working with the `:map-view` of the same line.
+
 The parts of a map screen that are not the map. Compose only — no Material, no resources — so they
 look like what you give them and sit over `MapView` without bringing a theme along.
 

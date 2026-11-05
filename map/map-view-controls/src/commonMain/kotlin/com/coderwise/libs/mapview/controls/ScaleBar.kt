@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.coderwise.libs.mapview.controls
 
 import androidx.compose.foundation.background
@@ -28,6 +30,9 @@ import kotlin.math.log10
 import kotlin.math.pow
 
 /** What a scale bar counts in. */
+@Deprecated(
+    "map-view-controls is deprecated: it is frozen and will leave the :map-view family after 0.4.x. Copy the components from the sample (sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead."
+)
 enum class ScaleUnits { Metric, Imperial }
 
 /**
@@ -37,6 +42,9 @@ enum class ScaleUnits { Metric, Imperial }
  * True at the middle of the map. On a Mercator map the same distance is a longer bar towards the
  * poles, so a bar read at the edge of a tall map is only an approximation, as it is on paper.
  */
+@Deprecated(
+    "map-view-controls is deprecated: it is frozen and will leave the :map-view family after 0.4.x. Copy the components from the sample (sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead."
+)
 @Composable
 fun ScaleBar(
     camera: MapCameraState,
