@@ -61,14 +61,13 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.okio.fakefilesystem)
         }
-        androidMain.dependencies { implementation(libs.ktor.client.okhttp) }
+        androidMain.dependencies {
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.compose.tooling)
+        }
         iosMain.dependencies { implementation(libs.ktor.client.darwin) }
         jsMain.dependencies { implementation(libs.ktor.client.js) }
         wasmJsMain.dependencies { implementation(libs.ktor.client.js) }
         getByName("desktopMain").dependencies { implementation(libs.ktor.client.okhttp) }
     }
-}
-
-dependencies {
-    "androidRuntimeClasspath"(libs.compose.tooling)
 }

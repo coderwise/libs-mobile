@@ -38,6 +38,9 @@ kotlin {
             implementation(libs.compose.preview)
             implementation(libs.kotlinx.coroutines.core)
         }
+        androidMain.dependencies {
+            implementation(libs.compose.tooling)
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
@@ -51,10 +54,6 @@ kotlin {
             }
         }
     }
-}
-
-dependencies {
-    "androidRuntimeClasspath"(libs.compose.tooling)
 }
 
 // See :utils for publishing notes. Version from the release tag (-PlibVersion, set by the publish
