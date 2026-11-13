@@ -15,7 +15,7 @@ no credentials needed.
 ```kotlin
 // build.gradle.kts, in commonMain
 implementation("com.coderwise.libs:location:0.3.2")
-implementation("com.coderwise.libs:map-view:0.3.0")
+implementation("com.coderwise.libs:map-view:0.4.0")
 ```
 
 ## Why use them
@@ -40,12 +40,12 @@ A tile map built from small parts, so you take the pieces you need.
 
 | Library | Version | What it gives you |
 |---|---|---|
-| [`map-view`](map/map-view) | `0.3.0` | The map itself: layered tiles, camera and gestures, and overlays placed by coordinate. See its [README](map/map-view/README.md). |
-| `map-view-tiles` | `0.3.0` | Tile loading that fills the screen from the centre outward, and keeps something on screen while a tile arrives. |
-| `map-view-tiles-raster` | `0.3.0` | Image tiles. |
-| `map-view-tiles-vector` | `0.3.0` | Vector (MVT) tiles with a restyleable look, widths that scale with zoom, labels, and "what did I just tap on". |
-| [`map-view-geojson`](map/map-view-geojson) | `0.3.0` | GeoJSON on the map: points, lines and polygons, styled per layer, tappable. |
-| [`map-view-core`](map/map-view-core) | `0.3.0` | The tile address type, with no UI dependency — for tile caches and other code that handles tiles without drawing them. |
+| [`map-view`](map/map-view) | `0.4.0` | The map itself: layered tiles, camera and gestures, and overlays placed by coordinate. See its [README](map/map-view/README.md). |
+| `map-view-tiles` | `0.4.0` | Tile loading that fills the screen from the centre outward, and keeps something on screen while a tile arrives. |
+| `map-view-tiles-raster` | `0.4.0` | Image tiles. |
+| `map-view-tiles-vector` | `0.4.0` | Vector (MVT) tiles with a restyleable look, widths that scale with zoom, labels, and "what did I just tap on". |
+| [`map-view-geojson`](map/map-view-geojson) | `0.4.0` | GeoJSON on the map: points, lines and polygons, styled per layer, tappable. |
+| [`map-view-core`](map/map-view-core) | `0.4.0` | The tile address type, with no UI dependency — for tile caches and other code that handles tiles without drawing them. |
 
 ### Device features
 
