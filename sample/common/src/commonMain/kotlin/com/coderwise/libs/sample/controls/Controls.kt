@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,57 +19,28 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.coderwise.libs.mapview.MapCameraState
-import com.coderwise.libs.mapview.ZOOM_LIMITS
-import com.coderwise.libs.mapview.flyTo
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
 
 /**
- * Zoom in and zoom out, one [step] a press, animated.
- *
- * A second press while the first is still flying carries on from where that one was going, so
- * pressing twice is two levels rather than one. A button turns itself off at the end of
- * [zoomRange] — pass the source's own, for a map that should stop where its tiles do.
+ * Zoom in and zoom out. What a press does is the caller's — fly the camera, step it — and so is
+ * whether a button is on: pass [canZoomIn] and [canZoomOut] from `camera.zoomRange` for a map that
+ * stops where its tiles do.
  */
 @Composable
 fun ZoomButtons(
-    camera: MapCameraState,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
     modifier: Modifier = Modifier,
-    zoomRange: ClosedFloatingPointRange<Float> = ZOOM_LIMITS,
-    step: Float = 1f,
+    canZoomIn: Boolean = true,
+    canZoomOut: Boolean = true,
     background: Color = Color.White,
     contentColor: Color = Color.Black
 ) {
-    val scope = rememberCoroutineScope()
-    val flight = remember { Flight() }
-
-    fun zoomBy(delta: Float) {
-        val target = ((flight.target ?: camera.zoom) + delta).coerceIn(zoomRange)
-        flight.job?.cancel()
-        flight.target = target
-        flight.job = scope.launch {
-            try {
-                camera.flyTo(camera.center, target)
-            } finally {
-                // Only the flight that is still the latest one is over; a cancelled one is not.
-                if (flight.target == target) flight.target = null
-            }
-        }
-    }
-
     Column(modifier.clip(RoundedCornerShape(8.dp)).background(background)) {
-        ControlButton("+", "Zoom in", camera.zoom < zoomRange.endInclusive, contentColor) { zoomBy(step) }
+        ControlButton("+", "Zoom in", canZoomIn, contentColor, onZoomIn)
         Box(Modifier.size(44.dp, 1.dp).background(contentColor.copy(alpha = 0.2f)))
-        ControlButton("−", "Zoom out", camera.zoom > zoomRange.start, contentColor) { zoomBy(-step) }
+        ControlButton("−", "Zoom out", canZoomOut, contentColor, onZoomOut)
     }
-}
-
-/** Where a zoom press is headed, so the next one can start from there. */
-private class Flight {
-    var job: Job? = null
-    var target: Float? = null
 }
 
 @Composable
@@ -127,15 +96,13 @@ fun Attribution(
 @Preview(name = "Light")
 @Composable
 private fun ZoomButtonsLightPreview() {
-    val camera = remember { MapCameraState() }
-    ZoomButtons(camera = camera, background = Color.White, contentColor = Color.Black)
+    ZoomButtons(onZoomIn = {}, onZoomOut = {}, background = Color.White, contentColor = Color.Black)
 }
 
 @Preview(name = "Dark", uiMode = 0x20)
 @Composable
 private fun ZoomButtonsDarkPreview() {
-    val camera = remember { MapCameraState() }
-    ZoomButtons(camera = camera, background = Color(0xFF1E1E1E), contentColor = Color.White)
+    ZoomButtons(onZoomIn = {}, onZoomOut = {}, background = Color(0xFF1E1E1E), contentColor = Color.White)
 }
 
 @Preview(name = "Light")

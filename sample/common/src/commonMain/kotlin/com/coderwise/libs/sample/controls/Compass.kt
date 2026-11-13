@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -26,37 +24,36 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.coderwise.libs.mapview.MapCameraState
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
 
 /**
- * A needle that points north wherever the map has been turned, and puts it back when pressed.
+ * A needle that points north wherever the map has been turned to [bearing]. Pressing it calls
+ * [onClick], which is for the app to say — usually back to north, `camera.turnTo(0f)`.
  *
  * Only there while the map is turned: a map that is north-up has nothing to say about north. Pass
  * [alwaysVisible] for one that should stay put.
  */
 @Composable
 fun NorthButton(
-    camera: MapCameraState,
+    bearing: Float,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     alwaysVisible: Boolean = false,
     background: Color = Color.White
 ) {
-    if (!alwaysVisible && abs(shortestTurn(camera.bearing, 0f)) < NORTH_TOLERANCE) return
-    val scope = rememberCoroutineScope()
+    if (!alwaysVisible && abs(shortestTurn(bearing, 0f)) < NORTH_TOLERANCE) return
 
     Canvas(
         modifier
             .size(44.dp)
             .clip(CircleShape)
             .background(background)
-            .clickable(role = Role.Button) { scope.launch { camera.turnTo(0f) } }
+            .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "North" }
     ) {
         // The map turned by the bearing puts north that far the other way round from the top.
-        rotate(-camera.bearing) {
+        rotate(-bearing) {
             val middle = Offset(size.width / 2, size.height / 2)
             val reach = size.minDimension * 0.32f
             val half = reach * 0.45f
@@ -86,16 +83,16 @@ fun NorthButton(
 private const val NORTH_TOLERANCE = 0.5f
 
 /**
- * A strip of compass headings with the one the top of the map is facing in the middle: ticks every
- * five degrees, a number every thirty and the points of the compass every forty-five. It slides as
- * the map turns.
+ * A strip of compass headings with the one the top of the map is facing — [bearing] — in the
+ * middle: ticks every five degrees, a number every thirty and the points of the compass every
+ * forty-five. It slides as the map turns.
  *
  * [span] is how many degrees the strip shows. Give it an [onClick] for the usual thing — back to
  * north — which is `camera.turnTo(0f)`.
  */
 @Composable
 fun CompassTape(
-    camera: MapCameraState,
+    bearing: Float,
     modifier: Modifier = Modifier,
     span: Float = 120f,
     onClick: (() -> Unit)? = null,
@@ -112,7 +109,7 @@ fun CompassTape(
         .semantics { contentDescription = "Compass" }
 
     Canvas(if (onClick == null) tape else tape.clickable(role = Role.Button, onClick = onClick)) {
-        compassTicks(camera.bearing, span).forEach { tick ->
+        compassTicks(bearing, span).forEach { tick ->
             val x = size.width * (0.5f + tick.offset)
             val reach = when (tick.kind) {
                 TickKind.Minor -> 6.dp
@@ -181,27 +178,23 @@ private val POINTS = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 @Preview(name = "Light")
 @Composable
 private fun NorthButtonLightPreview() {
-    val camera = remember { MapCameraState(bearing = 45f) }
-    NorthButton(camera = camera, background = Color.White)
+    NorthButton(bearing = 45f, onClick = {}, background = Color.White)
 }
 
 @Preview(name = "Dark", uiMode = 0x20)
 @Composable
 private fun NorthButtonDarkPreview() {
-    val camera = remember { MapCameraState(bearing = 45f) }
-    NorthButton(camera = camera, background = Color(0xFF1E1E1E))
+    NorthButton(bearing = 45f, onClick = {}, background = Color(0xFF1E1E1E))
 }
 
 @Preview(name = "Light")
 @Composable
 private fun CompassTapeLightPreview() {
-    val camera = remember { MapCameraState(bearing = 45f) }
-    CompassTape(camera = camera, color = Color.Black, background = Color.White.copy(alpha = 0.85f))
+    CompassTape(bearing = 45f, color = Color.Black, background = Color.White.copy(alpha = 0.85f))
 }
 
 @Preview(name = "Dark", uiMode = 0x20)
 @Composable
 private fun CompassTapeDarkPreview() {
-    val camera = remember { MapCameraState(bearing = 45f) }
-    CompassTape(camera = camera, color = Color.White, background = Color(0xFF1E1E1E).copy(alpha = 0.85f))
+    CompassTape(bearing = 45f, color = Color.White, background = Color(0xFF1E1E1E).copy(alpha = 0.85f))
 }

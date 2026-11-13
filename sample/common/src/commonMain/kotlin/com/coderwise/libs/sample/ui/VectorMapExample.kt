@@ -1,8 +1,10 @@
 package com.coderwise.libs.sample.ui
 
+import androidx.compose.foundation.MutatorMutex
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -13,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +40,8 @@ import com.coderwise.libs.mapview.MapState
 import com.coderwise.libs.mapview.MapView
 import com.coderwise.libs.mapview.Polyline
 import com.coderwise.libs.mapview.TileKey
+import com.coderwise.libs.mapview.ZOOM_LIMITS
+import com.coderwise.libs.mapview.flyTo
 import com.coderwise.libs.sample.cache.CacheMode
 import com.coderwise.libs.sample.cache.MemoryTileStore
 import com.coderwise.libs.sample.cache.cached
@@ -44,6 +49,7 @@ import com.coderwise.libs.sample.controls.Attribution
 import com.coderwise.libs.sample.controls.NorthButton
 import com.coderwise.libs.sample.controls.ScaleBar
 import com.coderwise.libs.sample.controls.ZoomButtons
+import com.coderwise.libs.sample.controls.turnTo
 import com.coderwise.libs.mapview.geojson.Feature
 import com.coderwise.libs.mapview.geojson.FeatureCollection
 import com.coderwise.libs.mapview.geojson.GeoJson
@@ -114,8 +120,13 @@ internal fun VectorMapExample() {
     // by hand, which is worth reading once. Only to 14: OpenFreeMap's planet tiles stop there, and
     // past it the grid lays the deepest level out bigger rather than asking for tiles that do not
     // exist.
-    val tiles = rememberTileState(zoomRange = 0..14, capacity = 64) { key ->
+    val tiles = rememberTileState(zoomRange = 0..SOURCE_MAX_ZOOM, capacity = 64) { key ->
         vectorTile(tileBytes, key, style)
+    }
+    // The camera stops a few levels past the source's last, which pinch, double tap and the buttons
+    // all honour, and the buttons turn themselves off there.
+    LaunchedEffect(camera) {
+        camera.zoomRange = ZOOM_LIMITS.start..(SOURCE_MAX_ZOOM + OVERZOOM_LEVELS).toFloat()
     }
 
     VectorMapContent(camera, tiles, scope) { at ->
@@ -217,16 +228,7 @@ private fun VectorMapContent(
             }
         }
 
-        ZoomButtons(
-            camera,
-            Modifier.align(Alignment.CenterEnd).padding(12.dp),
-            zoomRange = 0f..20f
-        )
-
-        // What `:map-view-controls` adds: a north button that is only there while the map is turned
-        // (two fingers twist it), and a scale bar that says what its bar is at the zoom it is at.
-        NorthButton(camera, Modifier.align(Alignment.TopEnd).padding(12.dp))
-        ScaleBar(camera, Modifier.align(Alignment.TopCenter).padding(12.dp))
+        MapControls(camera)
 
         FilterChip(
             selected = showWater,
@@ -257,6 +259,38 @@ private fun VectorMapContent(
             Modifier.align(Alignment.BottomEnd).padding(8.dp)
         )
     }
+}
+
+/**
+ * The zoom buttons, a north button that is only there while the map is turned (two fingers twist
+ * it) and a scale bar, each handed what it shows and told what a press does.
+ *
+ * A composable of its own so that the camera is read here: a pan or a pinch recomposes these three
+ * and leaves the map alone.
+ */
+@Composable
+private fun BoxScope.MapControls(camera: MapCameraState) {
+    val scope = rememberCoroutineScope()
+    // One flight at a time: a press while the last is still flying takes over from where the camera
+    // is. The camera holds itself to its zoomRange, so a flight past the end stops there.
+    val flights = remember { MutatorMutex() }
+    fun zoomBy(levels: Float) {
+        scope.launch { flights.mutate { camera.flyTo(camera.center, camera.zoom + levels) } }
+    }
+
+    ZoomButtons(
+        onZoomIn = { zoomBy(1f) },
+        onZoomOut = { zoomBy(-1f) },
+        modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp),
+        canZoomIn = camera.zoom < camera.zoomRange.endInclusive,
+        canZoomOut = camera.zoom > camera.zoomRange.start
+    )
+    NorthButton(
+        bearing = camera.bearing,
+        onClick = { scope.launch { camera.turnTo(0f) } },
+        modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)
+    )
+    ScaleBar(camera.metersPerDp, Modifier.align(Alignment.TopCenter).padding(12.dp))
 }
 
 /** The features of [this] whose geometry is a [G]: one layer's worth, to be drawn in one style. */
@@ -346,6 +380,15 @@ private suspend fun vectorTileBytes(http: HttpClient, key: TileKey): ByteArray? 
 }.getOrNull()
 
 private const val OPENFREEMAP = "https://tiles.openfreemap.org/planet/20260906_080001_pt"
+
+/** The deepest level OpenFreeMap's planet tiles have. */
+private const val SOURCE_MAX_ZOOM = 14
+
+/**
+ * How far past [SOURCE_MAX_ZOOM] the camera goes. Past it the grid lays the deepest tiles out
+ * bigger rather than fetching more, so four levels is a 16x blow-up of z14 and a blur beyond.
+ */
+private const val OVERZOOM_LEVELS = 4
 
 /**
  * How wide a press is, as a fraction of a tile. A finger is not pixel-exact and a road is a few

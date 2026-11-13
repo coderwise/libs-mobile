@@ -9,9 +9,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -22,7 +19,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.coderwise.libs.mapview.MapCameraState
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
@@ -31,15 +27,16 @@ import kotlin.math.pow
 enum class ScaleUnits { Metric, Imperial }
 
 /**
- * A bar and what it measures: metres and kilometres, or feet and miles, rounded down to a number
- * a person would say — 1, 2 or 5 of something — so that the bar is never wider than [maxWidth].
+ * A bar and what it measures for a map showing [metersPerDp] (`camera.metersPerDp`): metres and
+ * kilometres, or feet and miles, rounded down to a number a person would say — 1, 2 or 5 of
+ * something — so that the bar is never wider than [maxWidth].
  *
  * True at the middle of the map. On a Mercator map the same distance is a longer bar towards the
  * poles, so a bar read at the edge of a tall map is only an approximation, as it is on paper.
  */
 @Composable
 fun ScaleBar(
-    camera: MapCameraState,
+    metersPerDp: Double,
     modifier: Modifier = Modifier,
     units: ScaleUnits = ScaleUnits.Metric,
     maxWidth: Dp = 120.dp,
@@ -47,11 +44,7 @@ fun ScaleBar(
     background: Color = Color.White.copy(alpha = 0.75f),
     textStyle: TextStyle = TextStyle(fontSize = 11.sp)
 ) {
-    // Derived, so the bar recomposes when what it shows changes and not on every pixel of a pan.
-    val sized by remember(camera, units, maxWidth) {
-        derivedStateOf { scaleBarSize(camera.metersPerDp, maxWidth.value, units) }
-    }
-    val bar = sized ?: return
+    val bar = scaleBarSize(metersPerDp, maxWidth.value, units) ?: return
 
     Column(
         modifier
@@ -124,14 +117,12 @@ private const val FEET_PER_MILE = 5280.0
 @Preview(name = "Light")
 @Composable
 private fun ScaleBarLightPreview() {
-    val camera = remember { MapCameraState() }
-    ScaleBar(camera = camera, color = Color.Black, background = Color.White.copy(alpha = 0.75f))
+    ScaleBar(metersPerDp = 10.0, color = Color.Black, background = Color.White.copy(alpha = 0.75f))
 }
 
 @Preview(name = "Dark", uiMode = 0x20)
 @Composable
 private fun ScaleBarDarkPreview() {
-    val camera = remember { MapCameraState() }
-    ScaleBar(camera = camera, color = Color.White, background = Color(0xFF1E1E1E).copy(alpha = 0.75f))
+    ScaleBar(metersPerDp = 10.0, color = Color.White, background = Color(0xFF1E1E1E).copy(alpha = 0.75f))
 }
 
