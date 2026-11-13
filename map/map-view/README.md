@@ -210,7 +210,7 @@ wanted. Leave it out and a z17 cell drawn off a z14 tile draws hairlines.
 :map-view
   LatLon, TileWindow   (and TileKey, which :map-view-core owns and :map-view gives out as its own)
   MapState (window, slot, put, filled, forget)
-  MapCameraState (center, zoom, bearing, metersPerDp, isInteracting, moveTo, rotateTo), flyTo
+  MapCameraState (center, zoom, zoomRange, bearing, metersPerDp, isInteracting, moveTo, rotateTo), flyTo
   rememberMapCameraState, ZOOM_LIMITS
   fitCamera(points, size, density, padding, bearing, maxZoom) -> CameraFit(center, zoom)?
   MapCameraState.screenPosition(point, width, height, density) -> Offset

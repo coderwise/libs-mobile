@@ -9,6 +9,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -37,6 +38,25 @@ class MapCameraState(
 
     var zoom by mutableFloatStateOf(zoom.coerceIn(ZOOM_LIMITS))
         private set
+
+    private var limits by mutableStateOf(ZOOM_LIMITS)
+
+    /**
+     * How far this camera can be zoomed: [ZOOM_LIMITS] until an app narrows it, for a map whose
+     * tiles stop short of them — a source that ends at z14 is a blur by z19, and every way the
+     * camera moves (a pinch, a double tap, [moveTo], [flyTo]) stops at the end of it.
+     *
+     * Setting it takes the camera inside the new range at once, and a range wider than
+     * [ZOOM_LIMITS] is held to them. It is state, so a control reading it follows the source. It is
+     * not saved with the camera: an app that restores one sets it again.
+     */
+    var zoomRange: ClosedFloatingPointRange<Float>
+        get() = limits
+        set(value) {
+            require(!value.isEmpty()) { "an empty zoom range: $value" }
+            limits = value.start.coerceIn(ZOOM_LIMITS)..value.endInclusive.coerceIn(ZOOM_LIMITS)
+            zoom = zoom.coerceIn(limits)
+        }
 
     /**
      * How many gestures have hold of the map at once. A count rather than a flag because they
@@ -85,7 +105,7 @@ class MapCameraState(
     fun moveTo(center: LatLon, zoom: Float = this.zoom) {
         x = Mercator.x(center.lon)
         y = Mercator.y(center.lat)
-        this.zoom = zoom.coerceIn(ZOOM_LIMITS)
+        this.zoom = zoom.coerceIn(limits)
     }
 
     /** Turns the map to put [bearing] at the top; 0 is back to north-up. */
@@ -132,7 +152,7 @@ class MapCameraState(
 
     /** Zoom to [target], keeping the world point under [focusX]/[focusY] pinned to it. */
     internal fun zoomTo(target: Float, focusX: Float, focusY: Float, width: Float, height: Float, density: Float) {
-        val clamped = target.coerceIn(ZOOM_LIMITS)
+        val clamped = target.coerceIn(limits)
         if (clamped == zoom) return
         val focus = toWorld(focusX - width / 2, focusY - height / 2)
         val before = Mercator.worldPixels(zoom, density)
