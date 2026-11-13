@@ -6,9 +6,9 @@ The `:map-view*` modules live together in [`map/`](map). Where a module sits on 
 change its name: it is still `:map-view-core`, `com.coderwise.libs:map-view-core`, and released
 with a `map-view-core-v<version>` tag.
 
-`:map-view-controls` is deprecated and frozen: copy it from the
+`:map-view-controls` is gone after 0.3.0: copy the controls from the
 [sample](sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead of
-depending on it.
+depending on them.
 
 ## Design notes
 
@@ -81,7 +81,7 @@ were built against in their POMs, so a mixed release would have one asking for a
 that does not exist:
 
 ```bash
-for m in map-view-core map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector map-view-controls map-view-geojson; do
+for m in map-view-core map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector map-view-geojson; do
   git tag $m-v0.1.0 && git push origin $m-v0.1.0
 done
 ```

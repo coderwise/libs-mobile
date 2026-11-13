@@ -83,7 +83,6 @@ jobs:
         run: >-
           ./gradlew --continue --stacktrace
           :map-view:jsBrowserTest :map-view:wasmJsBrowserTest
-          :map-view-controls:jsBrowserTest :map-view-controls:wasmJsBrowserTest
           :map-view-core:jsBrowserTest :map-view-core:wasmJsBrowserTest
           :map-view-geojson:jsBrowserTest :map-view-geojson:wasmJsBrowserTest
           :map-view-tiles:jsBrowserTest :map-view-tiles:wasmJsBrowserTest

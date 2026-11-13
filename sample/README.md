@@ -99,7 +99,6 @@ rather than library code. Copy what you want; it is Apache-2.0, and each file is
   function a tile queue is given. `TileStore`, `MemoryTileStore`, `FileTileStore` (okio), `cached` with its four
   `CacheMode`s, and `tileUrl`. It needs `:map-view` for `TileKey` and okio, and has its tests beside it. The
   function you pass to `cached` does the fetching: client, headers, retries and the tile policy are yours.
-- **`sample/controls`** (still published as `:map-view-controls`, deprecated and frozen): `ZoomButtons`,
+- **`sample/controls`** (was `:map-view-controls`, last published as 0.3.0): `ZoomButtons`,
   `ScaleBar`, `NorthButton`, `CompassTape` and `Attribution` take what they show and are told what a press
   does, so none of them needs a `MapCameraState`; `CourseUp` is the one that turns it.
-  The published module leaves the `:map-view` family after 0.4.x; this copy is the maintained one.
