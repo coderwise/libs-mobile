@@ -37,21 +37,6 @@ The `:map-view*` modules live together in [`map/`](map). Where a module sits on 
 change its name: it is still `:map-view-core`, `com.coderwise.libs:map-view-core`, and released
 with a `map-view-core-v<version>` tag.
 
-### Archived: `:map-core` and `:map-engine`
-
-`:map-core` and `:map-engine` are the previous generation of the map, and `:map-view` replaces
-them. They are no longer built, tested or released from this repository: the source is kept under
-[`archive/`](archive) for reference, and the last releases, `0.1.8` of each, stay on Maven Central
-for the apps still on them. The coordinates and the packages differ from `:map-view`'s, so an app
-can carry both while it moves.
-
-An app finishing that move should not need `:map-core` either. It held two things a
-`:map-view` consumer still wanted — the tile maths, and `TileId` — and the maths is now
-`:map-view`'s own (`LatLon.onTileGrid`, `tileGridToLatLon`). `TileId` is not, deliberately:
-its packed `Long` exists to be a database key, which is an app's concern rather than a
-view's, and `:map-view` addresses a slot on screen with `TileKey` instead. An app that
-persists tiles is better off owning that type.
-
 The [`sample/`](sample) directory holds an unpublished demo app — a gallery with one
 screen per library, running the same list on all five platforms (Android, iOS, Desktop,
 JS, Wasm/JS); see its [README](sample/README.md) for what is in the gallery and how to
