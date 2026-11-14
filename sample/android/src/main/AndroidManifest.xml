@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Coderwise Libraries"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:supportsRtl="true">

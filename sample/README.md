@@ -84,6 +84,21 @@ open MapSample.xcodeproj
 Building the app in Xcode compiles the `:sample:common` framework via a
 pre-build Gradle step (`embedAndSignAppleFrameworkForXcode`).
 
+## The icon
+
+A 2x2 grid of rounded tiles on the baseline Material purple the sample's theme already uses —
+the gallery, with one tile picked out in amber. Every icon is generated from that one
+description by [`icon/generate.py`](icon/generate.py) (standard library, plus `rsvg-convert`,
+`iconutil` and `sips`), and the outputs are committed, so it only needs to run when the mark
+changes:
+
+| Platform | Output |
+|---|---|
+| Android | adaptive icon (vector foreground + monochrome layer for themed icons) in `android/src/main/res` |
+| iOS | 1024px `AppIcon` in `ios/Sources/Assets.xcassets` |
+| Desktop | `desktop/src/main/resources/icon.png` for the window and Dock; `desktop/icons/` for the packaged `.icns`, `.ico` and `.png` |
+| Web | `favicon.svg` + `favicon.png` in both web targets' resources |
+
 ## Adding an example
 
 1. Write the demo as an `@Composable` in `common/src/commonMain`.
