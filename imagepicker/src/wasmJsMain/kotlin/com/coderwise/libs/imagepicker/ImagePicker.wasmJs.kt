@@ -1,4 +1,8 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
 package com.coderwise.libs.imagepicker
+
+import kotlin.js.ExperimentalWasmJsInterop
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue

@@ -1,4 +1,8 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
 package com.coderwise.libs.permissions
+
+import kotlin.js.ExperimentalWasmJsInterop
 
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume

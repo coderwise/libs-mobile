@@ -1,4 +1,8 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
 package com.coderwise.libs.utils
+
+import kotlin.js.ExperimentalWasmJsInterop
 
 internal actual fun copyToClipboard(text: String) {
     writeToClipboard(text)
