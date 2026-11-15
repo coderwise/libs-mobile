@@ -24,12 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -37,37 +34,50 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.ui.NavDisplay
+import com.coderwise.libs.utils.horizontalSlideTransition
 
 /**
  * A gallery of the libraries in this repo, running on every supported platform. Each entry is a
  * small screen exercising one module through its public API, meant to be read as much as run.
  *
- * The shell is deliberately plain: a list, a detail screen, and one back affordance, with no
- * navigation library, no DI container, and no resources — so that what a reader has to
+ * The shell is deliberately plain: a list, a detail screen, and one back affordance, with only
+ * navigation3's NavDisplay, no DI container, and no resources — so that what a reader has to
  * understand to copy an example is the library it demonstrates, and nothing else.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SampleApp() {
     MaterialTheme {
         val examples = remember { sampleExamples() }
-        var selected by remember { mutableStateOf<Example?>(null) }
-        // Hoisted above the branch, so coming back from an example lands where the reader left
-        // the list rather than at the top of it.
+        // The back stack is the gallery, then at most one example (keyed by its title).
+        val backStack = remember { mutableStateListOf<Any>(GalleryKey) }
+        // Hoisted above the NavDisplay, so coming back from an example lands where the reader
+        // left the list rather than at the top of it.
         val galleryState = rememberLazyListState()
 
-        // One screen deep is the whole back stack, so the system gesture needs nothing more
-        // than the same exit the top bar's arrow takes. Without it, Android's back leaves the
-        // app from an example rather than returning to the list.
-        BackHandler(enabled = selected != null) { selected = null }
-
-        if (selected == null) {
-            ExampleGallery(examples, galleryState, onSelect = { selected = it })
-        } else {
-            ExampleScreen(requireNotNull(selected), onBack = { selected = null })
-        }
+        // NavDisplay takes the system back gesture itself, and slides every screen in from the
+        // right and back out again (horizontalSlideTransition, from :utils).
+        NavDisplay(
+            backStack = backStack,
+            onBack = { backStack.removeLastOrNull() },
+            entryProvider = { key ->
+                NavEntry(key, metadata = horizontalSlideTransition()) {
+                    if (key == GalleryKey) {
+                        ExampleGallery(examples, galleryState, onSelect = { backStack.add(it.title) })
+                    } else {
+                        ExampleScreen(
+                            examples.first { it.title == key },
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
+                }
+            }
+        )
     }
 }
+
+private data object GalleryKey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

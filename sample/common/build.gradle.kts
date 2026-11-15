@@ -46,9 +46,8 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.preview)
-            // For the common BackHandler: the system back gesture is the gallery's second way
-            // out of an example, and it ships separately from compose.ui.
-            implementation(libs.compose.backhandler)
+            // The gallery is a NavDisplay; :utils supplies its slide transition.
+            implementation(libs.navigation3.ui)
             // Only for the image-picker example: decodeToImageBitmap() is what turns the
             // bytes :imagepicker hands back into something Image() can draw.
             implementation(libs.compose.components.resources)
