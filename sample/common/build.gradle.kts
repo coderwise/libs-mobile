@@ -14,6 +14,7 @@ kotlin {
         namespace = "com.coderwise.libs.sample.common"
         compileSdk = libs.versions.compileSdk.get().toInt()
         minSdk = libs.versions.minSdk.get().toInt()
+        withHostTest {}
     }
     listOf(iosArm64(), iosSimulatorArm64()).forEach {
         it.binaries.framework {
