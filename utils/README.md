@@ -14,6 +14,7 @@ Cross-platform utilities for Compose Multiplatform, published to **Maven Central
   services). On Android it resolves the context from Koin's `GlobalContext`.
 - `LruCache<K, V>` — generic size-bounded cache.
 - `@Composable PlatformColors(darkTheme)` — apply edge-to-edge / system-bar styling per platform.
+- `horizontalSlideTransition()`, `verticalSlideTransition()`, `popTransition()`, `slideInPushTransform()`, `slideInPopTransform()` — slide transitions for navigation3 `NavDisplay` entry metadata (no fades; the predictive-pop spec plays the push slide on web, where `NavDisplay` reports a plain push as a predictive back). Exposes `navigation3-ui` as an `api` dependency.
 - `@Composable KeepScreenOn(enabled)` — hold a wake lock while the screen is shown.
 
 ## Coordinates
