@@ -3,9 +3,11 @@
 
     <!-- Declared by the app, not by :permissions: a library manifest merges into every
          consumer, so a permission declared there would ship with apps that never ask for it.
-         These two are what the permissions example requests. -->
+         These are what the permissions, camera and location examples request. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- The map engine example fetches OpenStreetMap tiles; nothing else here uses the network. -->
     <uses-permission android:name="android.permission.INTERNET" />

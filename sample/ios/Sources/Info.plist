@@ -19,6 +19,9 @@
     <!-- Required before the camera prompt in the permissions example can be shown. -->
     <key>NSCameraUsageDescription</key>
     <string>The permissions example asks for camera access to show what a granted permission looks like. The sample never opens the camera.</string>
+    <!-- Required before the location example can ask for while-in-use access. -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>The location example reads your position once, or while you watch it, to show what the library returns. The sample stores and sends nothing.</string>
     <key>UILaunchScreen</key>
     <dict/>
 </dict>

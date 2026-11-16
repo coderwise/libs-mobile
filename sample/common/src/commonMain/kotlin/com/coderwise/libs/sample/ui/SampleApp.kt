@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -54,7 +56,7 @@ fun SampleApp() {
         val backStack = remember { mutableStateListOf<Any>(GalleryKey) }
         // Hoisted above the NavDisplay, so coming back from an example lands where the reader
         // left the list rather than at the top of it.
-        val galleryState = rememberLazyListState()
+        val galleryState = rememberLazyGridState()
 
         // NavDisplay takes the system back gesture itself, and slides every screen in from the
         // right and back out again (horizontalSlideTransition, from :utils).
@@ -83,25 +85,32 @@ private data object GalleryKey
 @Composable
 private fun ExampleGallery(
     examples: List<Example>,
-    listState: LazyListState,
+    listState: LazyGridState,
     onSelect: (Example) -> Unit
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Coderwise libraries") }) }
     ) { inner ->
-        LazyColumn(
+        // As many columns as fit at a card's comfortable width: one on a phone, which is the
+        // list this used to be, and more as the window widens, instead of one card stretched
+        // across a desktop or browser window.
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = CARD_MIN_WIDTH),
             state = listState,
             modifier = Modifier.fillMaxSize().padding(inner),
             contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { GalleryIntro() }
+            item(span = { GridItemSpan(maxLineSpan) }) { GalleryIntro() }
             items(examples, key = { it.title }) { example ->
                 ExampleCard(example, onClick = { onSelect(example) })
             }
         }
     }
 }
+
+private val CARD_MIN_WIDTH = 320.dp
 
 @Composable
 private fun GalleryIntro() {
@@ -129,6 +138,9 @@ private fun ExampleCard(example: Example, onClick: () -> Unit) {
                 text = example.summary,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                // Cards in one grid row are sized by their own content, so a row only reads as
+                // even if every summary takes the same three lines.
+                minLines = 3,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )

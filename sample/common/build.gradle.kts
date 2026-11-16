@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    // For the settings example's @Serializable state.
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -28,8 +30,13 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(project(":billing"))
+            implementation(project(":camera"))
+            implementation(project(":database"))
             implementation(project(":filepicker"))
             implementation(project(":imagepicker"))
+            implementation(project(":locale"))
+            implementation(project(":location"))
             implementation(project(":logger"))
             implementation(project(":map-view"))
             implementation(project(":map-view-geojson"))
@@ -37,6 +44,7 @@ kotlin {
             implementation(project(":map-view-tiles-raster"))
             implementation(project(":map-view-tiles-vector"))
             implementation(project(":permissions"))
+            implementation(project(":settings"))
             implementation(project(":utils"))
             // The tile cache and the controls are the sample's own code (sample/cache and
             // sample/controls): copy them if you want them. okio is what FileTileStore is made from.

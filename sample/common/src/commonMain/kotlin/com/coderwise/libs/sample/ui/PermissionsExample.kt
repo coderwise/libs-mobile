@@ -64,8 +64,9 @@ internal fun PermissionsExample() {
             }
         }
         PlatformNote(
-            "The sample app declares CAMERA and POST_NOTIFICATIONS itself; the library declares " +
-                "no Android permission, so an app using one state here never ships the others. " +
+            "The sample app declares CAMERA, POST_NOTIFICATIONS and the location permissions " +
+                "itself; the library declares no Android permission, so an app using one state " +
+                "here never ships the others. " +
                 "Desktop has no runtime permission model at all — both read Granted, and the " +
                 "settings launcher does nothing. The browser has one for the camera, where " +
                 "requesting means opening a media stream, but not for notifications. A grant " +

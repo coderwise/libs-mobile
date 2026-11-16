@@ -18,7 +18,13 @@ the library it demonstrates.
 | Map view | `:map-view` | Layered tile slots in one `MapView`, a `TileQueue` filling the state, and a magnified ancestor standing in until a tile lands — plus routes, search-result pins and a tap that drops one. On live OpenStreetMap tiles, fetched by the example with Ktor: the engine fetches nothing itself. |
 | Text file picker | `:filepicker` | `rememberTextFilePicker`, with the picked file's contents shown. |
 | Image picker | `:imagepicker` | `rememberImagePicker`, with the downscaled bytes decoded and drawn. |
+| Camera | `:camera` | `rememberCameraController`: a live `Viewfinder` and a single capture, with the "no camera here" path for desktop and the browser. |
+| Location | `:location` | `getCurrentLocation()` and the `locationUpdates()` stream as `Result`s, so a refusal is a value to show. |
 | Permissions | `:permissions` | Camera and notification status, and the refusal the OS stops prompting for — the case `rememberAppSettingsLauncher` exists for. |
+| Locale | `:locale` | Device region and country, the measurement system they imply, and the Android case where the SIM disagrees with the locale. |
+| Settings | `:settings` | A `@Serializable` state that survives a restart: a DataStore file on Android, iOS and desktop, `localStorage` in the browser. |
+| Database | `:database` | The per-platform SQLite driver behind one `DatabaseDriverFactory`, driving a table of notes with a hand-written `SqlSchema`. The browser has no driver and says so. |
+| Billing | `:billing` | The inert `Billing` every build without a store gets, and how a real one is wired. A real purchase needs a store product, which a sample cannot ship. |
 | Share text | `:utils` | `rememberShareTextLauncher`: share sheet on Android and iOS, clipboard elsewhere. |
 | Logging | `:logger` | `AppLogger` at each level, and where the lines come out per platform. |
 
@@ -40,9 +46,15 @@ happens. The planet build stops at zoom 14, which is why the vector example's ti
 does too: past it the grid lays the deepest level out bigger rather than asking for tiles
 that do not exist.
 
-The Android app declares `INTERNET` for it, and `CAMERA` and `POST_NOTIFICATIONS`, and the iOS app declares
-`NSCameraUsageDescription`, for the permissions example — the libraries declare no
+The Android app declares `INTERNET` for it, and `CAMERA`, `POST_NOTIFICATIONS` and the two location
+permissions for the permissions, camera and location examples. The iOS app declares
+`NSCameraUsageDescription` and `NSLocationWhenInUseUsageDescription`. The libraries declare no
 permission of their own (see the root [README](../README.md#no-module-declares-an-android-permission)).
+
+Settings, database and location are the three whose factories take something different on each
+platform — a `Context` on Android, a directory on desktop, nothing on iOS and the web. An app
+resolves those in its DI graph; the sample has none, so `Platform.kt` and its five actuals show
+what each target hands over.
 
 | Module | Role |
 |---|---|
@@ -101,7 +113,8 @@ changes:
 
 ## Adding an example
 
-1. Write the demo as an `@Composable` in `common/src/commonMain`.
+1. Write the demo as an `@Composable` in `common/src/commonMain`. If the library's factory
+   needs something per platform, add a `remember…` to `Platform.kt` and its actuals.
 2. Add an `Example(...)` for it to `mapExamples()` or `libraryExamples()`. The gallery
    picks it up from there — nothing else to register.
 
