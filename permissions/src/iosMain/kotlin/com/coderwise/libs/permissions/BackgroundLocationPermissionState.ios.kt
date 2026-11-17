@@ -10,7 +10,14 @@ import platform.CoreLocation.CLLocationManagerDelegateProtocol
 import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
 import platform.CoreLocation.kCLAuthorizationStatusAuthorizedWhenInUse
 import platform.CoreLocation.kCLAuthorizationStatusNotDetermined
+import platform.UIKit.UIApplication
+import platform.UIKit.UIApplicationState
+import platform.darwin.DISPATCH_TIME_NOW
+import platform.darwin.NSEC_PER_SEC
 import platform.darwin.NSObject
+import platform.darwin.dispatch_after
+import platform.darwin.dispatch_get_main_queue
+import platform.darwin.dispatch_time
 
 /**
  * iOS "Always" location access. [PermissionStatus.Granted] means exactly
@@ -105,6 +112,28 @@ private class AlwaysAuthRequester : NSObject(), CLLocationManagerDelegateProtoco
         asked = true
         pending = onResult
         manager.requestAlwaysAuthorization()
+        resolveIfSilent()
+    }
+
+    /**
+     * A spent upgrade prompt is answered with nothing at all: no dialog and, because the status
+     * does not change, no delegate callback either — so [pending] would wait forever and the tap
+     * would look dead. When the grace period passes with the app still active (a system dialog
+     * would have made it inactive) and no callback, resolve with the status as it now reads, a
+     * decided refusal.
+     */
+    private fun resolveIfSilent() {
+        val deadline = dispatch_time(DISPATCH_TIME_NOW, SILENT_GRACE_SECONDS * NSEC_PER_SEC.toLong())
+        dispatch_after(deadline, dispatch_get_main_queue()) {
+            val callback = pending ?: return@dispatch_after
+            if (UIApplication.sharedApplication.applicationState != UIApplicationState.UIApplicationStateActive) {
+                return@dispatch_after
+            }
+            pending = null
+            val status = currentStatus()
+            onStatusChanged?.invoke(status)
+            callback(status)
+        }
     }
 
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
@@ -125,3 +154,5 @@ private class AlwaysAuthRequester : NSObject(), CLLocationManagerDelegateProtoco
             else -> PermissionStatus.Denied(shouldShowRationale = false)
         }
 }
+
+private const val SILENT_GRACE_SECONDS = 1L
