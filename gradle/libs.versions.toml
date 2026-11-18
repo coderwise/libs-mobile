@@ -27,6 +27,7 @@ ktor = "3.6.1"
 lifecycle = "2.11.0"
 navigation3-ui = "1.2.0"
 okio = "3.18.2"
+kotlinx-io = "0.9.3"
 play-billing = "9.1.0"
 serialization = "1.13.0"
 sqldelight = "2.4.1"
@@ -69,6 +70,7 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3-ui" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 play-billing = { module = "com.android.billingclient:billing", version.ref = "play-billing" }
 sqldelight-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }

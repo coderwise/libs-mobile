@@ -42,4 +42,14 @@ class SettingsDataStoreFactoryTest {
 
         assertEquals("system", second.data.first().theme)
     }
+
+    @Test
+    fun `a kotlinx-io Path names the directory too`() = runTest {
+        val directory = File(root, "io/.myApp")
+        val store = SettingsDataStoreFactory(kotlinx.io.files.Path(directory.path)).create("settings.json", Prefs(), Prefs.serializer())
+
+        store.updateData { it.copy(theme = "dark") }
+
+        assertTrue(File(directory, "settings.json").isFile)
+    }
 }

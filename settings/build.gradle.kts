@@ -46,6 +46,8 @@ kotlin {
         androidMain.get().dependsOn(nonWebMain)
         iosMain.get().dependsOn(nonWebMain)
         sourceSets.getByName("desktopMain").dependsOn(nonWebMain)
+        // api: kotlinx.io.files.Path appears in the public API of the desktop SettingsDataStoreFactory.
+        sourceSets.getByName("desktopMain").dependencies { api(libs.kotlinx.io.core) }
 
         sourceSets.getByName("desktopTest") {
             dependencies {
