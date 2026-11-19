@@ -16,6 +16,7 @@ kotlin {
         minSdk = libs.versions.minSdkCompat.get().toInt()
     }
     iosArm64(); iosSimulatorArm64()
+    macosArm64()
     js {
         browser()
         nodejs()
@@ -45,9 +46,21 @@ kotlin {
 
         androidMain.get().dependsOn(nonWebMain)
         iosMain.get().dependsOn(nonWebMain)
+        sourceSets.getByName("macosMain") {
+            dependsOn(nonWebMain)
+            // api: kotlinx.io.files.Path appears in the public API of the macOS SettingsDataStoreFactory.
+            dependencies { api(libs.kotlinx.io.core) }
+        }
         sourceSets.getByName("desktopMain").dependsOn(nonWebMain)
         // api: kotlinx.io.files.Path appears in the public API of the desktop SettingsDataStoreFactory.
         sourceSets.getByName("desktopMain").dependencies { api(libs.kotlinx.io.core) }
+
+        sourceSets.getByName("macosTest") {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
 
         sourceSets.getByName("desktopTest") {
             dependencies {
