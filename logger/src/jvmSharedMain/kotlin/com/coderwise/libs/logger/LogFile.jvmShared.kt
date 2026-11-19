@@ -1,22 +1,27 @@
 package com.coderwise.libs.logger
 
-import java.io.File
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readString
+import kotlinx.io.writeString
 
 internal actual fun openLogFile(
     directory: String,
     fileName: String,
     maxBytes: Long,
 ): LogFile? {
-    val target = File(directory, fileName)
-    target.parentFile?.mkdirs()
+    val target = Path(directory, fileName)
+    val parent = target.parent ?: return null
+    runCatching { SystemFileSystem.createDirectories(parent) }
     // Nothing can be written here, so say so and let the caller keep whatever it
     // holds in memory rather than hand back a file that silently drops lines.
-    if (target.parentFile?.isDirectory != true) return null
+    if (SystemFileSystem.metadataOrNull(parent)?.isDirectory != true) return null
     return JvmLogFile(target, maxBytes)
 }
 
 /**
- * [LogFile] over [java.io.File].
+ * [LogFile] over a kotlinx-io [Path].
  *
  * Every line is opened, appended and closed. A session is a few thousand lines
  * over an hour, so the per-line cost is irrelevant next to what it buys: a line
@@ -30,17 +35,17 @@ internal actual fun openLogFile(
  * diagnosing is worse than no diagnostic.
  */
 private class JvmLogFile(
-    private val file: File,
+    private val file: Path,
     private val maxBytes: Long,
 ) : LogFile {
 
-    private val rotated = File(file.parentFile, "${file.name}.1")
+    private val rotated = Path(requireNotNull(file.parent), "${file.name}.1")
 
     @Synchronized
     override fun append(line: String) {
         runCatching {
             rotateIfOversized()
-            file.appendText("$line\n")
+            SystemFileSystem.sink(file, append = true).buffered().use { it.writeString("$line\n") }
         }
     }
 
@@ -49,10 +54,14 @@ private class JvmLogFile(
         runCatching { rotated.linesOrEmpty() + file.linesOrEmpty() }.getOrElse { emptyList() }
 
     private fun rotateIfOversized() {
-        if (file.length() < maxBytes) return
-        rotated.delete()
-        file.renameTo(rotated)
+        if ((SystemFileSystem.metadataOrNull(file)?.size ?: 0L) < maxBytes) return
+        SystemFileSystem.delete(rotated, mustExist = false)
+        SystemFileSystem.atomicMove(file, rotated)
     }
 }
 
-private fun File.linesOrEmpty(): List<String> = if (exists()) readLines() else emptyList()
+private fun Path.linesOrEmpty(): List<String> {
+    if (!SystemFileSystem.exists(this)) return emptyList()
+    val text = SystemFileSystem.source(this).buffered().use { it.readString() }
+    return text.lines().let { if (it.lastOrNull().isNullOrEmpty()) it.dropLast(1) else it }
+}

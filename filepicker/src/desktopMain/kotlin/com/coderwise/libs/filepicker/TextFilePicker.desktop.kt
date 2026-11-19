@@ -7,10 +7,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readString
 import java.awt.EventQueue
 import java.awt.FileDialog
 import java.awt.Frame
-import java.io.File
 
 @Composable
 actual fun rememberTextFilePicker(
@@ -24,7 +27,7 @@ actual fun rememberTextFilePicker(
         {
             scope.launch {
                 val file = withContext(Dispatchers.IO) { chooseFile(extensions, title) }
-                callback.value(file?.let { runCatching { it.readText() }.getOrNull() })
+                callback.value(file?.let { runCatching { SystemFileSystem.source(it).buffered().use { source -> source.readString() } }.getOrNull() })
             }
         }
     }
@@ -37,8 +40,8 @@ actual fun rememberTextFilePicker(
  *
  * Swing owns its dialogs from the event thread; reading the file afterwards does not.
  */
-private fun chooseFile(extensions: List<String>, title: String?): File? {
-    var chosen: File? = null
+private fun chooseFile(extensions: List<String>, title: String?): Path? {
+    var chosen: Path? = null
     EventQueue.invokeAndWait {
         val dialog = FileDialog(null as Frame?, title ?: "Open", FileDialog.LOAD).apply {
             if (extensions.isNotEmpty()) {
@@ -54,7 +57,7 @@ private fun chooseFile(extensions: List<String>, title: String?): File? {
         }
         val dir = dialog.directory
         val name = dialog.file
-        if (dir != null && name != null) chosen = File(dir, name)
+        if (dir != null && name != null) chosen = Path(dir, name)
     }
     return chosen
 }

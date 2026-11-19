@@ -37,6 +37,8 @@ kotlin {
         val desktopMain = sourceSets.getByName("desktopMain") {
             dependencies {
                 implementation(libs.sqldelight.sqlite)
+                // api: kotlinx.io.files.Path appears in the public API of the desktop DatabaseDriverFactory.
+                api(libs.kotlinx.io.core)
             }
         }
         sourceSets.getByName("desktopTest") {

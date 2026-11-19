@@ -4,7 +4,8 @@ import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlSchema
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
-import java.io.File
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 
 /**
  * The desktop database is a file under [dataDir], so that quitting the app is not the same thing as
@@ -16,10 +17,10 @@ import java.io.File
  * `databaseDriverModule`, which asks the app graph for it under [DATA_DIR_QUALIFIER].
  */
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-actual class DatabaseDriverFactory(private val dataDir: File) {
+actual class DatabaseDriverFactory(private val dataDir: Path) {
     actual fun createDriver(schema: SqlSchema<QueryResult.Value<Unit>>, name: String): SqlDriver {
-        dataDir.mkdirs()
-        val driver = JdbcSqliteDriver("jdbc:sqlite:${File(dataDir, name).absolutePath}")
+        SystemFileSystem.createDirectories(dataDir)
+        val driver = JdbcSqliteDriver("jdbc:sqlite:${Path(SystemFileSystem.resolve(dataDir), name)}")
         driver.migrateTo(schema)
         return driver
     }

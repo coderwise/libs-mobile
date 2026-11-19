@@ -29,11 +29,12 @@ kotlin {
     applyDefaultHierarchyTemplate()
 
     sourceSets {
-        // java.io backs the log file on both JVM targets: Android is where it
+        // kotlinx-io backs the log file on both JVM targets: Android is where it
         // matters, desktop is where a real filesystem is available to tests.
         val jvmSharedMain = create("jvmSharedMain") { dependsOn(commonMain.get()) }
         getByName("androidMain").dependsOn(jvmSharedMain)
         getByName("desktopMain").dependsOn(jvmSharedMain)
+        jvmSharedMain.dependencies { implementation(libs.kotlinx.io.core) }
 
         commonMain.dependencies {
             // api, not implementation: AppLogger's own signatures hide Kermit, but

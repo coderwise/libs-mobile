@@ -30,6 +30,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
         }
+        getByName("desktopMain").dependencies { implementation(libs.kotlinx.io.core) }
         jsMain.dependencies {
             implementation(libs.kotlinx.browser)
         }

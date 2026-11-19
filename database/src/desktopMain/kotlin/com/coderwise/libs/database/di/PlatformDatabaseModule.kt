@@ -4,13 +4,13 @@ import com.coderwise.libs.database.DatabaseDriverFactory
 import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
-import java.io.File
+import kotlinx.io.files.Path
 
 /**
  * The directory the desktop database file goes in, which the application has to declare:
  *
  * ```
- * single<File>(DATA_DIR_QUALIFIER) { File(System.getProperty("user.home"), ".myApp") }
+ * single<Path>(DATA_DIR_QUALIFIER) { Path(System.getProperty("user.home"), ".myApp") }
  * ```
  *
  * A library has no business naming a folder after one of the apps that use it, and every one of
@@ -19,5 +19,5 @@ import java.io.File
 val DATA_DIR_QUALIFIER = named("com.coderwise.libs.database.dataDir")
 
 actual val databaseDriverModule: Module = module {
-    single { DatabaseDriverFactory(get<File>(DATA_DIR_QUALIFIER)) }
+    single { DatabaseDriverFactory(get<Path>(DATA_DIR_QUALIFIER)) }
 }

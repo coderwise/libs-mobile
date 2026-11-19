@@ -36,7 +36,9 @@ kotlin {
             implementation(libs.androidx.activity)
             implementation(libs.androidx.core.ktx)
             implementation(libs.koin.android)
+            implementation(libs.kotlinx.io.core)
         }
+        getByName("desktopMain").dependencies { implementation(libs.kotlinx.io.core) }
     }
 }
 

@@ -2,7 +2,10 @@ package com.coderwise.libs.database
 
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlSchema
-import java.io.File
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.files.SystemTemporaryDirectory
+import kotlin.random.Random
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -10,7 +13,7 @@ import kotlin.test.assertEquals
 
 class DatabaseDriverFactoryTest {
 
-    private lateinit var dataDir: File
+    private lateinit var dataDir: Path
 
     /** The schema of a one-table database, standing in for whatever an app publishes. */
     private fun schema(version: Long) = object : SqlSchema<QueryResult.Value<Unit>> {
@@ -34,15 +37,14 @@ class DatabaseDriverFactoryTest {
 
     @BeforeTest
     fun setUp() {
-        dataDir = File.createTempFile("coderwise-db", "").let { file ->
-            file.delete()
-            file.also { it.mkdirs() }
-        }
+        dataDir = Path(SystemTemporaryDirectory, "coderwise-db-${Random.nextLong().toULong()}")
+        SystemFileSystem.createDirectories(dataDir)
     }
 
     @AfterTest
     fun tearDown() {
-        dataDir.deleteRecursively()
+        SystemFileSystem.list(dataDir).forEach { SystemFileSystem.delete(it, mustExist = false) }
+        SystemFileSystem.delete(dataDir, mustExist = false)
     }
 
     @Test
@@ -74,7 +76,7 @@ class DatabaseDriverFactoryTest {
     fun `the database lands in the data directory under the name it was asked for`() {
         DatabaseDriverFactory(dataDir).createDriver(schema(1), "named.db").close()
 
-        assertEquals(true, File(dataDir, "named.db").exists())
+        assertEquals(true, SystemFileSystem.exists(Path(dataDir, "named.db")))
     }
 
     private fun app.cash.sqldelight.db.SqlDriver.noteIds(): List<String> = executeQuery(

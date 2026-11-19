@@ -1,6 +1,10 @@
 package com.coderwise.libs.logger
 
-import kotlin.io.path.createTempDirectory
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.files.SystemTemporaryDirectory
+import kotlin.random.Random
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -11,7 +15,14 @@ import kotlin.test.assertEquals
  */
 class LogFileTest {
 
-    private val directory = createTempDirectory("logfile").toFile().absolutePath
+    private val directoryPath = Path(SystemTemporaryDirectory, "logfile-${Random.nextLong().toULong()}")
+    private val directory = directoryPath.toString()
+
+    @AfterTest
+    fun cleanUp() {
+        listOf(FILE_NAME, "$FILE_NAME.1").forEach { SystemFileSystem.delete(Path(directoryPath, it), mustExist = false) }
+        SystemFileSystem.delete(directoryPath, mustExist = false)
+    }
 
     private fun open(maxBytes: Long) =
         requireNotNull(openLogFile(directory, FILE_NAME, maxBytes)) { "no log file under $directory" }
