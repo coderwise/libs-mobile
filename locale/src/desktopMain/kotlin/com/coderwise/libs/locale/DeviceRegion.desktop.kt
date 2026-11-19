@@ -1,6 +1,6 @@
 package com.coderwise.libs.locale
 
-import java.util.Locale
-
+// The JVM sets user.country from the OS locale at startup; it is the same value Locale.getDefault()
+// starts with, read without the Java locale type.
 actual fun deviceRegionCode(): String? =
-    Locale.getDefault().country.takeIf { it.length == 2 }?.uppercase()
+    System.getProperty("user.country")?.takeIf { it.length == 2 }?.uppercase()

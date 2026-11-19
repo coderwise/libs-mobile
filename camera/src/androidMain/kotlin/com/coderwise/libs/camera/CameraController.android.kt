@@ -20,7 +20,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import java.util.concurrent.Executor
 import kotlinx.io.Buffer
 import kotlinx.io.asOutputStream
 import kotlinx.io.readByteArray
@@ -79,7 +78,7 @@ private class CameraXController(
      * Callbacks land on the main thread, where the results are handed back to the composition. Off
      * the preview's own context, which is the one this controller was built in.
      */
-    private val executor: Executor = ContextCompat.getMainExecutor(previewView.context)
+    private val executor = ContextCompat.getMainExecutor(previewView.context)
 
     /**
      * Writes to a stream rather than reading the sensor buffer directly: on the way out CameraX

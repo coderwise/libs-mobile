@@ -1,6 +1,6 @@
 package com.coderwise.libs.locale
 
-import java.util.Locale
+import android.os.LocaleList
 
 actual fun deviceRegionCode(): String? =
-    Locale.getDefault().country.takeIf { it.length == 2 }?.uppercase()
+    LocaleList.getDefault()[0].country.takeIf { it.length == 2 }?.uppercase()
