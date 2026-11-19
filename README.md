@@ -68,6 +68,14 @@ A tile map built from small parts, so you take the pieces you need.
 | [`logger`](logger) | `0.3.0` | A logging facade, with recent log lines you can hand to a share sheet and logging that is readable off-device on iOS. |
 | [`utils`](utils) | `0.6.1` | File and text sharing, system-bar colors and a generic LRU cache. |
 
+### App architecture
+
+| Library | Version | What it gives you |
+|---|---|---|
+| [`navigation`](navigation) | unreleased | Navigation 3 back stacks for apps with several roots (tabs, auth vs. main): one child stack per root, typed navigation events, and back stacks that survive process death. |
+| [`arch`](arch) | unreleased | Use case base classes (suspend, Flow and synchronous) that run on a dispatcher you choose. |
+| [`uistate`](uistate) | unreleased | A shared loading and error contract for ViewModel UI states, and the `StateFlow` sharing timeout. |
+
 ## Contributing
 
 Building, releasing and the design notes behind these libraries are in
