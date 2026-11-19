@@ -20,6 +20,9 @@ abstract class SuspendUseCase<in P, out R>(
     protected abstract suspend fun execute(params: P): R
 }
 
+/** Runs a [SuspendUseCase] that takes no input as `useCase()` instead of `useCase(Unit)`. */
+suspend operator fun <R> SuspendUseCase<Unit, R>.invoke(): R = this(Unit)
+
 /** A use case taking [P] and returning a [Flow] of [R], collected upstream on [dispatcher]. */
 abstract class FlowUseCase<in P, out R>(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -28,6 +31,9 @@ abstract class FlowUseCase<in P, out R>(
 
     protected abstract fun execute(params: P): Flow<R>
 }
+
+/** Collects a [FlowUseCase] that takes no input as `useCase()` instead of `useCase(Unit)`. */
+operator fun <R> FlowUseCase<Unit, R>.invoke(): Flow<R> = this(Unit)
 
 /** A suspending use case with no parameters, run on [dispatcher]. */
 abstract class SuspendResultUseCase<out R>(

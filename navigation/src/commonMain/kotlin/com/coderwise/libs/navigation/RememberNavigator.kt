@@ -48,6 +48,9 @@ fun rememberAppNavigator(
  * a predictive back gesture two roots compose at once, and each must keep pushing to its own
  * stack. The stack is looked up on every access, so it stays right after [Navigator.replaceRoot]
  * drops and recreates it.
+ *
+ * [onEvent] runs with the returned child navigator as its receiver, so `navigate()` and
+ * `navigateUp()` inside it act on this child's stack even while another root is in front.
  */
 @Composable
 fun rememberChildNavigator(
@@ -59,27 +62,37 @@ fun rememberChildNavigator(
     val navigator = remember(navigationState, rootKey, startDestination) {
         ChildNavigator(navigationState, rootKey, startDestination)
     }
-    RegisterEventHandler(navigationState, onEvent)
+    RegisterEventHandler(navigationState, onEvent, receiver = navigator)
     return navigator
 }
 
 /**
- * Registers one stable wrapper per [navigationState] that always calls the latest [onEvent].
- * A new lambda on recomposition does not re-register, and the handler removed on dispose is
- * the one that was added.
+ * Registers one stable wrapper per [navigationState] and [receiver] that always calls the latest
+ * [onEvent]. A new lambda on recomposition does not re-register, and the handler removed on
+ * dispose is the one that was added.
  */
 @Composable
 private fun RegisterEventHandler(
     navigationState: NavigationState,
     onEvent: Navigator.(NavEvent) -> Unit,
+    receiver: Navigator? = null,
 ) {
     val currentOnEvent by rememberUpdatedState(onEvent)
-    DisposableEffect(navigationState) {
-        val handler: Navigator.(NavEvent) -> Unit = { event -> currentOnEvent(event) }
+    DisposableEffect(navigationState, receiver) {
+        val handler = eventHandler(receiver) { event -> currentOnEvent(event) }
         navigationState.addEventHandler(handler)
         onDispose { navigationState.removeEventHandler(handler) }
     }
 }
+
+/**
+ * A handler that runs [handle] on [receiver] when there is one, and otherwise on the navigator
+ * that dispatched the event.
+ */
+internal fun eventHandler(
+    receiver: Navigator?,
+    handle: Navigator.(NavEvent) -> Unit,
+): Navigator.(NavEvent) -> Unit = { event -> handle(receiver ?: this, event) }
 
 internal class ChildNavigator(
     private val state: NavigationState,

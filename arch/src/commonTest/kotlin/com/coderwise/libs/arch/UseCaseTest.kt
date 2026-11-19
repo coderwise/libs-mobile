@@ -57,6 +57,22 @@ class UseCaseTest {
         assertSame(dispatcher, useCase.ranOn)
     }
 
+    private class Ping(dispatcher: CoroutineDispatcher) : SuspendUseCase<Unit, String>(dispatcher) {
+        override suspend fun execute(params: Unit) = "pong"
+    }
+
+    private class Ticks(dispatcher: CoroutineDispatcher) : FlowUseCase<Unit, Int>(dispatcher) {
+        override fun execute(params: Unit): Flow<Int> = flow { emit(1); emit(2) }
+    }
+
+    @Test
+    fun `Unit use cases can be invoked without an argument`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+
+        assertEquals("pong", Ping(dispatcher)())
+        assertEquals(listOf(1, 2), Ticks(dispatcher)().toList())
+    }
+
     @Test
     fun `parameterless variants return their results`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)

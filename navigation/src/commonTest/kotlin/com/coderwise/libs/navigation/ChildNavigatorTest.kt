@@ -4,6 +4,8 @@ import androidx.navigation3.runtime.NavKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+private data object Tapped : NavEvent
+
 class ChildNavigatorTest {
 
     private val state = NavigationState().apply { onStart(Home) }
@@ -36,6 +38,28 @@ class ChildNavigatorTest {
 
         assertEquals(listOf(Feed, Detail("2")), state.getBackStack(Home).toList())
         assertEquals(listOf(Feed, Detail("2")), home.currentBackStack.toList())
+    }
+
+    @Test
+    fun `a child event handler navigates on the child stack while another root is in front`() {
+        val home = ChildNavigator(state, Home, Feed)
+        state.addEventHandler(eventHandler(home) { navigate(Detail("from-event")) })
+        state.navigateRoot(Profile)
+
+        state.onEvent(Tapped)
+
+        assertEquals(listOf(Feed, Detail("from-event")), state.getBackStack(Home).toList())
+        assertEquals(emptyList(), state.getBackStack(Profile).toList())
+    }
+
+    @Test
+    fun `an app-level handler runs on the dispatching navigator`() {
+        var receiver: Navigator? = null
+        state.addEventHandler(eventHandler(null) { receiver = this })
+
+        state.onEvent(Tapped)
+
+        assertEquals<Navigator?>(state, receiver)
     }
 
     @Test
