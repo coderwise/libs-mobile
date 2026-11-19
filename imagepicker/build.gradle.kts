@@ -41,7 +41,9 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
+            implementation(libs.kotlinx.io.core)
         }
+        getByName("desktopMain").dependencies { implementation(libs.kotlinx.io.core) }
         getByName("desktopTest") {
             dependencies {
                 implementation(libs.kotlin.test)

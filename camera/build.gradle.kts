@@ -36,6 +36,7 @@ kotlin {
             implementation(libs.androidx.camera.lifecycle)
             implementation(libs.androidx.camera.view)
             implementation(libs.androidx.core.ktx)
+            implementation(libs.kotlinx.io.core)
             implementation(libs.lifecycle.runtime.compose)
         }
 

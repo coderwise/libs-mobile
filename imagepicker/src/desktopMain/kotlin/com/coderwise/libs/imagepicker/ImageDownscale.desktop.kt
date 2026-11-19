@@ -3,12 +3,14 @@ package com.coderwise.libs.imagepicker
 import java.awt.Image
 import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import kotlinx.io.Buffer
+import kotlinx.io.asInputStream
+import kotlinx.io.asOutputStream
+import kotlinx.io.readByteArray
 import javax.imageio.ImageIO
 
 internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): ByteArray = runCatching {
-    val source = ImageIO.read(ByteArrayInputStream(bytes)) ?: return bytes
+    val source = ImageIO.read(Buffer().apply { write(bytes) }.asInputStream()) ?: return bytes
     val longEdge = maxOf(source.width, source.height)
     if (longEdge <= maxDimensionPx) return bytes
 
@@ -25,10 +27,7 @@ internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): 
     // ImageIO ignores the EXIF orientation and the re-encode drops it, so turn the picture here.
     val upright = scaled.turned(Orientation.of(exifOrientation(bytes)))
 
-    ByteArrayOutputStream().use { out ->
-        ImageIO.write(upright, "jpg", out)
-        out.toByteArray()
-    }
+    Buffer().apply { ImageIO.write(upright, "jpg", asOutputStream()) }.readByteArray()
 }.getOrDefault(bytes)
 
 /** This picture mirrored and then turned clockwise as [orientation] says, about its middle. */

@@ -1,8 +1,10 @@
 package com.coderwise.libs.imagepicker
 
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import kotlinx.io.Buffer
+import kotlinx.io.asInputStream
+import kotlinx.io.asOutputStream
+import kotlinx.io.readByteArray
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,11 +18,11 @@ class ImageDownscaleTest {
         for (x in 0 until width) for (y in 0 until height) {
             image.setRGB(x, y, ((x * 31 + y * 17) and 0xFFFFFF))
         }
-        return ByteArrayOutputStream().use { ImageIO.write(image, "png", it); it.toByteArray() }
+        return Buffer().apply { ImageIO.write(image, "png", asOutputStream()) }.readByteArray()
     }
 
     private fun ByteArray.dimensions(): Pair<Int, Int> =
-        ImageIO.read(ByteArrayInputStream(this)).let { it.width to it.height }
+        ImageIO.read(Buffer().apply { write(this@dimensions) }.asInputStream()).let { it.width to it.height }
 
     @Test
     fun `caps the long edge and shrinks oversized images`() {

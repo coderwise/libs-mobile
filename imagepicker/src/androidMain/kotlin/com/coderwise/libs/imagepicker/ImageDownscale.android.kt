@@ -3,7 +3,9 @@ package com.coderwise.libs.imagepicker
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import java.io.ByteArrayOutputStream
+import kotlinx.io.Buffer
+import kotlinx.io.asOutputStream
+import kotlinx.io.readByteArray
 
 internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): ByteArray = runCatching {
     // Cheap bounds-only pass to learn the source dimensions without allocating the full bitmap.
@@ -33,8 +35,5 @@ internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): 
     }
     val upright = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
 
-    ByteArrayOutputStream().use { out ->
-        upright.compress(Bitmap.CompressFormat.JPEG, IMAGE_JPEG_QUALITY, out)
-        out.toByteArray()
-    }
+    Buffer().apply { upright.compress(Bitmap.CompressFormat.JPEG, IMAGE_JPEG_QUALITY, asOutputStream()) }.readByteArray()
 }.getOrDefault(bytes)

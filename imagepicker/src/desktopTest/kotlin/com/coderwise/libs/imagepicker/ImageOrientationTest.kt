@@ -1,8 +1,10 @@
 package com.coderwise.libs.imagepicker
 
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import kotlinx.io.Buffer
+import kotlinx.io.asInputStream
+import kotlinx.io.asOutputStream
+import kotlinx.io.readByteArray
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,14 +21,14 @@ class ImageOrientationTest {
     private val redLeftBlueRight: ByteArray = run {
         val image = BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB)
         for (x in 0 until 16) for (y in 0 until 16) image.setRGB(x, y, if (x < 8) 0xFF0000 else 0x0000FF)
-        ByteArrayOutputStream().use { ImageIO.write(image, "jpg", it); it.toByteArray() }
+        Buffer().apply { ImageIO.write(image, "jpg", asOutputStream()) }.readByteArray()
     }
 
     private fun fixture(orientation: Int, date: String? = null) =
         redLeftBlueRight.withExifSegment(exifSegment(orientation = orientation, date = date, offset = date?.let { "+00:00" }))
 
     private fun ByteArray.pixel(x: Int, y: Int): Triple<Int, Int, Int> {
-        val rgb = ImageIO.read(ByteArrayInputStream(this)).getRGB(x, y)
+        val rgb = ImageIO.read(Buffer().apply { write(this@pixel) }.asInputStream()).getRGB(x, y)
         return Triple((rgb shr 16) and 0xFF, (rgb shr 8) and 0xFF, rgb and 0xFF)
     }
 
@@ -43,7 +45,7 @@ class ImageOrientationTest {
     fun `a picture tagged as turned clockwise comes out upright when scaled`() {
         val result = downscaleImageBytes(fixture(orientation = 6), maxDimensionPx = 8)
 
-        val image = ImageIO.read(ByteArrayInputStream(result))
+        val image = ImageIO.read(Buffer().apply { write(result) }.asInputStream())
         assertEquals(8, image.width)
         assertEquals(8, image.height)
         // Stored left/right, upright it is top/bottom: turning the stored left edge clockwise puts it on top.

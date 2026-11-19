@@ -20,8 +20,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executor
+import kotlinx.io.Buffer
+import kotlinx.io.asOutputStream
+import kotlinx.io.readByteArray
 import kotlin.coroutines.resume
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -85,14 +87,14 @@ private class CameraXController(
      * class tracking the display orientation.
      */
     override suspend fun capture(): Result<CapturedImage> = suspendCancellableCoroutine { cont ->
-        val stream = ByteArrayOutputStream()
-        val options = ImageCapture.OutputFileOptions.Builder(stream).build()
+        val buffer = Buffer()
+        val options = ImageCapture.OutputFileOptions.Builder(buffer.asOutputStream()).build()
         imageCapture.takePicture(
             options,
             executor,
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(results: ImageCapture.OutputFileResults) {
-                    if (cont.isActive) cont.resume(Result.success(CapturedImage(stream.toByteArray())))
+                    if (cont.isActive) cont.resume(Result.success(CapturedImage(buffer.readByteArray())))
                 }
 
                 override fun onError(exception: ImageCaptureException) {
