@@ -8,6 +8,7 @@ import kotlinx.io.asInputStream
 import kotlinx.io.asOutputStream
 import kotlinx.io.readByteArray
 import javax.imageio.ImageIO
+import kotlin.math.PI
 
 internal actual fun downscaleImageBytes(bytes: ByteArray, maxDimensionPx: Int): ByteArray = runCatching {
     val source = ImageIO.read(Buffer().apply { write(bytes) }.asInputStream()) ?: return bytes
@@ -42,7 +43,7 @@ private fun BufferedImage.turned(orientation: Orientation): BufferedImage {
     // put its middle in the middle of the result.
     val transform = AffineTransform().apply {
         translate(result.width / 2.0, result.height / 2.0)
-        rotate(Math.toRadians(orientation.degrees.toDouble()))
+        rotate(orientation.degrees * PI / 180.0)
         if (orientation.mirrored) scale(-1.0, 1.0)
         translate(-width / 2.0, -height / 2.0)
     }

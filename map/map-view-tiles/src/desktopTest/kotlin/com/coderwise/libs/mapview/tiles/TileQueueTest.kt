@@ -25,6 +25,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 /**
  * The queue against a real [MapView], which is the only thing that can publish a window: the
@@ -51,13 +55,16 @@ class TileQueueTest {
     }
 
     private fun ComposeUiTest.await(what: String, condition: () -> Boolean) {
-        val deadline = System.nanoTime() + 10_000_000_000L
+        val started = TimeSource.Monotonic.markNow()
         while (!condition()) {
-            check(System.nanoTime() < deadline) { "timed out waiting for $what" }
+            check(started.elapsedNow() < 10.seconds) { "timed out waiting for $what" }
             waitForIdle()
-            Thread.sleep(10)
+            pause(10)
         }
     }
+
+    /** Real time passing, for the queue's workers, which run off the test's own clock. */
+    private fun pause(millis: Long) = runBlocking { delay(millis) }
 
     private fun MapState<*>.windowKeys() = window.keys
 
@@ -119,7 +126,7 @@ class TileQueueTest {
         await("the far window to fill") { state.windowKeys().none { it in first } && state.windowKeys().all { state.peek(it) != null } }
         runOnIdle { camera.moveTo(LatLon(0.0, 0.0), 6f) }
         await("the first window to be back") { state.windowKeys().toSet() == first.toSet() }
-        Thread.sleep(300)
+        pause(300)
 
         synchronized(calls) {
             first.forEach { assertEquals(1, calls[it], "$it was fetched ${calls[it]} times") }
@@ -149,7 +156,7 @@ class TileQueueTest {
         }
         runOnIdle { camera.moveTo(LatLon(0.0, 0.0), 6f) }
         await("the first window to be back") { state.windowKeys().toSet() == first.toSet() }
-        Thread.sleep(300)
+        pause(300)
 
         synchronized(calls) {
             first.forEach { assertEquals(1, calls[it], "$it was tried ${calls[it]} times") }
@@ -169,7 +176,7 @@ class TileQueueTest {
         val first = state.windowKeys()
         assertTrue(first.size > capacity, "the test needs a window bigger than the capacity: ${first.size}")
         // The queue notes a tile as held just after it is stored; let the last of them be noted.
-        Thread.sleep(200)
+        pause(200)
 
         runOnIdle { camera.moveTo(LatLon(0.0, 40.0), 6f) }
         await("the far window to fill") {
@@ -196,12 +203,12 @@ class TileQueueTest {
             state.windowKeys().none { it in a } && state.windowKeys().all { state.peek(it) != null }
         }
         val b = state.windowKeys()
-        Thread.sleep(200)
+        pause(200)
 
         // Back over the first, which is all still held, so nothing is fetched: it is only shown.
         runOnIdle { camera.moveTo(LatLon(0.0, 0.0), 6f) }
         await("the first window to be back") { state.windowKeys().toSet() == a.toSet() }
-        Thread.sleep(300)
+        pause(300)
 
         // And away to a third. Fetched first but shown last, the first window outranks the second.
         runOnIdle { camera.moveTo(LatLon(0.0, 80.0), 6f) }
@@ -223,7 +230,7 @@ class TileQueueTest {
         // One worker, so the tiles of a window land in the order they are taken in.
         TileQueue(scope, state, workers = 1, capacity = y.size) { "$it" }
         await("the first window to fill") { y.all { state.peek(it) != null } }
-        Thread.sleep(200)
+        pause(200)
 
         // One tile west: half the same ground and a column of it new. The columns the queue
         // fetched first are the western ones, so ground the screen still shows is the ground
@@ -235,12 +242,12 @@ class TileQueueTest {
         val x = state.windowKeys()
         assertEquals(y.size, x.size, "the test needs two windows of one size")
         assertTrue(x.any { it in y } && y.any { it !in x }, "the windows should overlap, not match")
-        Thread.sleep(200)
+        pause(200)
 
         // Far away: everything held is now off screen, and only the capacity of it can stay.
         runOnIdle { camera.moveTo(LatLon(0.0, 80.0), 6f) }
         await("the far window") { state.windowKeys().none { it in x || it in y } }
-        Thread.sleep(300)
+        pause(300)
 
         // What the last window showed stays, including the part it shared with the first, which
         // was fetched long before the part that is new. Only what it stopped showing goes.
@@ -256,7 +263,7 @@ class TileQueueTest {
         await("the window to fill") {
             state.windowKeys().isNotEmpty() && state.windowKeys().all { state.peek(it) != null }
         }
-        Thread.sleep(300)
+        pause(300)
         assertTrue(state.windowKeys().all { state.peek(it) != null })
     }
 }

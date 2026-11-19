@@ -16,7 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.res.loadImageBitmap
+import androidx.compose.ui.res.useResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
@@ -25,7 +26,6 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberDialogState
 import com.coderwise.libs.sample.ui.SampleApp
 import java.awt.Desktop
-import javax.imageio.ImageIO
 
 private const val APP_NAME = "Coderwise Libraries"
 private const val APP_VERSION = "1.0.0"
@@ -36,10 +36,7 @@ fun main() {
     System.setProperty("apple.awt.application.name", APP_NAME)
     application {
         val painter = remember {
-            val png = checkNotNull(Thread.currentThread().contextClassLoader.getResource("icon.png")) {
-                "icon.png is missing from the desktop resources"
-            }
-            BitmapPainter(ImageIO.read(png).toComposeImageBitmap())
+            BitmapPainter(useResource("icon.png", ::loadImageBitmap))
         }
         var showAbout by remember { mutableStateOf(false) }
 
