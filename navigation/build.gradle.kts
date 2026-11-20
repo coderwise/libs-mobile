@@ -15,7 +15,7 @@ kotlin {
     android {
         namespace = "com.coderwise.libs.navigation"
         compileSdk = libs.versions.compileSdk.get().toInt()
-        minSdk = libs.versions.minSdk.get().toInt()
+        minSdk = libs.versions.minSdkCompat.get().toInt()
         withHostTest {}
     }
     iosArm64(); iosSimulatorArm64()
