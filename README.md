@@ -72,10 +72,10 @@ A tile map built from small parts, so you take the pieces you need.
 
 | Library | Version | What it gives you |
 |---|---|---|
-| [`navigation`](navigation) | unreleased | Navigation 3 back stacks for apps with several roots (tabs, auth vs. main): one child stack per root, typed navigation events, and back stacks that survive process death. |
-| [`navigation-ui`](navigation-ui) | unreleased | Navigation 3 scene strategies: an entry shown as a bottom sheet drawn by the app's own sheet container, or drawn over the screen beneath it. |
-| [`arch`](arch) | unreleased | Use case base classes (suspend, Flow and synchronous) that run on a dispatcher you choose. |
-| [`uistate`](uistate) | unreleased | A shared loading and error contract for ViewModel UI states, and the `StateFlow` sharing timeout. |
+| [`navigation`](navigation) | `0.1.0` | Navigation 3 back stacks for apps with several roots (tabs, auth vs. main): one child stack per root, typed navigation events, and back stacks that survive process death. |
+| [`navigation-ui`](navigation-ui) | `0.1.0` | Navigation 3 scene strategies: an entry shown as a bottom sheet drawn by the app's own sheet container, or drawn over the screen beneath it. |
+| [`arch`](arch) | `0.1.0` | Use case base classes, suspend and `Flow`, that run on a dispatcher you choose. |
+| [`uistate`](uistate) | `0.1.0` | A shared loading and error contract for ViewModel UI states, and the `StateFlow` sharing timeout. |
 
 ## Contributing
 
