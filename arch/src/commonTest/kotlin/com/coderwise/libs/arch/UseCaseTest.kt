@@ -31,14 +31,6 @@ class UseCaseTest {
         }
     }
 
-    private class Answer(dispatcher: CoroutineDispatcher) : SuspendResultUseCase<Int>(dispatcher) {
-        override suspend fun execute() = 42
-    }
-
-    private class Constant(dispatcher: CoroutineDispatcher) : FlowResultUseCase<String>(dispatcher) {
-        override fun execute(): Flow<String> = flow { emit("a"); emit("b") }
-    }
-
     @Test
     fun `suspend use case runs on its dispatcher`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -71,13 +63,5 @@ class UseCaseTest {
 
         assertEquals("pong", Ping(dispatcher)())
         assertEquals(listOf(1, 2), Ticks(dispatcher)().toList())
-    }
-
-    @Test
-    fun `parameterless variants return their results`() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-
-        assertEquals(42, Answer(dispatcher)())
-        assertEquals(listOf("a", "b"), Constant(dispatcher)().toList())
     }
 }

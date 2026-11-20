@@ -9,25 +9,25 @@ import androidx.navigation3.runtime.NavKey
  * The app's navigation: a root back stack of top-level destinations (tabs, auth vs. main) and
  * one child back stack per root.
  *
- * One instance lives for the whole app (see [navigationModule]). Call [onStart] before use;
- * [rememberAppNavigator] does that, and restores the state after process death when given a
- * `SavedStateConfiguration`.
+ * One instance lives for the whole app (see [navigationModule]). [rememberAppNavigator] starts
+ * it, and restores it after process death when given a `SavedStateConfiguration`; use neither
+ * before that.
  */
 @Stable
 class NavigationState : Navigator {
     private var _rootBackStack: NavBackStack<NavKey>? = null
     val rootBackStack: NavBackStack<NavKey>
-        get() = _rootBackStack ?: error("NavigationState not started. Call onStart(startRoot) first.")
+        get() = _rootBackStack ?: error("NavigationState not started. Call rememberAppNavigator(startRoot) first.")
 
     private val childBackStacks = mutableStateMapOf<NavKey, NavBackStack<NavKey>>()
 
     private val eventDispatcher = NavEventDispatcher()
 
-    val isStarted: Boolean
+    internal val isStarted: Boolean
         get() = _rootBackStack != null
 
     /** Starts at [startRoot]. Does nothing if already started or restored. */
-    fun onStart(startRoot: NavKey) {
+    internal fun onStart(startRoot: NavKey) {
         if (_rootBackStack == null) {
             _rootBackStack = NavBackStack(startRoot)
         }
@@ -37,14 +37,14 @@ class NavigationState : Navigator {
         get() = rootBackStack.last()
 
     /** The child back stack of [rootKey], created empty on first use. */
-    fun getBackStack(rootKey: NavKey): NavBackStack<NavKey> =
+    internal fun getBackStack(rootKey: NavKey): NavBackStack<NavKey> =
         childBackStacks.getOrPut(rootKey) { NavBackStack() }
 
     /**
      * The child back stack of [rootKey], holding at least [startDestination]. A stack dropped by
      * [replaceRoot] comes back here holding [startDestination] again.
      */
-    fun getBackStack(rootKey: NavKey, startDestination: NavKey): NavBackStack<NavKey> =
+    internal fun getBackStack(rootKey: NavKey, startDestination: NavKey): NavBackStack<NavKey> =
         getBackStack(rootKey).also { if (it.isEmpty()) it.add(startDestination) }
 
     override val currentBackStack: NavBackStack<NavKey>
@@ -85,7 +85,7 @@ class NavigationState : Navigator {
      * destination, pops [rootKey] itself off the root back stack, but only if it is the root
      * in front: a root that is not showing cannot go up.
      */
-    fun navigateUp(rootKey: NavKey) {
+    internal fun navigateUp(rootKey: NavKey) {
         val stack = getBackStack(rootKey)
         when {
             stack.size > 1 -> stack.removeAt(stack.lastIndex)
@@ -94,9 +94,9 @@ class NavigationState : Navigator {
         }
     }
 
-    fun addEventHandler(handler: Navigator.(NavEvent) -> Unit) = eventDispatcher.add(handler)
+    internal fun addEventHandler(handler: Navigator.(NavEvent) -> Unit) = eventDispatcher.add(handler)
 
-    fun removeEventHandler(handler: Navigator.(NavEvent) -> Unit) = eventDispatcher.remove(handler)
+    internal fun removeEventHandler(handler: Navigator.(NavEvent) -> Unit) = eventDispatcher.remove(handler)
 
     override fun onEvent(event: NavEvent) {
         when (event) {

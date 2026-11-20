@@ -36,7 +36,6 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.runtime.saveable)
             implementation(libs.koin.compose)
-            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

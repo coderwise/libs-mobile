@@ -21,9 +21,9 @@ class NavigationStateTest {
     private fun started(root: NavKey = Home) = NavigationState().apply { onStart(root) }
 
     @Test
-    fun `using it before onStart fails with a clear message`() {
+    fun `using it before it is started fails with a clear message`() {
         val error = assertFailsWith<IllegalStateException> { NavigationState().navigate(Feed) }
-        assertTrue(error.message!!.contains("onStart"))
+        assertTrue(error.message!!.contains("rememberAppNavigator"))
     }
 
     @Test

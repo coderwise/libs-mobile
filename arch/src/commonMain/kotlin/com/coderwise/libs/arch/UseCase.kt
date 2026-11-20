@@ -34,31 +34,3 @@ abstract class FlowUseCase<in P, out R>(
 
 /** Collects a [FlowUseCase] that takes no input as `useCase()` instead of `useCase(Unit)`. */
 operator fun <R> FlowUseCase<Unit, R>.invoke(): Flow<R> = this(Unit)
-
-/** A suspending use case with no parameters, run on [dispatcher]. */
-abstract class SuspendResultUseCase<out R>(
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
-) {
-    suspend operator fun invoke(): R = withContext(dispatcher) { execute() }
-
-    protected abstract suspend fun execute(): R
-}
-
-/** A use case with no parameters returning a [Flow] of [R], collected upstream on [dispatcher]. */
-abstract class FlowResultUseCase<out R>(
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
-) {
-    operator fun invoke(): Flow<R> = execute().flowOn(dispatcher)
-
-    protected abstract fun execute(): Flow<R>
-}
-
-/** A synchronous use case taking [P] and returning [R], run on the caller's thread. */
-abstract class UseCase<in P, out R> {
-    abstract operator fun invoke(params: P): R
-}
-
-/** A synchronous use case with no parameters, run on the caller's thread. */
-abstract class ResultUseCase<out R> {
-    abstract operator fun invoke(): R
-}
