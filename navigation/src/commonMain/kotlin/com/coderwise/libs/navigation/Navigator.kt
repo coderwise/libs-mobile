@@ -5,7 +5,7 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 
 /**
- * Marker for anything dispatched through [NavEventHandler.onEvent]. Apps declare their own
+ * Marker for anything dispatched through [NavEventSink.onEvent]. Apps declare their own
  * events as subtypes, typically one sealed interface per feature.
  */
 interface NavEvent
@@ -16,7 +16,11 @@ sealed interface GlobalNavEvent : NavEvent {
     data object Back : GlobalNavEvent
 }
 
-fun interface NavEventHandler {
+/**
+ * Where a screen sends its [NavEvent]s. The events go to the handlers registered with
+ * `rememberAppNavigator` and `rememberChildNavigator`, which decide where to navigate.
+ */
+fun interface NavEventSink {
     fun onEvent(event: NavEvent)
 }
 
@@ -26,7 +30,7 @@ fun interface NavEventHandler {
  * that is [Navigator]'s job.
  */
 @Stable
-interface ScreenNavigator : NavEventHandler {
+interface ScreenNavigator : NavEventSink {
     fun navigate(key: NavKey)
     fun navigateUp()
 }
