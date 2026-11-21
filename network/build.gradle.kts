@@ -17,6 +17,7 @@ kotlin {
         withHostTest {}
     }
     iosArm64(); iosSimulatorArm64()
+    macosArm64()
     js {
         browser()
         nodejs()
@@ -37,7 +38,8 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.ktor.client.android)
         }
-        iosMain.dependencies {
+        // Darwin on iOS and macOS.
+        appleMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
         // Not CIO: its TLS stops at 1.2, and some hosts accept nothing older than 1.3.

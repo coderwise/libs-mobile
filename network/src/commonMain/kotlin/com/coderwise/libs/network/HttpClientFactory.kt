@@ -46,7 +46,7 @@ data class HttpClientOptions(
 }
 
 /**
- * A JSON client on this platform's engine: Android's on Android, Darwin on iOS, the Java 11 client
+ * A JSON client on this platform's engine: Android's on Android, Darwin on iOS and macOS, the Java 11 client
  * on desktop, and the browser's fetch on the web. [configure] runs last, for anything app-specific.
  */
 fun createHttpClient(
