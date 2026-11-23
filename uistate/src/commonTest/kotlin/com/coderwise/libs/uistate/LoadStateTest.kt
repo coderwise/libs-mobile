@@ -12,10 +12,12 @@ class LoadStateTest {
 
     @Test
     fun `loading clears a previous error`() {
-        var state = State(value = 1).copy(loadState = LoadState(isError = true, errorMessage = "boom"))
+        var state = State(value = 1).copy(loadState = LoadState(errorMessage = "boom"))
         state = state.copy(loadState = state.loadState.loading())
 
         assertEquals(State(value = 1, loadState = LoadState(isLoading = true)), state)
+        assertEquals(false, state.loadState.isError)
+        assertEquals(null, state.loadState.errorMessage)
     }
 
     @Test
@@ -23,7 +25,10 @@ class LoadStateTest {
         var state = State().copy(loadState = LoadState().loading())
         state = state.copy(loadState = state.loadState.error("boom"))
 
-        assertEquals(State(loadState = LoadState(isError = true, errorMessage = "boom")), state)
+        assertEquals(State(loadState = LoadState(errorMessage = "boom")), state)
+        assertEquals(false, state.loadState.isLoading)
+        assertEquals(true, state.loadState.isError)
+        assertEquals("boom", state.loadState.errorMessage)
     }
 
     @Test
@@ -32,6 +37,9 @@ class LoadStateTest {
         state = state.copy(loadState = state.loadState.loaded())
 
         assertEquals(State(value = 7), state)
+        assertEquals(false, state.loadState.isLoading)
+        assertEquals(false, state.loadState.isError)
+        assertEquals(null, state.loadState.errorMessage)
     }
 
     @Test
@@ -39,6 +47,7 @@ class LoadStateTest {
         var state = State(value = 5)
         state = state.copy(loadState = state.loadState.loading())
         assertEquals(true, state.loadState.isLoading)
+        assertEquals(false, state.loadState.isError)
 
         state = state.copy(loadState = state.loadState.error("failed"))
         assertEquals(true, state.loadState.isError)
