@@ -31,7 +31,6 @@ import androidx.compose.ui.util.fastForEach
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.hypot
 
 /**
@@ -144,7 +143,7 @@ fun Modifier.mapGestures(
                 scope.launch {
                     camera.beginInteraction()
                     try {
-                        animate(camera.zoom, floor(camera.zoom) + 1f) { zoom, _ ->
+                        animate(camera.zoom, (camera.zoom + 1f).coerceIn(camera.zoomRange)) { zoom, _ ->
                             camera.zoomTo(zoom, at.x, at.y, size.width.toFloat(), size.height.toFloat(), density)
                         }
                     } finally {
