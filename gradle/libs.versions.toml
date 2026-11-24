@@ -29,7 +29,7 @@ navigation3 = "1.2.2"
 navigation3-ui = "1.2.0"
 okio = "3.18.2"
 kotlinx-io = "0.9.3"
-play-billing = "9.1.0"
+play-billing = "9.2.0"
 savedstate = "1.5.0"
 serialization = "1.13.0"
 sqldelight = "2.4.1"
@@ -45,7 +45,6 @@ androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx
 androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
 androidx-datastore-core-okio = { module = "androidx.datastore:datastore-core-okio", version.ref = "datastore" }
 compose-animation = { module = "org.jetbrains.compose.animation:animation", version.ref = "compose-multiplatform" }
-compose-backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "compose-multiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-multiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-multiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
