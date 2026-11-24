@@ -75,20 +75,6 @@ jobs:
       - name: Test on the iOS simulator
         run: ./gradlew iosSimulatorArm64Test --continue --stacktrace
 
-      # Only the map modules. The others do not declare an executable js and wasmJs binary, which
-      # the Compose plugin requires before it will run UI tests there
-      # (https://youtrack.jetbrains.com/issue/CMP-4906), so their browser tests cannot run until
-      # they do.
-      - name: Test in the browser
-        run: >-
-          ./gradlew --continue --stacktrace
-          :map-view:jsBrowserTest :map-view:wasmJsBrowserTest
-          :map-view-core:jsBrowserTest :map-view-core:wasmJsBrowserTest
-          :map-view-geojson:jsBrowserTest :map-view-geojson:wasmJsBrowserTest
-          :map-view-tiles:jsBrowserTest :map-view-tiles:wasmJsBrowserTest
-          :map-view-tiles-raster:jsBrowserTest :map-view-tiles-raster:wasmJsBrowserTest
-          :map-view-tiles-vector:jsBrowserTest :map-view-tiles-vector:wasmJsBrowserTest
-
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

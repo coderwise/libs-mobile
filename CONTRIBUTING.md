@@ -2,13 +2,7 @@
 
 Notes for maintainers and contributors. For what the libraries do, see the [README](README.md).
 
-The `:map-view*` modules live together in [`map/`](map). Where a module sits on disk does not
-change its name: it is still `:map-view-core`, `com.coderwise.libs:map-view-core`, and released
-with a `map-view-core-v<version>` tag.
-
-`:map-view-controls` is gone after 0.3.0: copy the controls from the
-[sample](sample/common/src/commonMain/kotlin/com/coderwise/libs/sample/controls) instead of
-depending on them.
+The `:map-view*` modules now live in [mapview-mobile](https://github.com/coderwise/mapview-mobile).
 
 ## Design notes
 
@@ -73,17 +67,6 @@ workflow parses it, passes `-PlibVersion`, and publishes **only that module**:
 ```bash
 git tag utils-v0.4.0    && git push origin utils-v0.4.0     # → com.coderwise.libs:utils:0.4.0
 git tag settings-v0.3.0 && git push origin settings-v0.3.0  # → com.coderwise.libs:settings:0.3.0
-```
-
-**The `:map-view*` modules are the exception: release them in lockstep**, at one
-version, `:map-view-core` and then `:map-view` first. `:map-view-tiles` and the modules after it record the version they
-were built against in their POMs, so a mixed release would have one asking for a `:map-view`
-that does not exist:
-
-```bash
-for m in map-view-core map-view map-view-tiles map-view-tiles-raster map-view-tiles-vector map-view-geojson; do
-  git tag $m-v0.1.0 && git push origin $m-v0.1.0
-done
 ```
 
 > **Note:** the publish workflow runs on a **macOS** runner (required for the iOS

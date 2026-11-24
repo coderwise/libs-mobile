@@ -1,6 +1,6 @@
 package com.coderwise.libs.sample.ui
 
-/** Everything that is not the map: one screen per library. */
+/** One screen per library. */
 internal fun libraryExamples(): List<Example> = listOf(
     Example(
         title = "Text file picker",

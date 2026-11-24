@@ -9,6 +9,6 @@ built, tested or released: `settings.gradle.kts` only includes top-level directo
 | [`map-core`](map-core) | `0.1.8` | Dependency-free map primitives: slippy-map tile maths and `TileId`. |
 | [`map-engine`](map-engine) | `0.1.8` | A Compose tiled-map engine (`TiledMap`), built on `map-core`. |
 
-Both are replaced by the `:map-view` modules. `map-engine`'s `api(project(":map-core"))` and the
+Both are replaced by the `:map-view` modules, now in [mapview-mobile](https://github.com/coderwise/mapview-mobile). `map-engine`'s `api(project(":map-core"))` and the
 rest of their Gradle files are as they were, so they will not build from here without being moved
 back to the top level.

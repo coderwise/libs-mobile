@@ -38,17 +38,9 @@ kotlin {
             implementation(project(":locale"))
             implementation(project(":location"))
             implementation(project(":logger"))
-            implementation(project(":map-view"))
-            implementation(project(":map-view-geojson"))
-            implementation(project(":map-view-tiles"))
-            implementation(project(":map-view-tiles-raster"))
-            implementation(project(":map-view-tiles-vector"))
             implementation(project(":permissions"))
             implementation(project(":settings"))
             implementation(project(":utils"))
-            // The tile cache and the controls are the sample's own code (sample/cache and
-            // sample/controls): copy them if you want them. okio is what FileTileStore is made from.
-            implementation(libs.okio)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
@@ -60,22 +52,7 @@ kotlin {
             // Only for the image-picker example: decodeToImageBitmap() is what turns the
             // bytes :imagepicker hands back into something Image() can draw.
             implementation(libs.compose.components.resources)
-            // Only for the map engine example: the engine fetches nothing itself, so pointing it
-            // at a real tile server is the sample's job.
-            implementation(libs.ktor.client.core)
         }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.okio.fakefilesystem)
-        }
-        androidMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
-            implementation(libs.compose.tooling)
-        }
-        iosMain.dependencies { implementation(libs.ktor.client.darwin) }
-        jsMain.dependencies { implementation(libs.ktor.client.js) }
-        wasmJsMain.dependencies { implementation(libs.ktor.client.js) }
-        getByName("desktopMain").dependencies { implementation(libs.ktor.client.okhttp) }
+        androidMain.dependencies { implementation(libs.compose.tooling) }
     }
 }

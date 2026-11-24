@@ -22,4 +22,4 @@ class Example(
 
 /** The whole gallery, in order. Every module builds for every target, so every platform
  * shows the same list. */
-fun sampleExamples(): List<Example> = mapExamples() + libraryExamples()
+fun sampleExamples(): List<Example> = libraryExamples()
