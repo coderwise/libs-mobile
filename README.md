@@ -64,6 +64,7 @@ implementation("com.coderwise.libs:location:0.3.2")
 | [`navigation-ui`](navigation-ui) | `0.1.0` | Navigation 3 scene strategies: an entry shown as a bottom sheet drawn by the app's own sheet container, or drawn over the screen beneath it. |
 | [`arch`](arch) | `0.1.0` | Use case base classes, suspend and `Flow`, that run on a dispatcher you choose. |
 | [`uistate`](uistate) | `0.1.0` | A shared loading and error contract for ViewModel UI states, and the `StateFlow` sharing timeout. |
+| [`viewmodel`](viewmodel) | unreleased | A state-holding ViewModel base class: one `uiState`, one `onEvent`, atomic `update`, and a safe `launch`. Separate from `arch` so domain modules don't pick up AndroidX lifecycle. |
 
 ## Looking for the map?
 
