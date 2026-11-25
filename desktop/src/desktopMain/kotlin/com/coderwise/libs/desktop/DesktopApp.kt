@@ -2,6 +2,7 @@ package com.coderwise.libs.desktop
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -9,11 +10,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberDialogState
 import java.io.File
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -42,6 +46,19 @@ class DesktopAppConfig(
     val iconResource: String = "/icon.png",
     /** Size of the first window, before a size has been remembered. */
     val defaultWindowSize: DpSize = DpSize(1100.dp, 720.dp),
+    /**
+     * Where the app keeps its files, for an app that is not content with `~/<dataDirName>` (a per-OS
+     * application-support folder, say). Overrides [dataDirName].
+     */
+    val dataDir: File? = null,
+    /**
+     * The About window's content, for an app whose About says more than [about] can: it replaces the
+     * default content but still gets the lib's window, [theme] and surface. Gets the app icon and a way to
+     * close the window.
+     */
+    val aboutContent: (@Composable (icon: Painter?, onClose: () -> Unit) -> Unit)? = null,
+    /** Size of the About window; with [aboutContent] it is also fixed, not resizable. */
+    val aboutWindowSize: DpSize = DpSize(400.dp, 300.dp),
 )
 
 /**
@@ -57,7 +74,7 @@ class DesktopAppConfig(
  */
 fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit) {
     prepareMacOs(config.appName)
-    val dataDir = File(System.getProperty("user.home"), config.dataDirName)
+    val dataDir = config.dataDir ?: File(System.getProperty("user.home"), config.dataDirName)
     startKoin { modules(config.koinModules(dataDir)) }
     val windowSettings = WindowSettings(File(dataDir, "window.json"), config.defaultWindowSize)
     val iconImage = loadIcon(config.iconResource)
@@ -79,10 +96,20 @@ fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit) {
 
         if (showAbout) {
             val isDark = isSystemInDarkTheme()
-            DialogWindow(onCloseRequest = { showAbout = false }, title = "About ${config.appName}") {
+            val aboutContent = config.aboutContent
+            DialogWindow(
+                onCloseRequest = { showAbout = false },
+                title = "About ${config.appName}",
+                state = rememberDialogState(size = config.aboutWindowSize),
+                resizable = aboutContent == null,
+            ) {
                 config.theme(isDark) {
-                    Surface {
-                        AboutDialogContent(config.appName, config.appVersion, config.about, icon)
+                    Surface(Modifier.fillMaxSize()) {
+                        if (aboutContent != null) {
+                            aboutContent(icon) { showAbout = false }
+                        } else {
+                            AboutDialogContent(config.appName, config.appVersion, config.about, icon)
+                        }
                     }
                 }
             }
