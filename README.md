@@ -65,6 +65,7 @@ implementation("com.coderwise.libs:location:0.3.2")
 | [`arch`](arch) | `0.1.0` | Use case base classes, suspend and `Flow`, that run on a dispatcher you choose. |
 | [`uistate`](uistate) | `0.1.0` | A shared loading and error contract for ViewModel UI states, and the `StateFlow` sharing timeout. |
 | [`viewmodel`](viewmodel) | unreleased | A state-holding ViewModel base class: one `uiState`, one `onEvent`, atomic `update`, and a safe `launch`. Separate from `arch` so domain modules don't pick up AndroidX lifecycle. |
+| [`architecture-rules`](architecture-rules) | unreleased | Konsist-backed architecture test for app projects: ViewModel size and dependencies, platform-free core and feature modules, `StateViewModel` base, onEvent-only content composables, with a baseline for grandfathered violations. JVM only. |
 
 ## Looking for the map?
 
