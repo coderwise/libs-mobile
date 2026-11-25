@@ -22,10 +22,8 @@ internal data class WindowPrefs(
 )
 
 /** Remembers the main window's size, position and maximized state between runs, in one small JSON file. */
-internal class WindowSettings(private val file: File) {
+internal class WindowSettings(private val file: File, private val defaultSize: DpSize) {
     private companion object {
-        const val DEFAULT_WIDTH = 1100f
-        const val DEFAULT_HEIGHT = 720f
         val json = Json { ignoreUnknownKeys = true }
     }
 
@@ -34,7 +32,7 @@ internal class WindowSettings(private val file: File) {
     /** Called once at startup, before the window exists. A missing or unreadable file means defaults. */
     fun load(): WindowState {
         prefs = runCatching { json.decodeFromString<WindowPrefs>(file.readText()) }.getOrDefault(WindowPrefs())
-        val state = WindowState(size = DpSize(DEFAULT_WIDTH.dp, DEFAULT_HEIGHT.dp))
+        val state = WindowState(size = defaultSize)
         if (prefs.width > 0f && prefs.height > 0f) state.size = DpSize(prefs.width.dp, prefs.height.dp)
         if (prefs.hasPosition) {
             // Ignore a saved position that is off every screen (e.g. a monitor was unplugged).

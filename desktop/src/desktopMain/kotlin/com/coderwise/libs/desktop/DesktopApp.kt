@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -38,6 +40,8 @@ class DesktopAppConfig(
     val theme: @Composable (darkTheme: Boolean, content: @Composable () -> Unit) -> Unit,
     /** Classpath location of the app icon (dock, window, About). */
     val iconResource: String = "/icon.png",
+    /** Size of the first window, before a size has been remembered. */
+    val defaultWindowSize: DpSize = DpSize(1100.dp, 720.dp),
 )
 
 /**
@@ -55,7 +59,7 @@ fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit) {
     prepareMacOs(config.appName)
     val dataDir = File(System.getProperty("user.home"), config.dataDirName)
     startKoin { modules(config.koinModules(dataDir)) }
-    val windowSettings = WindowSettings(File(dataDir, "window.json"))
+    val windowSettings = WindowSettings(File(dataDir, "window.json"), config.defaultWindowSize)
     val iconImage = loadIcon(config.iconResource)
     val icon = iconImage?.toPainter()
 
