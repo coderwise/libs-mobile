@@ -32,6 +32,8 @@ class StateViewModelTest {
 
         val currentCount: Int get() = state.count
 
+        fun access() = stateAccess
+
         override fun onEvent(event: Event) = when (event) {
             Event.Increment -> update { copy(count = count + 1) }
             Event.Fail -> { launch { error("boom") }; Unit }
@@ -86,5 +88,13 @@ class StateViewModelTest {
             override fun onError(error: Throwable) = update { copy(error = error.message) }
         }
         assertEquals("bad flow", viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `stateAccess reads and updates the state`() {
+        val viewModel = CounterViewModel()
+        viewModel.access().update { it.copy(count = 5) }
+        assertEquals(5, viewModel.access().value.count)
+        assertEquals(5, viewModel.uiState.value.count)
     }
 }

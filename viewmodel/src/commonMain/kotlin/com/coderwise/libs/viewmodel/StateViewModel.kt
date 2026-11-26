@@ -44,6 +44,9 @@ abstract class StateViewModel<S : Any, E : Any>(initialState: S) : ViewModel() {
     /** The current state, for deciding what to do next. */
     protected val state: S get() = _uiState.value
 
+    /** The state as a [StateAccess], to hand to a helper that works on it for this ViewModel. */
+    protected val stateAccess: StateAccess<S> = FlowStateAccess(_uiState)
+
     /** Changes the state atomically: `update { copy(isLoading = true) }`. */
     protected fun update(transform: S.() -> S) {
         _uiState.update { it.transform() }

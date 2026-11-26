@@ -46,6 +46,9 @@ abstract class ModelViewModel<M : Any, S : Any, E : Any>(
     /** The current model, for deciding what to do next. */
     protected val model: M get() = _model.value
 
+    /** The state as a [StateAccess], to hand to a helper that works on it for this ViewModel. */
+    protected val stateAccess: StateAccess<M> = FlowStateAccess(_model)
+
     /** Changes the model atomically: `update { copy(isLoading = true) }`. */
     protected fun update(transform: M.() -> M) {
         _model.update { it.transform() }
