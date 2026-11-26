@@ -15,6 +15,8 @@ import platform.Foundation.NSMakeRect
 import platform.Foundation.NSMakeSize
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
 
 /**
  * Applies the remembered frame to the first window that becomes main (the app's window, not a later
@@ -23,6 +25,9 @@ import platform.Foundation.NSOperationQueue
 @OptIn(ExperimentalForeignApi::class)
 internal fun trackMainWindow(settings: WindowPrefsStore, defaultSize: DpSize, unifiedTitleBar: Boolean) {
     var main: NSWindow? = null
+    // Notifications are delivered inline, so the style change below reports a resize before the saved
+    // frame is read; saving then would overwrite the file with Compose's initial size.
+    var restoring = false
     val center = NSNotificationCenter.defaultCenter
     val queue = NSOperationQueue.mainQueue
 
@@ -30,20 +35,35 @@ internal fun trackMainWindow(settings: WindowPrefsStore, defaultSize: DpSize, un
         val window = note?.`object` as? NSWindow ?: return@addObserverForName
         if (main != null) return@addObserverForName
         main = window
+        restoring = true
         if (unifiedTitleBar) {
             window.titlebarAppearsTransparent = true
             window.titleVisibility = NSWindowTitleHidden
             window.styleMask = window.styleMask or NSWindowStyleMaskFullSizeContentView
         }
         restore(window, settings, defaultSize)
+        restoring = false
+        // Compose lays its content out for the plain title bar and only re-reads the window size when it
+        // changes, so without a size change the unified title bar shows up only after the first resize.
+        if (unifiedTitleBar) dispatch_async(dispatch_get_main_queue()) { nudgeLayout(window) }
     }
 
     for (name in listOf(NSWindowDidResizeNotification, NSWindowDidMoveNotification, NSWindowWillCloseNotification)) {
         center.addObserverForName(name, null, queue) { note ->
             val window = note?.`object` as? NSWindow ?: return@addObserverForName
-            if (window !== main) return@addObserverForName
+            if (window !== main || restoring) return@addObserverForName
             save(window, settings)
         }
+    }
+}
+
+/** Resizes the window by a point and back, which makes Compose lay out again for the current title bar style. */
+@OptIn(ExperimentalForeignApi::class)
+private fun nudgeLayout(window: NSWindow) {
+    val frame = window.frame
+    frame.useContents {
+        window.setFrame(NSMakeRect(origin.x, origin.y, size.width, size.height + 1.0), display = true)
+        window.setFrame(NSMakeRect(origin.x, origin.y, size.width, size.height), display = true)
     }
 }
 
