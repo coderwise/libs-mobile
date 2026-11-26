@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
@@ -49,7 +51,7 @@ import com.coderwise.libs.utils.horizontalSlideTransition
  * understand to copy an example is the library it demonstrates, and nothing else.
  */
 @Composable
-fun SampleApp() {
+fun SampleApp(topBarStartInset: Dp = 0.dp) {
     MaterialTheme {
         val examples = remember { sampleExamples() }
         // The back stack is the gallery, then at most one example (keyed by its title).
@@ -66,10 +68,11 @@ fun SampleApp() {
             entryProvider = { key ->
                 NavEntry(key, metadata = horizontalSlideTransition()) {
                     if (key == GalleryKey) {
-                        ExampleGallery(examples, galleryState, onSelect = { backStack.add(it.title) })
+                        ExampleGallery(examples, galleryState, topBarStartInset, onSelect = { backStack.add(it.title) })
                     } else {
                         ExampleScreen(
                             examples.first { it.title == key },
+                            topBarStartInset,
                             onBack = { backStack.removeLastOrNull() }
                         )
                     }
@@ -86,10 +89,16 @@ private data object GalleryKey
 private fun ExampleGallery(
     examples: List<Example>,
     listState: LazyGridState,
+    topBarStartInset: Dp,
     onSelect: (Example) -> Unit
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Coderwise libraries") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Coderwise libraries") },
+                windowInsets = WindowInsets(left = topBarStartInset)
+            )
+        }
     ) { inner ->
         // As many columns as fit at a card's comfortable width: one on a phone, which is the
         // list this used to be, and more as the window widens, instead of one card stretched
@@ -150,10 +159,11 @@ private fun ExampleCard(example: Example, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExampleScreen(example: Example, onBack: () -> Unit) {
+private fun ExampleScreen(example: Example, topBarStartInset: Dp, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(left = topBarStartInset),
                 title = {
                     Column {
                         Text(example.title, style = MaterialTheme.typography.titleMedium)

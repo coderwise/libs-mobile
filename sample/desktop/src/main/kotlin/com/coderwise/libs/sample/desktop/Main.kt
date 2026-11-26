@@ -4,6 +4,7 @@ import com.coderwise.libs.desktop.AboutInfo
 import com.coderwise.libs.desktop.DesktopAppConfig
 import com.coderwise.libs.desktop.desktopApp
 import com.coderwise.libs.desktop.prepareMacOs
+import com.coderwise.libs.desktop.unifiedTitleBarInset
 import com.coderwise.libs.sample.ui.SampleApp
 
 private const val APP_NAME = "Coderwise Libraries"
@@ -21,8 +22,9 @@ fun main() {
             ),
             koinModules = { emptyList() },
             theme = { _, content -> content() },
+            unifiedTitleBar = true,
         ),
     ) {
-        SampleApp()
+        SampleApp(topBarStartInset = unifiedTitleBarInset)
     }
 }

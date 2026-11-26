@@ -5,6 +5,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +60,12 @@ class DesktopAppConfig(
     val aboutContent: (@Composable (icon: Painter?, onClose: () -> Unit) -> Unit)? = null,
     /** Size of the About window; with [aboutContent] it is also fixed, not resizable. */
     val aboutWindowSize: DpSize = DpSize(400.dp, 300.dp),
+    /**
+     * Draws the app's content under a transparent macOS title bar, leaving only the window buttons
+     * (a unified title bar). The app's top bar must then leave [unifiedTitleBarInset] free at its
+     * start. No effect on other platforms.
+     */
+    val unifiedTitleBar: Boolean = false,
 )
 
 /**
@@ -124,6 +131,13 @@ fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit) {
             title = config.appName,
             icon = icon,
         ) {
+            if (config.unifiedTitleBar && isMacOs) {
+                SideEffect {
+                    window.rootPane.putClientProperty("apple.awt.fullWindowContent", true)
+                    window.rootPane.putClientProperty("apple.awt.transparentTitleBar", true)
+                    window.rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
+                }
+            }
             content()
         }
     }
