@@ -21,10 +21,9 @@ fun main() {
                 copyright = "© Coderwise",
             ),
             koinModules = { emptyList() },
-            theme = { _, content -> content() },
             unifiedTitleBar = true,
         ),
-    ) {
+    ) { _ ->
         SampleApp(topBarStartInset = unifiedTitleBarInset)
     }
 }

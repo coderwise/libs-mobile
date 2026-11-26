@@ -31,8 +31,6 @@ class DesktopAppConfig(
      * a database or settings folder.
      */
     val koinModules: (dataDir: Path) -> List<Module>,
-    /** The app's theme, used for the About window. */
-    val theme: @Composable (darkTheme: Boolean, content: @Composable () -> Unit) -> Unit,
     /**
      * The app icon (dock, window, About). On the JVM a classpath location; on native macOS a resource
      * in the app bundle, or else a file path.
@@ -46,12 +44,12 @@ class DesktopAppConfig(
      */
     val dataDir: Path? = null,
     /**
-     * The About window's content, for an app whose About says more than [about] can (ignored when [about] is null): it replaces the
-     * default content but still gets the lib's window, [theme] and surface. Gets the app icon (null on
-     * native macOS) and a way to close the window (a no-op on native macOS, where the window's own
-     * close button does it).
+     * The About window's content, for an app whose About says more than [about] can (ignored when [about] is
+     * null). It draws everything itself, theme included: it gets the app icon (null on native macOS), the
+     * system's dark setting and a way to close the window (a no-op on native macOS, where the window's own
+     * close button does it). Without it the window shows [about] in default Material colors.
      */
-    val aboutContent: (@Composable (icon: Painter?, onClose: () -> Unit) -> Unit)? = null,
+    val aboutContent: (@Composable (icon: Painter?, darkTheme: Boolean, onClose: () -> Unit) -> Unit)? = null,
     /** Size of the About window; with [aboutContent] it is also fixed, not resizable. Ignored on native macOS. */
     val aboutWindowSize: DpSize = DpSize(400.dp, 300.dp),
     /**
@@ -64,16 +62,16 @@ class DesktopAppConfig(
 
 /**
  * The whole desktop `main`. Depends on no other Coderwise library; the app wires those in through
- * [DesktopAppConfig.koinModules]:
+ * [DesktopAppConfig.koinModules]. `content` gets the system's dark setting and applies the app's own theme:
  *
  * ```kotlin
  * fun main() {
  *     prepareMacOs("RoomsOn") // first line: see [prepareMacOs]
- *     desktopApp(DesktopAppConfig(appName = "RoomsOn", ...)) { AppNavigation() }
+ *     desktopApp(DesktopAppConfig(appName = "RoomsOn", ...)) { dark -> RoomsOnTheme(dark) { AppNavigation() } }
  * }
  * ```
  */
-expect fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
+expect fun desktopApp(config: DesktopAppConfig, content: @Composable (darkTheme: Boolean) -> Unit)
 
 /**
  * The start inset an app's top bar must leave free for the macOS window buttons when

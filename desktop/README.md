@@ -24,9 +24,8 @@ fun main() {
                 module { single<Path>(SETTINGS_DIR_QUALIFIER) { dataDir } },
             )
         },
-        theme = { dark, content -> RoomsOnTheme(darkTheme = dark, content = content) },
     ),
-) { AppNavigation() }
+) { dark -> RoomsOnTheme(darkTheme = dark) { AppNavigation() } }
 }
 ```
 
@@ -35,6 +34,7 @@ the AWT toolkit is already running by the time `desktopApp` loads, so the menu b
 touches only system properties, so it is early enough.
 
 - `unifiedTitleBar = true` draws the content under a transparent macOS title bar, leaving only the window buttons. Leave `unifiedTitleBarInset` free at the start of the app's top bar (0 on other platforms).
+- `content` gets the system's dark setting and applies the app's own theme. The About window uses default Material colors unless the app supplies `aboutContent`, which draws itself.
 - The data directory is `~/<dataDirName>`; the lib creates no Koin bindings for it, so other libs' directories are registered by the app (above).
 - The icon is read from `/icon.png` on the classpath (`iconResource` to change it). On native macOS it is a resource in the app bundle, or else a file path.
 - `about = null` drops the app's own About window. On native macOS the menu then has no About item; on the JVM macOS cannot hide it, so it shows the system's default About panel.
@@ -51,5 +51,7 @@ implementation("com.coderwise.libs:desktop:<version>")
 Same `desktopApp` call; the shared `DesktopAppConfig` is in `commonMain`. On native macOS `prepareMacOs` does nothing, the About window has no icon, `aboutWindowSize` is ignored, and the menu has About and Quit only. Window size and position are kept in the same `window.json`.
 
 ## Migrating from 0.1.x
+
+`theme` is gone: apply your theme in `content`, which now takes the dark flag (`{ dark -> MyTheme(dark) { ... } }`). `aboutContent` also gets the dark flag and draws its own theme.
 
 `DesktopAppConfig.koinModules` and `dataDir` now use `kotlinx.io.files.Path` instead of `java.io.File`: `{ dataDir: File -> ... Path(dataDir.path) }` becomes `{ dataDir: Path -> ... dataDir }`.

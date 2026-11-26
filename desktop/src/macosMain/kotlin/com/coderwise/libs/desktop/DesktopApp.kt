@@ -1,5 +1,6 @@
 package com.coderwise.libs.desktop
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.window.Window
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -30,7 +31,7 @@ internal class DesktopAppDelegate(private val onAbout: () -> Unit) : NSObject(),
 private var delegateRef: DesktopAppDelegate? = null
 
 @OptIn(ExperimentalForeignApi::class)
-actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit) {
+actual fun desktopApp(config: DesktopAppConfig, content: @Composable (darkTheme: Boolean) -> Unit) {
     val dataDir = startDesktopKoin(config)
     val prefsStore = WindowPrefsStore(Path(dataDir, "window.json"))
 
@@ -44,7 +45,7 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
     installMainMenu(config.appName, delegate, showAbout = config.about != null)
     trackMainWindow(prefsStore, config.defaultWindowSize, config.unifiedTitleBar)
 
-    Window(config.appName) { content() }
+    Window(config.appName) { content(isSystemInDarkTheme()) }
 
     app.activateIgnoringOtherApps(true)
     app.run()

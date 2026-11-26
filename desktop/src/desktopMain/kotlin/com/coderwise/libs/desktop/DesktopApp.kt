@@ -1,5 +1,6 @@
 package com.coderwise.libs.desktop
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -14,7 +15,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberDialogState
 import kotlinx.io.files.Path
 
-actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit) {
+actual fun desktopApp(config: DesktopAppConfig, content: @Composable (darkTheme: Boolean) -> Unit) {
     prepareMacOs(config.appName)
     val dataDir = startDesktopKoin(config)
     val windowSettings = WindowSettings(WindowPrefsStore(Path(dataDir, "window.json")), config.defaultWindowSize)
@@ -62,7 +63,7 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
                     window.rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
                 }
             }
-            content()
+            content(isSystemInDarkTheme())
         }
     }
 }
