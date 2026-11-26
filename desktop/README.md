@@ -37,6 +37,7 @@ touches only system properties, so it is early enough.
 - `unifiedTitleBar = true` draws the content under a transparent macOS title bar, leaving only the window buttons. Leave `unifiedTitleBarInset` free at the start of the app's top bar (0 on other platforms).
 - The data directory is `~/<dataDirName>`; the lib creates no Koin bindings for it, so other libs' directories are registered by the app (above).
 - The icon is read from `/icon.png` on the classpath (`iconResource` to change it). On native macOS it is a resource in the app bundle, or else a file path.
+- `about = null` drops the app's own About window. On native macOS the menu then has no About item; on the JVM macOS cannot hide it, so it shows the system's default About panel.
 - Window state is kept in `window.json` in the data directory (written by the lib itself); a saved position that is off every screen is ignored. It is plain file IO, with no dependency on the `settings` lib.
 
 ## Coordinates

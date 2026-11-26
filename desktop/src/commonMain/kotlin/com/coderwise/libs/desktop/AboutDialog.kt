@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.dp
 
 /** Text shown in the macOS "About" window. Pass already-localized strings. */
 class AboutInfo(
-    val description: String,
-    val copyright: String,
+    val description: String = "",
+    val copyright: String = "",
     /** Formats the version line, e.g. `"Version $it"`. */
     val versionLabel: (version: String) -> String = { "Version $it" },
 )
@@ -41,18 +41,22 @@ internal fun AboutDialogContent(appName: String, appVersion: String, about: Abou
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            about.description,
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(24.dp))
-        Text(
-            about.copyright,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (about.description.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                about.description,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (about.copyright.isNotEmpty()) {
+            Spacer(Modifier.height(24.dp))
+            Text(
+                about.copyright,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

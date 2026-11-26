@@ -20,7 +20,9 @@ import platform.AppKit.NSMenuItem
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSHomeDirectory
+import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSProcessInfo
+import platform.Foundation.setValue
 import platform.Foundation.NSSelectorFromString
 import platform.darwin.NSObject
 
@@ -41,14 +43,14 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
     startKoin { modules(config.koinModules(dataDir)) }
     val windowSettings = WindowSettings(Path(dataDir, "window.json"), config.defaultWindowSize)
 
-    NSProcessInfo.processInfo.processName = config.appName
+    nameApp(config.appName)
     val app = NSApplication.sharedApplication()
     val delegate = DesktopAppDelegate(onAbout = { showAbout(config) })
     delegateRef = delegate
     app.delegate = delegate
     app.setActivationPolicy(NSApplicationActivationPolicy.NSApplicationActivationPolicyRegular)
     loadIcon(config.iconResource)?.let { app.setApplicationIconImage(it) }
-    installMainMenu(config.appName, delegate)
+    installMainMenu(config.appName, delegate, showAbout = config.about != null)
     trackMainWindow(windowSettings, config.unifiedTitleBar)
 
     Window(config.appName) { content() }
@@ -58,6 +60,7 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
 }
 
 private fun showAbout(config: DesktopAppConfig) {
+    val about = config.about ?: return
     Window("About ${config.appName}") {
         config.theme(isSystemInDarkTheme()) {
             Surface(Modifier.fillMaxSize()) {
@@ -65,20 +68,34 @@ private fun showAbout(config: DesktopAppConfig) {
                 if (aboutContent != null) {
                     aboutContent(null) {}
                 } else {
-                    AboutDialogContent(config.appName, config.appVersion, config.about, icon = null)
+                    AboutDialogContent(config.appName, config.appVersion, about, icon = null)
                 }
             }
         }
     }
 }
 
+/**
+ * An unbundled binary has no Info.plist, so AppKit names the app after the executable (`desktop-macos.kexe`)
+ * in the menu bar and Dock. The main bundle's info dictionary is in practice mutable, and AppKit reads the
+ * name from it when the application object is created, so this must run before that.
+ */
+private fun nameApp(appName: String) {
+    NSProcessInfo.processInfo.processName = appName
+    val info = NSBundle.mainBundle.infoDictionary as? NSMutableDictionary ?: return
+    info.setValue(appName, forKey = "CFBundleName")
+    info.setValue(appName, forKey = "CFBundleDisplayName")
+}
+
 @OptIn(ExperimentalForeignApi::class)
-private fun installMainMenu(appName: String, delegate: NSObject) {
+private fun installMainMenu(appName: String, delegate: NSObject, showAbout: Boolean) {
     val appMenu = NSMenu()
-    appMenu.addItem(
-        NSMenuItem("About $appName", NSSelectorFromString("showAbout"), "").apply { target = delegate },
-    )
-    appMenu.addItem(NSMenuItem.separatorItem())
+    if (showAbout) {
+        appMenu.addItem(
+            NSMenuItem("About $appName", NSSelectorFromString("showAbout"), "").apply { target = delegate },
+        )
+        appMenu.addItem(NSMenuItem.separatorItem())
+    }
     appMenu.addItem(NSMenuItem("Quit $appName", NSSelectorFromString("terminate:"), "q"))
 
     val appItem = NSMenuItem().apply { submenu = appMenu }

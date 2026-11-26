@@ -34,7 +34,7 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
 
         remember {
             setDockIcon(iconImage)
-            setAboutHandler { showAbout = true }
+            if (config.about != null) setAboutHandler { showAbout = true }
         }
 
         val windowState = remember { windowSettings.load() }
@@ -57,7 +57,7 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
                         if (aboutContent != null) {
                             aboutContent(icon) { showAbout = false }
                         } else {
-                            AboutDialogContent(config.appName, config.appVersion, config.about, icon)
+                            AboutDialogContent(config.appName, config.appVersion, config.about ?: AboutInfo(), icon)
                         }
                     }
                 }

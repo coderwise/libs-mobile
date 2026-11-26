@@ -20,7 +20,12 @@ class DesktopAppConfig(
     val dataDirName: String,
     /** Display version, e.g. from the app's generated BuildInfo. */
     val appVersion: String,
-    val about: AboutInfo,
+    /**
+     * What the About window says besides the name and version; defaults to nothing more. `null` drops the
+     * app's own About window: on native macOS the menu then has no About item; on the JVM macOS cannot hide
+     * it, so it shows the system's default About panel.
+     */
+    val about: AboutInfo? = AboutInfo(),
     /**
      * The app's Koin modules. Gets the data directory so it can register what needs one, such as
      * a database or settings folder.
@@ -41,7 +46,7 @@ class DesktopAppConfig(
      */
     val dataDir: Path? = null,
     /**
-     * The About window's content, for an app whose About says more than [about] can: it replaces the
+     * The About window's content, for an app whose About says more than [about] can (ignored when [about] is null): it replaces the
      * default content but still gets the lib's window, [theme] and surface. Gets the app icon (null on
      * native macOS) and a way to close the window (a no-op on native macOS, where the window's own
      * close button does it).
