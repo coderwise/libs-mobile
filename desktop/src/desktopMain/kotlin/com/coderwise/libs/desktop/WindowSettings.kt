@@ -7,20 +7,12 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import java.awt.GraphicsEnvironment
 import java.awt.Rectangle
-import java.io.File
-import kotlinx.serialization.json.Json
 
-/** Remembers the main window's size, position and maximized state between runs, in one small JSON file. */
-internal class WindowSettings(private val file: File, private val defaultSize: DpSize) {
-    private companion object {
-        val json = Json { ignoreUnknownKeys = true }
-    }
-
-    private var prefs: WindowPrefs = WindowPrefs()
-
-    /** Called once at startup, before the window exists. A missing or unreadable file means defaults. */
+/** Maps the remembered [WindowPrefs] to and from the main window's Compose `WindowState`. */
+internal class WindowSettings(private val store: WindowPrefsStore, private val defaultSize: DpSize) {
+    /** Called once at startup, before the window exists. */
     fun load(): WindowState {
-        prefs = runCatching { json.decodeFromString<WindowPrefs>(file.readText()) }.getOrDefault(WindowPrefs())
+        val prefs = store.load()
         val state = WindowState(size = defaultSize)
         if (prefs.width > 0f && prefs.height > 0f) state.size = DpSize(prefs.width.dp, prefs.height.dp)
         if (prefs.hasPosition) {
@@ -38,7 +30,7 @@ internal class WindowSettings(private val file: File, private val defaultSize: D
     }
 
     fun save(state: WindowState) {
-        val old = prefs
+        val old = store.prefs
         val maximized = state.placement == WindowPlacement.Maximized
         // While maximized the size and position are the maximized bounds; keep the last normal ones.
         val position = state.position
@@ -54,12 +46,7 @@ internal class WindowSettings(private val file: File, private val defaultSize: D
                 y = if (position.isSpecified) position.y.value else old.y,
             )
         }
-        if (updated == prefs) return
-        prefs = updated
-        runCatching {
-            file.parentFile?.mkdirs()
-            file.writeText(json.encodeToString(WindowPrefs.serializer(), updated))
-        }
+        store.save(updated)
     }
 
     private fun isOnScreen(bounds: Rectangle): Boolean =

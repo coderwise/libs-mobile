@@ -1,16 +1,10 @@
 package com.coderwise.libs.desktop
 
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Window
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCAction
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import org.koin.core.context.startKoin
 import platform.AppKit.NSApplication
 import platform.AppKit.NSApplicationActivationPolicy
 import platform.AppKit.NSApplicationDelegateProtocol
@@ -19,7 +13,6 @@ import platform.AppKit.NSMenu
 import platform.AppKit.NSMenuItem
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
-import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSProcessInfo
 import platform.Foundation.setValue
@@ -38,10 +31,8 @@ private var delegateRef: DesktopAppDelegate? = null
 
 @OptIn(ExperimentalForeignApi::class)
 actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit) {
-    val dataDir = config.dataDir ?: Path(NSHomeDirectory(), config.dataDirName)
-    SystemFileSystem.createDirectories(dataDir)
-    startKoin { modules(config.koinModules(dataDir)) }
-    val windowSettings = WindowSettings(Path(dataDir, "window.json"), config.defaultWindowSize)
+    val dataDir = startDesktopKoin(config)
+    val prefsStore = WindowPrefsStore(Path(dataDir, "window.json"))
 
     nameApp(config.appName)
     val app = NSApplication.sharedApplication()
@@ -51,7 +42,7 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
     app.setActivationPolicy(NSApplicationActivationPolicy.NSApplicationActivationPolicyRegular)
     loadIcon(config.iconResource)?.let { app.setApplicationIconImage(it) }
     installMainMenu(config.appName, delegate, showAbout = config.about != null)
-    trackMainWindow(windowSettings, config.unifiedTitleBar)
+    trackMainWindow(prefsStore, config.defaultWindowSize, config.unifiedTitleBar)
 
     Window(config.appName) { content() }
 
@@ -60,18 +51,9 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable () -> Unit)
 }
 
 private fun showAbout(config: DesktopAppConfig) {
-    val about = config.about ?: return
+    if (config.about == null) return
     Window("About ${config.appName}") {
-        config.theme(isSystemInDarkTheme()) {
-            Surface(Modifier.fillMaxSize()) {
-                val aboutContent = config.aboutContent
-                if (aboutContent != null) {
-                    aboutContent(null) {}
-                } else {
-                    AboutDialogContent(config.appName, config.appVersion, about, icon = null)
-                }
-            }
-        }
+        AboutWindowContent(config, icon = null, onClose = {})
     }
 }
 

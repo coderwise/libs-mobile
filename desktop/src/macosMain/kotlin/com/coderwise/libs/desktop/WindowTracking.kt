@@ -1,5 +1,6 @@
 package com.coderwise.libs.desktop
 
+import androidx.compose.ui.unit.DpSize
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.AppKit.NSScreen
@@ -20,7 +21,7 @@ import platform.Foundation.NSOperationQueue
  * About window) and saves it on resize, move and close. Notification-driven; no polling.
  */
 @OptIn(ExperimentalForeignApi::class)
-internal fun trackMainWindow(settings: WindowSettings, unifiedTitleBar: Boolean) {
+internal fun trackMainWindow(settings: WindowPrefsStore, defaultSize: DpSize, unifiedTitleBar: Boolean) {
     var main: NSWindow? = null
     val center = NSNotificationCenter.defaultCenter
     val queue = NSOperationQueue.mainQueue
@@ -34,7 +35,7 @@ internal fun trackMainWindow(settings: WindowSettings, unifiedTitleBar: Boolean)
             window.titleVisibility = NSWindowTitleHidden
             window.styleMask = window.styleMask or NSWindowStyleMaskFullSizeContentView
         }
-        restore(window, settings)
+        restore(window, settings, defaultSize)
     }
 
     for (name in listOf(NSWindowDidResizeNotification, NSWindowDidMoveNotification, NSWindowWillCloseNotification)) {
@@ -47,10 +48,10 @@ internal fun trackMainWindow(settings: WindowSettings, unifiedTitleBar: Boolean)
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun restore(window: NSWindow, settings: WindowSettings) {
+private fun restore(window: NSWindow, settings: WindowPrefsStore, defaultSize: DpSize) {
     val prefs = settings.load()
     if (prefs.width <= 0f || prefs.height <= 0f) {
-        window.setContentSize(NSMakeSize(settings.defaultSize.width.value.toDouble(), settings.defaultSize.height.value.toDouble()))
+        window.setContentSize(NSMakeSize(defaultSize.width.value.toDouble(), defaultSize.height.value.toDouble()))
         window.center()
         return
     }
@@ -68,7 +69,7 @@ private fun restore(window: NSWindow, settings: WindowSettings) {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun save(window: NSWindow, settings: WindowSettings) {
+private fun save(window: NSWindow, settings: WindowPrefsStore) {
     val old = settings.prefs
     if (window.isZoomed()) {
         // While zoomed the frame is the zoomed bounds; keep the last normal ones.

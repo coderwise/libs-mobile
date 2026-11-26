@@ -1,5 +1,6 @@
 package com.coderwise.libs.desktop
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,6 +59,21 @@ internal fun AboutDialogContent(appName: String, appVersion: String, about: Abou
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+/** The About window's content: the app's theme and surface around [DesktopAppConfig.aboutContent] or the default content. */
+@Composable
+internal fun AboutWindowContent(config: DesktopAppConfig, icon: Painter?, onClose: () -> Unit) {
+    config.theme(isSystemInDarkTheme()) {
+        Surface(Modifier.fillMaxSize()) {
+            val custom = config.aboutContent
+            if (custom != null) {
+                custom(icon, onClose)
+            } else {
+                AboutDialogContent(config.appName, config.appVersion, config.about ?: AboutInfo(), icon)
+            }
         }
     }
 }

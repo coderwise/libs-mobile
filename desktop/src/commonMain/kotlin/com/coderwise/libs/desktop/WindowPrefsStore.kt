@@ -1,6 +1,5 @@
 package com.coderwise.libs.desktop
 
-import androidx.compose.ui.unit.DpSize
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
@@ -8,12 +7,13 @@ import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
 
-/** Remembers the main window's frame and zoomed state between runs, in one small JSON file. */
-internal class WindowSettings(private val file: Path, val defaultSize: DpSize) {
+/** Reads and writes the remembered [WindowPrefs] as one small JSON file; each platform maps them to its own window. */
+internal class WindowPrefsStore(private val file: Path) {
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
     }
 
+    /** The last loaded or saved prefs. */
     var prefs: WindowPrefs = WindowPrefs()
         private set
 
@@ -25,10 +25,12 @@ internal class WindowSettings(private val file: Path, val defaultSize: DpSize) {
         return prefs
     }
 
+    /** Writes only when something changed; a failed write is ignored. */
     fun save(updated: WindowPrefs) {
         if (updated == prefs) return
         prefs = updated
         runCatching {
+            file.parent?.let { SystemFileSystem.createDirectories(it) }
             SystemFileSystem.sink(file).buffered().use { it.writeString(json.encodeToString(WindowPrefs.serializer(), updated)) }
         }
     }
