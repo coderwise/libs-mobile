@@ -1,6 +1,7 @@
 package com.coderwise.libs.sample.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,17 +23,23 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,7 +59,10 @@ import com.coderwise.libs.utils.horizontalSlideTransition
  */
 @Composable
 fun SampleApp(topBarStartInset: Dp = 0.dp) {
-    MaterialTheme {
+    val systemDark = isSystemInDarkTheme()
+    var dark by rememberSaveable { mutableStateOf(systemDark) }
+    MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
+        val onToggleTheme = { dark = !dark }
         val examples = remember { sampleExamples() }
         // The back stack is the gallery, then at most one example (keyed by its title).
         val backStack = remember { mutableStateListOf<Any>(GalleryKey) }
@@ -68,11 +78,12 @@ fun SampleApp(topBarStartInset: Dp = 0.dp) {
             entryProvider = { key ->
                 NavEntry(key, metadata = horizontalSlideTransition()) {
                     if (key == GalleryKey) {
-                        ExampleGallery(examples, galleryState, topBarStartInset, onSelect = { backStack.add(it.title) })
+                        ExampleGallery(examples, galleryState, topBarStartInset, onToggleTheme, onSelect = { backStack.add(it.title) })
                     } else {
                         ExampleScreen(
                             examples.first { it.title == key },
                             topBarStartInset,
+                            onToggleTheme,
                             onBack = { backStack.removeLastOrNull() }
                         )
                     }
@@ -90,12 +101,14 @@ private fun ExampleGallery(
     examples: List<Example>,
     listState: LazyGridState,
     topBarStartInset: Dp,
+    onToggleTheme: () -> Unit,
     onSelect: (Example) -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Coderwise libraries") },
+                actions = { ThemeToggle(onToggleTheme) },
                 windowInsets = WindowInsets(left = topBarStartInset)
             )
         }
@@ -159,11 +172,12 @@ private fun ExampleCard(example: Example, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExampleScreen(example: Example, topBarStartInset: Dp, onBack: () -> Unit) {
+private fun ExampleScreen(example: Example, topBarStartInset: Dp, onToggleTheme: () -> Unit, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(left = topBarStartInset),
+                actions = { ThemeToggle(onToggleTheme) },
                 title = {
                     Column {
                         Text(example.title, style = MaterialTheme.typography.titleMedium)
@@ -228,6 +242,27 @@ private val BackArrow: ImageVector = ImageVector.Builder(
         close()
     }
 }.build()
+
+@Composable
+private fun ThemeToggle(onToggle: () -> Unit) {
+    IconButton(onClick = onToggle) {
+        Icon(ContrastIcon, contentDescription = "Toggle light/dark theme")
+    }
+}
+
+/** Material's `contrast`, drawn here for the same reason as [BackArrow]. */
+private val ContrastIcon: ImageVector = ImageVector.Builder(
+    name = "Contrast",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).addPath(
+    pathData = PathParser()
+        .parsePathString("M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm1-17.93c3.94.49 7 3.85 7 7.93s-3.05 7.44-7 7.93V4.07z")
+        .toNodes(),
+    fill = SolidColor(Color.Black)
+).build()
 
 @Composable
 private fun ModuleLabel(module: String) {
