@@ -8,16 +8,25 @@ plugins {
 
 kotlin {
     jvm("desktop")
+    macosArm64()
 
     sourceSets {
-        getByName("desktopMain").dependencies {
+        applyDefaultHierarchyTemplate()
+        commonMain.dependencies {
             api(libs.koin.core)
-            api(compose.desktop.common)
-            implementation(compose.desktop.currentOs)
+            // api: kotlinx.io.files.Path appears in the public API (DesktopAppConfig.koinModules).
+            api(libs.kotlinx.io.core)
+            api(libs.compose.runtime)
+            api(libs.compose.ui)
+            implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.kotlinx.serialization.json)
+        }
+        getByName("desktopMain").dependencies {
+            api(compose.desktop.common)
+            implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinx.coroutines.swing)
         }
         getByName("desktopTest").dependencies {
             implementation(libs.kotlin.test)

@@ -8,18 +8,7 @@ import androidx.compose.ui.window.WindowState
 import java.awt.GraphicsEnvironment
 import java.awt.Rectangle
 import java.io.File
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-
-@Serializable
-internal data class WindowPrefs(
-    val width: Float = 0f,
-    val height: Float = 0f,
-    val hasPosition: Boolean = false,
-    val x: Float = 0f,
-    val y: Float = 0f,
-    val maximized: Boolean = false,
-)
 
 /** Remembers the main window's size, position and maximized state between runs, in one small JSON file. */
 internal class WindowSettings(private val file: File, private val defaultSize: DpSize) {
