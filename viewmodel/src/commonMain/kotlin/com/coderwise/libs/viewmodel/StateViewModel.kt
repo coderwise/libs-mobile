@@ -2,7 +2,6 @@ package com.coderwise.libs.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -10,7 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
  * A ViewModel with one [uiState] and one entry point for the UI, [onEvent]:
@@ -30,7 +28,8 @@ import kotlinx.coroutines.launch
  * ```
  *
  * Navigation and load state belong to other libraries, so this class knows neither: inject the
- * navigation sink as usual and map failures to your state in [onError].
+ * navigation sink as usual and map failures to your state in [onError]. When what the screen draws
+ * differs from what the ViewModel works on, use [ModelViewModel].
  */
 abstract class StateViewModel<S : Any, E : Any>(initialState: S) : ViewModel() {
 
@@ -55,15 +54,7 @@ abstract class StateViewModel<S : Any, E : Any>(initialState: S) : ViewModel() {
      * [onError] instead of crashing the app.
      */
     protected fun launch(block: suspend CoroutineScope.() -> Unit): Job =
-        viewModelScope.launch {
-            try {
-                block()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                onError(e)
-            }
-        }
+        viewModelScope.launchSafely(::onError, block)
 
     /** Called when a [launch]ed block, or a flow passed to [collectInto], fails. Does nothing by default. */
     protected open fun onError(error: Throwable) {}

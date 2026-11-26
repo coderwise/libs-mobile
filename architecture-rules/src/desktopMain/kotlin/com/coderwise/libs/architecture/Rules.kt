@@ -10,6 +10,7 @@ internal object Rules {
     const val VIEWMODEL_LINES = "viewmodel-lines"
     const val VIEWMODEL_DEPS = "viewmodel-deps"
     const val VIEWMODEL_BASE = "viewmodel-base"
+    private val STATE_VIEWMODEL_BASES = setOf("StateViewModel", "ModelViewModel")
     const val CONTENT_LAMBDAS = "content-lambdas"
     const val PLATFORM_CODE = "platform-code"
 
@@ -68,7 +69,7 @@ internal object Rules {
                 // A parent's name keeps its type arguments: `StateViewModel<HomeUiState, HomeUiEvent>`.
                 if (config.requireStateViewModel &&
                     relative(viewModel.containingFile.path).substringBefore('/') == "feature" &&
-                    viewModel.parents().none { it.name.substringBefore('<') == "StateViewModel" }
+                    viewModel.parents().none { it.name.substringBefore('<') in STATE_VIEWMODEL_BASES }
                 ) {
                     found[Violation(VIEWMODEL_BASE, target)] = "not-StateViewModel"
                 }
