@@ -17,6 +17,7 @@ kotlin {
         minSdk = libs.versions.minSdkCompat.get().toInt()
     }
     iosArm64(); iosSimulatorArm64()
+    macosArm64()
     js { browser() }
     wasmJs { browser() }
     jvm("desktop")
