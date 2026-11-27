@@ -43,7 +43,7 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable (darkTheme:
     app.setActivationPolicy(NSApplicationActivationPolicy.NSApplicationActivationPolicyRegular)
     loadIcon(config.iconResource)?.let { app.setApplicationIconImage(it) }
     installMainMenu(config.appName, delegate, showAbout = config.about != null)
-    trackMainWindow(prefsStore, config.defaultWindowSize, config.unifiedTitleBar)
+    trackMainWindow(prefsStore, config.defaultWindowSize, config.minWindowSize, config.unifiedTitleBar)
 
     Window(config.appName) { content(isSystemInDarkTheme()) }
 

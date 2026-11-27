@@ -23,7 +23,7 @@ import platform.darwin.dispatch_get_main_queue
  * About window) and saves it on resize, move and close. Notification-driven; no polling.
  */
 @OptIn(ExperimentalForeignApi::class)
-internal fun trackMainWindow(settings: WindowPrefsStore, defaultSize: DpSize, unifiedTitleBar: Boolean) {
+internal fun trackMainWindow(settings: WindowPrefsStore, defaultSize: DpSize, minSize: DpSize?, unifiedTitleBar: Boolean) {
     var main: NSWindow? = null
     // Notifications are delivered inline, so the style change below reports a resize before the saved
     // frame is read; saving then would overwrite the file with Compose's initial size.
@@ -36,6 +36,7 @@ internal fun trackMainWindow(settings: WindowPrefsStore, defaultSize: DpSize, un
         if (main != null) return@addObserverForName
         main = window
         restoring = true
+        minSize?.let { window.contentMinSize = NSMakeSize(it.width.value.toDouble(), it.height.value.toDouble()) }
         if (unifiedTitleBar) {
             window.titlebarAppearsTransparent = true
             window.titleVisibility = NSWindowTitleHidden

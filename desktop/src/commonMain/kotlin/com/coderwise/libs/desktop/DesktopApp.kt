@@ -38,6 +38,8 @@ class DesktopAppConfig(
     val iconResource: String = "/icon.png",
     /** Size of the first window, before a size has been remembered. */
     val defaultWindowSize: DpSize = DpSize(1100.dp, 720.dp),
+    /** Smallest size the user can resize the main window to (its content area); null for no limit. */
+    val minWindowSize: DpSize? = null,
     /**
      * Where the app keeps its files, for an app that is not content with `~/<dataDirName>` (a per-OS
      * application-support folder, say). Overrides [dataDirName].

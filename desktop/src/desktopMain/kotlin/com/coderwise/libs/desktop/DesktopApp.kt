@@ -56,6 +56,9 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable (darkTheme:
             title = config.appName,
             icon = icon,
         ) {
+            config.minWindowSize?.let { min ->
+                SideEffect { window.minimumSize = java.awt.Dimension(min.width.value.toInt(), min.height.value.toInt()) }
+            }
             if (config.unifiedTitleBar && isMacOs) {
                 SideEffect {
                     window.rootPane.putClientProperty("apple.awt.fullWindowContent", true)
