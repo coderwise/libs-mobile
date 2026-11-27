@@ -1,0 +1,12 @@
+package com.coderwise.libs.share
+
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
+
+// Desktop has no native share sheet; copy to the system clipboard instead.
+actual fun shareText(text: String) = copyToClipboard(text)
+
+internal fun copyToClipboard(text: String) {
+    val selection = StringSelection(text)
+    Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
+}
