@@ -57,6 +57,7 @@ implementation("com.coderwise.libs:location:0.3.2")
 | [`network`](network) | unreleased | A Ktor `HttpClient` for JSON APIs with the right engine on every platform, an optional base URL, logging that keeps credentials out, and backoff on 429. |
 | [`shell`](shell) | unreleased | Host access in common code: run a process with a timeout and cancellation, and read, write and list files. |
 | [`ollama`](ollama) | unreleased | A client for the Ollama REST API: model list, chat with tool calling, streaming with reasoning, and context length. |
+| [`sandbox`](sandbox) | unreleased | Keeps file access by a model inside one directory: symlink-safe path resolution and a filter for credentials. Builds on `shell`. |
 
 ### App architecture
 
