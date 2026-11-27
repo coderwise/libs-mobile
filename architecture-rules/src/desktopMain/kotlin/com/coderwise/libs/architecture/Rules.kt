@@ -52,7 +52,7 @@ internal object Rules {
                 found.putIfAbsent(Violation(PLATFORM_CODE, path), "expect/actual")
             }
 
-        // ui-root: only screens, content, view models, state, events and previews sit directly in `ui`.
+        // ui-root: only screens, content, view models, state and events sit directly in `ui`.
         scope.files
             .filter { production(it.path) && relative(it.path).substringBefore('/') in config.uiRootDirs }
             .filter { it.path.substringBeforeLast('/').substringAfterLast('/') == "ui" }

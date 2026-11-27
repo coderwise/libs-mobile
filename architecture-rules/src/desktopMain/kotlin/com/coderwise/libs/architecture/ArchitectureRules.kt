@@ -16,7 +16,7 @@ data class ArchitectureConfig(
     /** Top-level directories whose `ui` package root is restricted. */
     val uiRootDirs: Set<String> = setOf("feature"),
     /** A file directly in a `ui` package ends in one of these (`ChatScreen.kt`); anything else goes in a subpackage. */
-    val uiRootSuffixes: Set<String> = setOf("Screen", "Content", "ViewModel", "UiState", "UiEvent", "Previews"),
+    val uiRootSuffixes: Set<String> = setOf("Screen", "Content", "ViewModel", "UiState", "UiEvent"),
     /** Where the baseline lives, relative to the project root. */
     val baselineFile: String = "scripts/architecture/baseline.txt",
 )
@@ -32,7 +32,7 @@ data class ArchitectureConfig(
  *
  * Rules: ViewModel files stay short; ViewModels take few dependencies; feature ViewModels extend
  * `StateViewModel`; the root of a feature's `ui` package holds only screens, content, view models, UI state and
- * events and previews (see [ArchitectureConfig.uiRootSuffixes]), everything else lives in a subpackage such as
+ * events (see [ArchitectureConfig.uiRootSuffixes]), everything else lives in a subpackage such as
  * `components`, `theme` or `controller`; a `*Content` composable that takes `onEvent` takes no other `on*` callback; `core/` and
  * `feature/` hold no platform code.
  *
