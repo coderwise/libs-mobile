@@ -16,6 +16,9 @@ kotlin {
         withHostTest {}
     }
     iosArm64(); iosSimulatorArm64()
+    macosArm64()
+    linuxX64(); linuxArm64()
+    mingwX64()
     js {
         browser()
         nodejs()

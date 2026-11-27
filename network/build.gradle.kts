@@ -18,12 +18,24 @@ kotlin {
     }
     iosArm64(); iosSimulatorArm64()
     macosArm64()
+    linuxX64(); linuxArm64()
+    mingwX64()
     js {
         browser()
         nodejs()
     }
     wasmJs { browser() }
     jvm("desktop")
+
+    // Linux and Windows share the curl engine.
+    applyDefaultHierarchyTemplate {
+        common {
+            group("curl") {
+                withLinux()
+                withMingw()
+            }
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -37,6 +49,9 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.android)
+        }
+        val curlMain by getting {
+            dependencies { implementation(libs.ktor.client.curl) }
         }
         // Darwin on iOS and macOS.
         appleMain.dependencies {
