@@ -13,7 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.coderwise.libs.utils.rememberShareTextLauncher
+import com.coderwise.libs.share.rememberShareTextLauncher
 
 @Composable
 internal fun ShareTextExample() {

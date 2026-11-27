@@ -6,12 +6,7 @@ Cross-platform utilities for Compose Multiplatform, published to **Maven Central
 
 ## API
 
-- `shareFile(fileName, content, mimeType)` — share a generated file via the platform share sheet.
-- `@Composable rememberShareTextLauncher()` — share plain text from Compose code:
-  share sheet on Android/iOS, clipboard on desktop/web. Takes the Android
-  context from the composition and carries a chooser title. Prefer this.
-- `shareText(text)` — the same, for callers outside composition (view models,
-  services). On Android it resolves the context from Koin's `GlobalContext`.
+- Sharing (`shareFile`, `shareText`, `rememberShareTextLauncher`) moved to the [`share`](../share) library.
 - `LruCache<K, V>` — generic size-bounded cache.
 - `@Composable PlatformColors(darkTheme)` — apply edge-to-edge / system-bar styling per platform.
 - `horizontalSlideTransition()`, `verticalSlideTransition()`, `popTransition()`, `slideInPushTransform()`, `slideInPopTransform()` — slide transitions for navigation3 `NavDisplay` entry metadata (no fades; the predictive-pop spec plays the push slide on web, where `NavDisplay` reports a plain push as a predictive back). Exposes `navigation3-ui` as an `api` dependency.

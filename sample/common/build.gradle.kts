@@ -40,6 +40,7 @@ kotlin {
             implementation(project(":logger"))
             implementation(project(":permissions"))
             implementation(project(":settings"))
+            implementation(project(":share"))
             implementation(project(":utils"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.compose.runtime)
