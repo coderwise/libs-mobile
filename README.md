@@ -55,6 +55,7 @@ implementation("com.coderwise.libs:location:0.3.2")
 | [`utils`](utils) | `0.6.1` | File and text sharing, system-bar colors and a generic LRU cache. |
 | [`desktop`](desktop) | unreleased | The desktop `main` in one call: Koin, data directory, dock icon, About window and remembered window state. |
 | [`network`](network) | unreleased | A Ktor `HttpClient` for JSON APIs with the right engine on every platform, an optional base URL, logging that keeps credentials out, and backoff on 429. |
+| [`shell`](shell) | unreleased | Host access in common code: run a process with a timeout and cancellation, and read, write and list files. |
 
 ### App architecture
 
