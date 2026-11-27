@@ -1,6 +1,5 @@
-package com.coderwise.libs.sandbox
+package com.coderwise.libs.shell
 
-import com.coderwise.libs.shell.createShell
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
 import kotlin.io.path.createDirectories

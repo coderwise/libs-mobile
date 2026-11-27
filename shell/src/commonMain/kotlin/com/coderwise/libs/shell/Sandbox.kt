@@ -1,6 +1,5 @@
-package com.coderwise.libs.sandbox
+package com.coderwise.libs.shell
 
-import com.coderwise.libs.shell.Shell
 
 /**
  * Keeps file access by a model inside one directory, [root], and away from credentials. Every resolved path is the

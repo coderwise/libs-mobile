@@ -71,7 +71,7 @@ mavenPublishing {
 
     pom {
         name.set("Coderwise Shell")
-        description.set("Host access in common code: run a process with a timeout and cancellation, and read, write and list files.")
+        description.set("Host access in common code: run a process with a timeout and cancellation, and read, write and list files, and a Sandbox that keeps a model's file access inside one directory.")
         inceptionYear.set("2026")
         url.set("https://github.com/coderwise/libs-mobile")
         licenses {
