@@ -70,4 +70,12 @@ class BaselineTest {
     fun `a missing baseline file is an empty baseline`() {
         assertEquals(emptyMap(), Baseline.read(File("/nonexistent/baseline.txt")).entries)
     }
+
+    @Test
+    fun `a stray file in the ui root fails and can be listed`() {
+        val key = Violation(Rules.UI_ROOT, "feature/chat/src/x/ui/Helpers.kt")
+        val verdict = verdict(mapOf(key to "Helpers.kt"), baseline(), config)
+        assertTrue(verdict.failures.single().startsWith("ui-root: feature/chat/src/x/ui/Helpers.kt: Helpers.kt sits in the root of a ui package"))
+        assertTrue(baseline(key to "Helpers.kt").allows(key, "Helpers.kt"))
+    }
 }

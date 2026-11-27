@@ -17,7 +17,7 @@ internal class Baseline(val entries: Map<Violation, String>) {
         val allowance = entries[violation] ?: return false
         return when (violation.rule) {
             Rules.CONTENT_LAMBDAS -> allowance.split(",").toSet().containsAll(value.split(",").toSet())
-            Rules.PLATFORM_CODE, Rules.VIEWMODEL_BASE -> true
+            Rules.PLATFORM_CODE, Rules.VIEWMODEL_BASE, Rules.UI_ROOT -> true
             else -> (value.toIntOrNull() ?: Int.MAX_VALUE) <= (allowance.toIntOrNull() ?: -1)
         }
     }
@@ -60,6 +60,8 @@ internal fun verdict(found: Map<Violation, String>, baseline: Baseline, config: 
             Rules.CONTENT_LAMBDAS -> "takes onEvent and also $value"
             Rules.PLATFORM_CODE -> "platform code ($value) in a ${config.platformFreeDirs.joinToString("/")} module; " +
                 "move it to libs/ or app/"
+            Rules.UI_ROOT -> "$value sits in the root of a ui package, which holds only " +
+                "${config.uiRootSuffixes.sorted().joinToString("/")} files; move it to a subpackage (components, theme, ...)"
             Rules.VIEWMODEL_BASE -> "a feature ViewModel must extend StateViewModel"
             else -> value
         }

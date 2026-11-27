@@ -13,6 +13,7 @@ internal object Rules {
     private val STATE_VIEWMODEL_BASES = setOf("StateViewModel", "ModelViewModel")
     const val CONTENT_LAMBDAS = "content-lambdas"
     const val PLATFORM_CODE = "platform-code"
+    const val UI_ROOT = "ui-root"
 
     private val skippedDirs = setOf("build", ".git", ".kotlin", "node_modules", "kotlin-js-store")
 
@@ -50,6 +51,13 @@ internal object Rules {
                 val path = relative((it as KoContainingFileProvider).containingFile.path)
                 found.putIfAbsent(Violation(PLATFORM_CODE, path), "expect/actual")
             }
+
+        // ui-root: only screens, content, view models, state, events and previews sit directly in `ui`.
+        scope.files
+            .filter { production(it.path) && relative(it.path).substringBefore('/') in config.uiRootDirs }
+            .filter { it.path.substringBeforeLast('/').substringAfterLast('/') == "ui" }
+            .filter { file -> config.uiRootSuffixes.none { file.name.endsWith(it) } }
+            .forEach { found[Violation(UI_ROOT, relative(it.path))] = it.nameWithExtension }
 
         // viewmodel-lines: a ViewModel file stays short.
         scope.files
