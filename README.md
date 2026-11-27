@@ -65,7 +65,7 @@ implementation("com.coderwise.libs:location:0.3.2")
 |---|---|---|
 | [`navigation`](navigation) | `0.1.0` | Navigation 3 back stacks for apps with several roots (tabs, auth vs. main): one child stack per root, typed navigation events, and back stacks that survive process death. |
 | [`navigation-ui`](navigation-ui) | `0.1.0` | Navigation 3 scene strategies: an entry shown as a bottom sheet drawn by the app's own sheet container, or drawn over the screen beneath it. |
-| [`arch`](arch) | `0.1.0` | Use case base classes, suspend and `Flow`, that run on a dispatcher you choose. |
+| [`arch`](arch) | `0.1.0` | Use case base classes, suspend and `Flow`, that run on a dispatcher you choose, and `resultOf`, `runCatching` that lets cancellation through. |
 | [`uistate`](uistate) | `0.1.0` | A shared loading and error contract for ViewModel UI states, and the `StateFlow` sharing timeout. |
 | [`viewmodel`](viewmodel) | unreleased | State-holding ViewModel base classes: `StateViewModel` (one `uiState`, one `onEvent`, atomic `update`, a safe `launch`) and `ModelViewModel` (the same, over a separate model type mapped to the `uiState`). Separate from `arch` so domain modules don't pick up AndroidX lifecycle. |
 | [`architecture-rules`](architecture-rules) | unreleased | Konsist-backed architecture test for app projects: ViewModel size and dependencies, platform-free core and feature modules, `StateViewModel` base, onEvent-only content composables, with a baseline for grandfathered violations. JVM only. |
