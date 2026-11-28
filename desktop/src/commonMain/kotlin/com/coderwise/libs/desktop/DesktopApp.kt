@@ -48,8 +48,8 @@ class DesktopAppConfig(
     /**
      * The About window's content, for an app whose About says more than [about] can (ignored when [about] is
      * null). It draws everything itself, theme included: it gets the app icon (null on native macOS), the
-     * system's dark setting and a way to close the window (a no-op on native macOS, where the window's own
-     * close button does it). Without it the window shows [about] in default Material colors.
+     * system's dark setting and a way to close the window (on native macOS it closes the focused
+     * window, which is the About window while its content has the pointer). Without it the window shows [about] in default Material colors.
      */
     val aboutContent: (@Composable (icon: Painter?, darkTheme: Boolean, onClose: () -> Unit) -> Unit)? = null,
     /** Size of the About window; with [aboutContent] it is also fixed, not resizable. Ignored on native macOS. */

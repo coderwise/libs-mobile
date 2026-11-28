@@ -54,7 +54,7 @@ actual fun desktopApp(config: DesktopAppConfig, content: @Composable (darkTheme:
 private fun showAbout(config: DesktopAppConfig) {
     if (config.about == null) return
     Window("About ${config.appName}") {
-        AboutWindowContent(config, icon = null, onClose = {})
+        AboutWindowContent(config, icon = null, onClose = { NSApplication.sharedApplication().keyWindow?.close() })
     }
 }
 
