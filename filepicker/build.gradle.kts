@@ -17,6 +17,7 @@ kotlin {
         minSdk = libs.versions.minSdk.get().toInt()
     }
     iosArm64(); iosSimulatorArm64()
+    macosArm64()
     js { browser() }
     wasmJs { browser() }
     jvm("desktop")
@@ -60,7 +61,7 @@ mavenPublishing {
 
     pom {
         name.set("Coderwise FilePicker")
-        description.set("Cross-platform system document picker that reads the chosen file as text, for Compose Multiplatform.")
+        description.set("Cross-platform system document picker that reads the chosen file as text, plus a folder picker on desktop, for Compose Multiplatform.")
         inceptionYear.set("2026")
         url.set("https://github.com/coderwise/libs-mobile")
         licenses {

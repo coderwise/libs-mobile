@@ -40,7 +40,7 @@ implementation("com.coderwise.libs:location:0.3.2")
 | [`location`](location) | `0.3.2` | Current position and a live stream of updates, with opt-in background delivery on iOS. |
 | [`camera`](camera) | `0.1.0` | A live viewfinder and still capture, back or front lens: CameraX on Android, AVFoundation on iOS. |
 | [`imagepicker`](imagepicker) | `0.3.0` | The system photo picker: one picture or several, with the date each was taken, scaled and turned upright, or the original file. |
-| [`filepicker`](filepicker) | `0.2.0` | The system document picker, reading the chosen file as text. |
+| [`filepicker`](filepicker) | `0.2.0` | The system document picker, reading the chosen file as text; a folder picker on desktop. |
 | [`permissions`](permissions) | `0.6.0` | Runtime permission state for location, camera, Bluetooth and notifications, plus a shortcut to app settings for refusals the OS will not prompt for again. |
 | [`locale`](locale) | `0.2.0` | The device's region and country, and the measurement system they imply — for sensible first-launch defaults such as units. |
 
